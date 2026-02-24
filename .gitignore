@@ -10,3 +10,4 @@ datasets/
 output/
 *.npy
 *.mp4
+openpilot/
