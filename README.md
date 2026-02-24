@@ -78,4 +78,8 @@ If you encounter issues:
 3. Check that replay is running and publishing camera frames
 4. See the troubleshooting section in `docs/DATA_PREPARATION_GUIDE.md`
 
+# Setup
+
+You can run the ```scripts/setup-openpilot.sh``` script to setup the project.
+
 
