@@ -1,96 +1,69 @@
-# Openpilot Dataset Preparation Project
+# Custom Openpilot
 
-This repository contains the **modified openpilot files** and **guide** you need to complete a dataset preparation project. Your goal is to turn an openpilot driving replay into a structured dataset with images, model features, depth maps, and object detections.
+This repo contains the tools needed to get OpenPilot up and running.
 
----
+## Background
 
-## 📋 What This Repository Contains
+OpenPilot is a tool for interfacing/developing with the [Comma AI](https://comma.ai/) Platform. More concretly, it is a code repository.
 
-This repo contains **ONLY**:
+Setting up the OpenPilot repository can be troublesome. The documentation is poor and different version have poor compaitibility/things break. The purpose of this  repository is to create a system that allows for the easy installation of OpenPilot.
 
-- **`docs/DATA_PREPARATION_GUIDE.md`** — Step-by-step guide explaining what you need to do
-- **`openpilot_files/selfdrive/modeld_detection_first.py`** — Modified modeld file (copy this into your openpilot)
-- **`openpilot_files/selfdrive/modeld_detection_second.py`** — Alternative modified modeld file (copy this into your openpilot)
+## Version Information
 
-**You will need to provide:**
-- Openpilot repository (v0.9.8)
-- YOLO (for object detection)
-- Depth Anything V2 (for depth estimation)
+This script builds OpenPilot `v0.9.8`. It will likely not work with any other version.
 
----
+## Dependencies
 
-## 🚀 Quick Start
+This script requires the following things:
 
-### Step 1: Clone openpilot (separately)
+- Ubuntu OS (may work with WSL)
+- [Git](https://git-scm.com/install/linux). If you get errors like `error: unknown option also-filter-submodules`, you might need to update your git version.
+- [Git LFS](https://git-lfs.com/). Usually can be installed with ```sudo apt-get install git-lfs```.
+- conda (can be either [Anaconda Distribution](https://www.anaconda.com/docs/getting-started/anaconda/install#macos-linux-installation) or [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install#macos-linux-installation))
 
-```bash
-cd ~
-git clone https://github.com/commaai/openpilot.git
-cd openpilot
-```
+### Model Dependencies
 
-Follow openpilot's setup instructions to get your environment ready.
+The OpenPilot models run using [OpenCL](https://en.wikipedia.org/wiki/OpenCL), a GPU-computing framework. As such, in order to run these models, you need to have a device and drivers compatible with OpoenCL. This script has been setup to allow the installation of [pocl-opencl-icd](https://portablecl.org/), which allows your CPU to be used via the OpenCL interface, meaning you do not have a graphics card. Support for using graphics cards will hopefully be added in the future.
 
-### Step 2: Copy the modified files into your openpilot
+## What The Script Does
 
-```bash
-# From this repository, copy the modeld files into your openpilot checkout
-cp openpilot_files/selfdrive/modeld_detection_second.py ~/openpilot/selfdrive/modeld/
-```
+The main script does the following:
 
-**Note:** You can use either `modeld_detection_first.py` or `modeld_detection_second.py`. The second version includes automatic segment management (saves to `segment_00`, `segment_01`, etc.).
+1. If you have specified to use CPU graphics, it installs `pocl-opencl-icd`.
+2. Clones the OpenPilot repo.
+3. Checks out `v0.9.8`.
+4. Pulls any git lfs files.****
+5. Copies over `./cereal/services/py` into the OpenPilot repo. This allows us to use the GPS Kalman Service, which is deprecated by default in this version. It is important this is done **before** compiling openpilot, as done in this scriopt.
+6. Creates a new conda environment with `python=3.12`.
+7. Installs ``uv`` package and does a refresh on the uv lock. This is important because some of the hashes in the OpenPilot repo are not up-to-date, and would result in package download errors if not refreshed.
+8. Runs OpenPilot setup script.
+9. Compiles OpenPilot
 
-### Step 3: Route Play
-You may use the following public routes for testing:
+## Usage
 
-- `d34c14daa88a1e86/0000013e--0859dd3dcc`
-- `d34c14daa88a1e86/000000ca--7c5d326170`
+### Running the Script
 
-Run replay using:
+1. Clone the repo: ```git clone https://github.com/CS-4273-Spring2026-GroupI/custom_openpilot.git```.
+2. Make the script executable with ```chmod +x ./scripts/setup-openpilot.sh```.
+3. Run the script with ```./scripts/setup-openpilot.sh <conda env name> <run on cpu or not (true or false)> <replace cereal service or not (true or false)>```.
 
-tools/replay/replay d34c14daa88a1e86/0000013e--0859dd3dcc
+**NOTEs**:  
 
+      - The conda environment name must already be in use.
+      - <run on cpu or not> should be set to "true" for now.
+      - <replace cereal service or not> should be set to "true" for now.
 
-### Step 4: Follow the guide
+For example, your command might look like this:
 
-Read **`docs/DATA_PREPARATION_GUIDE.md`** for the complete workflow:
+```./scripts/setup-openpilot.sh openpilot true true```
 
-1. **Replay a route** using openpilot's replay tool
-2. **Capture images + features** using the modified modeld file
-3. **Run offline labeling:**
-   - Use **YOLO** to detect objects (cars, pedestrians, etc.)
-   - Use **Depth Anything V2** to estimate depth maps
----
+### Using OpenPilot Repo
 
+After the script has run, you can navigate inside the openpilot repo with ```cd ./openpilot```.
 
-## 📖 Full Instructions
+When you want to run code inside this repo, you **must** do the following in order:
 
-See **`docs/DATA_PREPARATION_GUIDE.md`** for the complete step-by-step guide.
+1. Activate your conda environemnt: ```conda activate openpilot```.
+2. Activate your venv: ```source ./.venv/bin/activate```.
 
----
-
-## ❓ Troubleshooting
-
-If you encounter issues:
-
-1. Make sure your openpilot environment is set up correctly
-2. Verify the modified modeld file is in the right location
-3. Check that replay is running and publishing camera frames
-4. See the troubleshooting section in `docs/DATA_PREPARATION_GUIDE.md`
-
-# Setup
-
-You can run the ```scripts/setup-openpilot.sh``` script to setup the project.
-
-
-notes:
-
-python 3.11
-move pxd and pyx files into model dir
-pray
-./tools/replay/replay db478799b6f9f210/00000040--8afe968813/23 --all --ecam
-
-
-had to install layer between wl and graphic driver:
-sudo apt update
-sudo apt install -y pocl-opencl-icd
+Then, you can run various code files. For example, ```./tools/replay/replay db478799b6f9f210/00000040--8afe968813/23 --all --ecam```
