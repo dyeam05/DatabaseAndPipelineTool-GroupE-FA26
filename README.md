@@ -83,3 +83,14 @@ If you encounter issues:
 You can run the ```scripts/setup-openpilot.sh``` script to setup the project.
 
 
+notes:
+
+python 3.11
+move pxd and pyx files into model dir
+pray
+./tools/replay/replay db478799b6f9f210/00000040--8afe968813/23 --all --ecam
+
+
+had to install layer between wl and graphic driver:
+sudo apt update
+sudo apt install -y pocl-opencl-icd
