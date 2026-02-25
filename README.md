@@ -17,7 +17,7 @@ This script builds OpenPilot `v0.9.8`. It will likely not work with any other ve
 This script requires the following things:
 
 - Ubuntu OS (may work with WSL)
-- [Git](https://git-scm.com/install/linux)
+- [Git](https://git-scm.com/install/linux). If you get errors like `error: unknown option also-filter-submodules`, you might need to update your git version.
 - [Git LFS](https://git-lfs.com/). Usually can be installed with ```sudo apt-get install git-lfs```.
 - conda (can be either [Anaconda Distribution](https://www.anaconda.com/docs/getting-started/anaconda/install#macos-linux-installation) or [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install#macos-linux-installation))
 
