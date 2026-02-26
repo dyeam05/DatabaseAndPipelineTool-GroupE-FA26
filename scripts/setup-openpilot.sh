@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+set -x
 
 if [ "$#" -lt 3 ]; then
 	echo "Usage: $0 <conda_env_name> <run_model_on_cpu_or_not (true or false)> <replace_cereal_service_with_gps_compatible_ceral_serivice_or_not (true or false)>"
