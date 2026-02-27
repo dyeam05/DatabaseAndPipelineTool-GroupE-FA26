@@ -63,3 +63,10 @@ uv lock --refresh
 tools/op.sh setup # now it works
 source .venv/bin/activate
 scons -u -j$(nproc)
+
+# Add extra req
+uv add pandas
+uv add python-opencv
+uv add pyarrow
+# Copy over files
+./scripts/copy_over_post_compile_files.sh
