@@ -69,6 +69,10 @@ Run replay with ```docker exec -it custom_openpilot-dev-1 ./scripts/start_replay
 
 After the script has run, you can navigate inside the openpilot repo with ```cd ./openpilot```.
 
+#### Run Extraction
+
+```./selfdrive/modeld/extract_data.py --output_dir "/workspace/test1"```
+
 ### Working inside the container
 
 When you want to run code inside this repo, you **must** do the following in order:
