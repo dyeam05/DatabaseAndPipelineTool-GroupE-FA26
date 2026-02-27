@@ -1,0 +1,27 @@
+services:
+  dev:
+    image: nvidia/cuda:13.0.2-cudnn-devel-ubuntu24.04
+    tty: true
+    stdin_open: true
+
+    # 2GB /dev/shm
+    shm_size: 2g
+
+    # mount current directory into container
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+
+    # GPU access (Compose v2)
+    gpus: all
+
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      DEBIAN_FRONTEND: noninteractive
+      LANG: en_US.UTF-8
+      LANGUAGE: en_US:en
+      LC_ALL: en_US.UTF-8
+      CONDA_ENV_NAME: ${CONDA_ENV_NAME}
+      RUN_MODEL_ON_CPU_OR_NOT: ${RUN_MODEL_ON_CPU_OR_NOT}
+      REPLACE_CEREAL_SERVICE_OR_NOT: ${REPLACE_CEREAL_SERVICE_OR_NOT}
