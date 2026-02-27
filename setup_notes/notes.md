@@ -40,3 +40,6 @@ scons -u -j$(nproc)
 ```
 
 *WORKS*
+
+
+git update-index --chmod=+x scripts/setup-openpilot.sh
