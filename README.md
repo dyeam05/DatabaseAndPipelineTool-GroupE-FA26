@@ -59,6 +59,18 @@ For example, your command might look like this:
 
 ### Using OpenPilot Repo
 
+#### Register your JWT
+
+1. Get a new jwt on [comma.ai's website](https://jwt.comma.ai)
+2. Apply the jwt with ```docker exec -it custom_openpilot-dev-1 ./scripts/register_jwt_docker.sh <jwt>```
+
+#### Run Replay
+
+Run replay with ```docker exec -it custom_openpilot-dev-1 ./scripts/start_replay_in_docker.sh db478799b6f9f210/00000040--8afe968813```
+
+#### Run Modeld
+
+
 After the script has run, you can navigate inside the openpilot repo with ```cd ./openpilot```.
 
 When you want to run code inside this repo, you **must** do the following in order:

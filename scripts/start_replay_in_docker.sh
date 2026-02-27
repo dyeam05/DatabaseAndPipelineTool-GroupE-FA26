@@ -3,15 +3,15 @@ set -euo pipefail
 set -x
 
 if [ "$#" -lt 1 ]; then
-	echo "Usage: $0 <jtw>"
+	echo "Usage: $0 <replay_id>"
 	exit 1
 fi
 
-jwt="$1"
+replay_id="$1"
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate $CONDA_ENV_NAME
 cd /workspace/openpilot/
 source ./.venv/bin/activate
 
-python ./tools/lib/auth.py jwt "$jwt"
+./tools/replay/replay "$replay_id" --all --ecam
