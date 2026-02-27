@@ -9,15 +9,20 @@ export NVIDIA_VISIBLE_DEVICES=all
 export NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute
 export DEBIAN_FRONTEND=noninteractive
 
-if [ "$#" -lt 3 ]; then
-	echo "Usage: $0 <conda_env_name> <run_model_on_cpu_or_not (true or false)> <replace_cereal_service_with_gps_compatible_ceral_serivice_or_not (true or false)>"
-	exit 1
-fi
+# if [ "$#" -lt 3 ]; then
+# 	echo "Usage: $0 <conda_env_name> <run_model_on_cpu_or_not (true or false)> <replace_cereal_service_with_gps_compatible_ceral_serivice_or_not (true or false)>"
+# 	exit 1
+# fi
 
-echo "Will use ($1) as environment name"
-conda_env_name="$1"
-run_model_on_cpu="$2"
-replace_cereal_with_gps_cereal="$3"
+# echo "Will use ($1) as environment name"
+# conda_env_name="$1"
+# run_model_on_cpu="$2"
+# replace_cereal_with_gps_cereal="$3"
+
+conda_env_name="${CONDA_ENV_NAME:?CONDA_ENV_NAME environment variable is reuqired}"
+run_model_on_cpu="${RUN_MODEL_ON_CPU_OR_NOT:?RUN_MODEL_ON_CPU_OR_NOT environment variable is reuqired}"
+replace_cereal_with_gps_cereal="${REPLACE_CEREAL_SERVICE_OR_NOT:?REPLACE_CEREAL_SERVICE_OR_NOT environment variable is reuqired}"
+
 
 # Install packages
 apt-get update

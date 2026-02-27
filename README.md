@@ -14,6 +14,13 @@ This script builds OpenPilot `v0.9.8`. It will likely not work with any other ve
 
 ## Dependencies
 
+## Dependencies Before Running Script
+
+- [cuda 13](https://developer.nvidia.com/cuda-13-0-0-download-archive)
+- [nvidia container toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+
+### Dependences (Inside Docker, Automatically Installed)
+
 This script requires the following things:
 
 - Ubuntu OS (may work with WSL)
@@ -21,7 +28,7 @@ This script requires the following things:
 - [Git LFS](https://git-lfs.com/). Usually can be installed with ```sudo apt-get install git-lfs```.
 - conda (can be either [Anaconda Distribution](https://www.anaconda.com/docs/getting-started/anaconda/install#macos-linux-installation) or [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install#macos-linux-installation))
 
-### Model Dependencies
+#### Model Dependencies
 
 The OpenPilot models run using [OpenCL](https://en.wikipedia.org/wiki/OpenCL), a GPU-computing framework. As such, in order to run these models, you need to have a device and drivers compatible with OpoenCL. This script has been setup to allow the installation of [pocl-opencl-icd](https://portablecl.org/), which allows your CPU to be used via the OpenCL interface, meaning you do not have a graphics card. Support for using graphics cards will hopefully be added in the future.
 
@@ -44,18 +51,8 @@ The main script does the following:
 ### Running the Script
 
 1. Clone the repo: ```git clone https://github.com/CS-4273-Spring2026-GroupI/custom_openpilot.git```.
-2. Make the script executable with ```chmod +x ./scripts/setup-openpilot.sh```.
-3. Run the script with ```./scripts/setup-openpilot.sh <conda env name> <run on cpu or not (true or false)> <replace cereal service or not (true or false)>```.
-
-**NOTEs**:  
-
-      - The conda environment name must already be in use.
-      - <run on cpu or not> should be set to "true" for now.
-      - <replace cereal service or not> should be set to "true" for now.
-
-For example, your command might look like this:
-
-```./scripts/setup-openpilot.sh openpilot true true```
+1. Run ```docker compose up -d```
+1. Run ```docker exec -it custom_openpilot-dev-1 ./scripts/setup-openpilot.sh```
 
 ### Using OpenPilot Repo
 
@@ -70,8 +67,9 @@ Run replay with ```docker exec -it custom_openpilot-dev-1 ./scripts/start_replay
 
 #### Run Modeld
 
-
 After the script has run, you can navigate inside the openpilot repo with ```cd ./openpilot```.
+
+### Working inside the container
 
 When you want to run code inside this repo, you **must** do the following in order:
 
