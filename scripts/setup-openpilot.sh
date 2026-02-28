@@ -66,7 +66,7 @@ scons -u -j$(nproc)
 
 # Add extra req
 uv add pandas
-uv add python-opencv
+uv add opencv-python
 uv add pyarrow
 # Copy over files
 ./scripts/copy_over_post_compile_files.sh
