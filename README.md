@@ -77,7 +77,10 @@ After the script has run, you can navigate inside the openpilot repo with ```cd 
 
 When you want to run code inside this repo, you **must** do the following in order:
 
+1. Enter the Docker container: ```docker exec -it custom_openpilot-dev-1 bash```
+1. Navigate inside the openpilot folder
+1. Source conda: ```source ~/miniconda3/etc/profile.d/conda.sh```
 1. Activate your conda environemnt: ```conda activate openpilot```.
-2. Activate your venv: ```source ./.venv/bin/activate```.
+1. Activate your venv: ```source ./.venv/bin/activate```.
 
 Then, you can run various code files. For example, ```./tools/replay/replay db478799b6f9f210/00000040--8afe968813/23 --all --ecam```
