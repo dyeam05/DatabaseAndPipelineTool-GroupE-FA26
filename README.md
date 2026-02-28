@@ -65,6 +65,8 @@ The main script does the following:
 
 Run replay with ```docker exec -it custom_openpilot-dev-1 ./scripts/start_replay_in_docker.sh db478799b6f9f210/00000040--8afe968813```
 
+When launching replay from the Python service managers (for notebook workflows), replay is started detached with a PTY-backed session so the ncurses/TUI replay process stays stable while your notebook remains responsive.
+
 #### Run Modeld
 
 After the script has run, you can navigate inside the openpilot repo with ```cd ./openpilot```.
