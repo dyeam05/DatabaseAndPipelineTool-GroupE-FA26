@@ -69,4 +69,5 @@ uv add pandas
 uv add opencv-python
 uv add pyarrow
 # Copy over files
+cd /workspace
 ./scripts/copy_over_post_compile_files.sh
