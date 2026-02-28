@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from curses import KEY_LEFT
+import json
 import os
 import sys
 from typing import Any
@@ -35,8 +35,6 @@ from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.modeld.models.commonmodel_pyx import DrivingModelFrame, CLContext
 
 import cv2
-import pandas as pd
-import pyarrow
 
 PROCESS_NAME = "selfdrive.modeld.modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
@@ -168,18 +166,31 @@ class ModelState:
 
 def main(output_path: Path, demo=False):
     # Helper functions
-    def save_dict_as_df(dictionary: dict[str, Any], dir: Path):
-        df = pd.DataFrame(dictionary)
-        df.to_parquet(dir / "logs.parquet", index=False)
+    def to_json_compatible(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: to_json_compatible(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [to_json_compatible(v) for v in value]
+        if isinstance(value, np.ndarray):
+            return to_json_compatible(value.tolist())
+        if isinstance(value, np.generic):
+            return to_json_compatible(value.item())
+        if isinstance(value, float) and not np.isfinite(value):
+            return None
+        return value
 
-    def recover_img(buf_main, saved_path):
-        h = buf_main.height
-        w = buf_main.width
-        s = buf_main.stride  # bytes per row in both Y & UV planes
-        uv_off = buf_main.uv_offset  # byte offset where UV plane starts in buf.data
+    def save_logs_as_json(frame_logs: list[dict[str, Any]], dir: Path):
+        with open(dir / "logs.json", "w", encoding="utf-8") as file:
+            json.dump(frame_logs, file, allow_nan=False)
+
+    def decode_nv12_to_bgr(buf: VisionBuf) -> np.ndarray:
+        h = buf.height
+        w = buf.width
+        s = buf.stride  # bytes per row in both Y & UV planes
+        uv_off = buf.uv_offset  # byte offset where UV plane starts in buf.data
 
         # 2. View the entire buffer as one flat uint8 array
-        raw = np.frombuffer(buf_main.data, dtype=np.uint8)
+        raw = np.frombuffer(buf.data, dtype=np.uint8)
 
         # 3. Extract & reshape the Y plane (h rows × s bytes), then crop to actual width
         y_plane = raw[0: h * s] \
@@ -191,22 +202,24 @@ def main(output_path: Path, demo=False):
 
         # 5. Stack into NV12 layout and convert to BGR
         nv12 = np.vstack((y_plane, uv_plane))
-        bgr = cv2.cvtColor(nv12, cv2.COLOR_YUV2BGR_NV12)
-        is_success = cv2.imwrite(saved_path, bgr)
+        return cv2.cvtColor(nv12, cv2.COLOR_YUV2BGR_NV12)
+
+    def recover_img(buf: VisionBuf, saved_path: Path) -> np.ndarray:
+        bgr = decode_nv12_to_bgr(buf)
+        is_success = cv2.imwrite(str(saved_path), bgr)
         if not is_success:
             raise ValueError("Did not sucessfully save image")
         return bgr
 
-    logs = {
-        "frame_ids": [],
-        "vehicle_states": [],
-        "carControls": [],
-        "controlsStates": [],
-        "model_inputs": [],
-        "liveLocationKalmanDEPRECATED": [],
-        "clocks": [],
-        "initData": [],
-    }
+    def ensure_segment_dirs(base_path: Path, segment_num: int) -> tuple[Path, Path]:
+        segment_path = base_path / str(segment_num)
+        front_path = segment_path / "front"
+        front_wide_path = segment_path / "front_wide"
+        front_path.mkdir(parents=True, exist_ok=True)
+        front_wide_path.mkdir(parents=True, exist_ok=True)
+        return front_path, front_wide_path
+
+    logs: list[dict[str, Any]] = []
 
     print(f"Creating output director: {output_path}")
     os.makedirs(output_path, exist_ok=True)
@@ -307,10 +320,8 @@ def main(output_path: Path, demo=False):
             if last_main_timestamp != -1 and meta_main.timestamp_sof < last_main_timestamp:
                 print(f"Replay looped (time went backwards). Saving last logs and exiting...")
 
-                save_dict_as_df(
-                    dictionary={"frame_ids": logs['frame_ids']},
-                    dir=output_path / f"{previous_segment_num}"
-                )
+                if previous_segment_num >= 0:
+                    save_logs_as_json(logs, output_path / f"{previous_segment_num}")
                 sys.exit(0)
 
             last_main_timestamp = meta_main.timestamp_sof
@@ -318,10 +329,6 @@ def main(output_path: Path, demo=False):
         if buf_main is None:
             cloudlog.debug("vipc_client_main no frame")
             continue
-
-        # print(buf_main)
-        # raise Exception
-        # recover_img(buf_main=buf_main, saved_path="./test.png")
 
         if use_extra_client:
             # Keep receiving extra frames until frame id matches main camera
@@ -380,6 +387,7 @@ def main(output_path: Path, demo=False):
             'traffic_convention': traffic_convention,
             'lateral_control_params': lateral_control_params,
         }
+        logged_model_inputs = to_json_compatible(inputs)
 
         mt1 = time.perf_counter()
         model_output = model.run(buf_main, buf_extra, model_transform_main, model_transform_extra, inputs, prepare_only)
@@ -414,36 +422,38 @@ def main(output_path: Path, demo=False):
 
         vipc_frame_id = meta_main.frame_id
 
-        print(vipc_frame_id)
         # Check if the segment number has changed
         current_segment_num = sm['roadEncodeIdx'].segmentNum
+        current_front_dir = output_path / str(current_segment_num) / "front"
+        current_front_wide_dir = output_path / str(current_segment_num) / "front_wide"
         if current_segment_num != previous_segment_num:
-            os.makedirs(output_path / f"{current_segment_num}" / "front", exist_ok=True)
-            os.makedirs(output_path / f"{current_segment_num}" / "front_wide", exist_ok=True)
+            current_front_dir, current_front_wide_dir = ensure_segment_dirs(output_path, current_segment_num)
 
             # if the previous segment is not -1, then we need to save our log file to the output:
             if previous_segment_num >= 0:
-                save_dict_as_df(
-                    dictionary={
-                        "frame_ids": logs['frame_ids']
-                    },
-                    dir=output_path / f"{previous_segment_num}"
-                )
+                save_logs_as_json(logs, output_path / f"{previous_segment_num}")
 
             previous_segment_num = current_segment_num
 
         # raise Exception
-        logs['frame_ids'].append(vipc_frame_id)
+        logs.append({
+            "frame_id": vipc_frame_id,
+            "vehicle_state": to_json_compatible(sm['liveLocationKalmanDEPRECATED'].to_dict()),
+            "car_control": to_json_compatible(sm['carControl'].to_dict()),
+            "car_state": to_json_compatible(sm['carState'].to_dict()),
+            "model_inputs": logged_model_inputs,
+            "model_output": to_json_compatible(model_output) if model_output is not None else None,
+        })
 
         recover_img(
-            buf_main=buf_main,
-            saved_path=output_path / str(current_segment_num) / f"front/{vipc_frame_id}.png"
+            buf=buf_main,
+            saved_path=current_front_dir / f"{vipc_frame_id}.png"
         )
 
         if use_extra_client:
             recover_img(
-                buf_main=buf_extra,
-                saved_path=output_path / str(current_segment_num) / f"front_wide/{vipc_frame_id}.png"
+                buf=buf_extra,
+                saved_path=current_front_wide_dir / f"{vipc_frame_id}.png"
             )
 
         # logs['vehicle_states'].append(sm["carState"].to_dict())
