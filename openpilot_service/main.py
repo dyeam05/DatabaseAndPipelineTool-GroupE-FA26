@@ -59,3 +59,14 @@ async def cancel_job(job_id: str):
     except KeyError:
         raise HTTPException(404, "Job not found")
     return {"ok": True}
+
+@app.delete("/jobs/{job_id}")
+async def delete_job(job_id: str):
+    assert services.route_logging_service is not None
+    try:
+        await services.route_logging_service.remove_job(job_id)
+    except KeyError:
+        raise HTTPException(404, "Job not found")
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    return {"ok": True}

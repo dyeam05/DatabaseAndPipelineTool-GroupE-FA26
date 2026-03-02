@@ -123,5 +123,18 @@ class RouteLoggerService:
 
         return jobs
 
+    async def remove_job(self, job_id: str) -> None:
+        async with self._lock:
+            job = self._jobs.get(job_id)
+            if not job:
+                raise KeyError(job_id)
+
+            # "waiting" == queued
+            if job.status in (JobStatus.queued, JobStatus.running):
+                raise ValueError(f"Cannot remove job {job_id} while it is {job.status}")
+
+            del self._jobs[job_id]
+            
+
                     
 
