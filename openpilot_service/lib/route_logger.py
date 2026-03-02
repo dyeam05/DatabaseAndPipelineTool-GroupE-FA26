@@ -1,3 +1,4 @@
+from enum import Enum
 from pathlib import Path
 from uuid import uuid4
 
@@ -5,7 +6,7 @@ from lib.openpilot.openpilot_extraction_manager import OpenpilotExtractionManage
 from lib.openpilot.openpilot_replay_manager import OpenpilotReplayManager
 from lib.openpilot.process_management import OpenpilotDockerEnv
 
-def log_route(route: str, container: str = "custom_openpilot-dev-1") -> Path:
+def log_route(route: str, container: str = "custom_openpilot-dev-1") -> str:
     """_summary_
 
     Args:
@@ -36,4 +37,4 @@ def log_route(route: str, container: str = "custom_openpilot-dev-1") -> Path:
     extraction_job.stop(force=True)
     replay_job.stop(force=True)
 
-    return Path(output_dir)
+    return output_dir
