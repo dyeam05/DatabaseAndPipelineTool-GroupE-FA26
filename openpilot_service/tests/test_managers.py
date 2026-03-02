@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import subprocess
 
-import pytest
+import pytest # pyright: ignore[reportMissingImports]
 
 from lib.openpilot.process_management import OpenpilotDockerEnv
 from lib.route_logger import log_route
