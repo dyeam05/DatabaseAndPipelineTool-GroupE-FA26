@@ -6,24 +6,8 @@ from typing import Any
 import time
 import uuid
 
-from lib.route_logger import log_route
-
-
-class JobStatus(str, Enum):
-    queued = "queued"
-    running = "running"
-    succeeded = "succeeded"
-    failed = "failed"
-    canceled = "canceled"
-
-@dataclass
-class Job:
-    id: str
-    route_id: str
-    created_at: float = field(default_factory=time.time)
-    status: JobStatus = JobStatus.queued
-    result: Any | None = None
-    error: str | None  = None
+from lib.utils.route_logger_utils import log_route
+from lib.models.route_logger_models import JobStatus, RouteLoggerJob
 
 
 
@@ -31,7 +15,7 @@ class Job:
 class RouteLoggerService:
     def __init__(self):
         self._queue: asyncio.Queue[str] = asyncio.Queue()
-        self._jobs: dict[str, Job] = {}
+        self._jobs: dict[str, RouteLoggerJob] = {}
         self._lock = asyncio.Lock()
         self._runner_task: asyncio.Task | None = None
         self._current_job_id: str | None = None
@@ -52,15 +36,15 @@ class RouteLoggerService:
             self._runner_task = None
         self._executor.shutdown(wait=False, cancel_futures=True)
 
-    async def enqueue(self, route_id: str) -> Job:
+    async def enqueue(self, route_id: str) -> RouteLoggerJob:
         job_id = uuid.uuid4().hex
-        job = Job(id=job_id, route_id=route_id)
+        job = RouteLoggerJob(id=job_id, route_id=route_id)
         async with self._lock:
             self._jobs[job_id] = job
         await self._queue.put(job_id)
         return job
 
-    async def get(self, job_id: str) -> Job:
+    async def get(self, job_id: str) -> RouteLoggerJob:
         async with self._lock:
             job = self._jobs.get(job_id)
         if not job:
@@ -92,7 +76,7 @@ class RouteLoggerService:
                 loop = asyncio.get_running_loop()
                 result: str = await loop.run_in_executor(
                     self._executor,
-                    self._run_blocking, 
+                    self._run_blocking,
                     job.route_id
                 )
 
@@ -134,7 +118,3 @@ class RouteLoggerService:
                 raise ValueError(f"Cannot remove job {job_id} while it is {job.status}")
 
             del self._jobs[job_id]
-            
-
-                    
-

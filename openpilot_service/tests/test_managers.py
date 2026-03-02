@@ -5,7 +5,7 @@ import subprocess
 import pytest # pyright: ignore[reportMissingImports]
 
 from lib.openpilot.process_management import OpenpilotDockerEnv
-from lib.route_logger import log_route
+from openpilot_service.lib.utils.route_logger_utils import log_route
 
 
 CONTAINER = "custom_openpilot-dev-1"
