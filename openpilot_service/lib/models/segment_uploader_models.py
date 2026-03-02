@@ -4,8 +4,19 @@ from pathlib import Path
 from typing import Any
 import time
 
+
+class UploadJobStatus(str, Enum):
+    queued = "queued"
+    running = "running"
+    succeeded = "succeeded"
+    failed = "failed"
+    canceled = "canceled"
+
+    
 @dataclass
-class SegmentUploaderJob:
+class UploadJob:
     id: str
-    segment_path: Path 
-    created_at: float = field(default_factory=time.time)
+    dir_path: str
+    status: UploadJobStatus = UploadJobStatus.queued
+    result: str | None = None
+    error: str | None = None
