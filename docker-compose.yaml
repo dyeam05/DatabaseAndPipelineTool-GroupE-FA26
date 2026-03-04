@@ -13,7 +13,7 @@ services:
     working_dir: /workspace
 
     # GPU access (Compose v2)
-    gpus: all
+    # gpus: all
 
     environment:
       # NVIDIA_VISIBLE_DEVICES: all
