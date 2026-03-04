@@ -1,6 +1,6 @@
 services:
   dev:
-    image: nvidia/cuda:13.0.2-cudnn-devel-ubuntu24.04
+    image: ubuntu:24.04
     tty: true
     stdin_open: true
 
@@ -16,8 +16,8 @@ services:
     gpus: all
 
     environment:
-      NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: all
+      # NVIDIA_VISIBLE_DEVICES: all
+      # NVIDIA_DRIVER_CAPABILITIES: all
       DEBIAN_FRONTEND: noninteractive
       LANG: en_US.UTF-8
       LANGUAGE: en_US:en
