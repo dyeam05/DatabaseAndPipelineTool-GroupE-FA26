@@ -5,6 +5,10 @@
 1. Install `python3.12`
 1. Run ```pip install -r requirements.txt``` from inside the `openpilot_service` directory.
 
+## Running Code
+
+Inside the root directory of this repo, run ```fastapi dev opoenpilot_service/main.py```
+
 ## Running Test Cases
 
 Run `python -m pytest `.
