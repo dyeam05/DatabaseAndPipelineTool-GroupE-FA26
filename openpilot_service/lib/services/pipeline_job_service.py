@@ -12,7 +12,7 @@ from lib.models.pipeline_job_models import (
     SegmentUploadStatus,
 )
 from lib.utils.route_logger_utils import log_route
-from lib.utils.segment_uploader_utils import (
+from openpilot_service.lib.utils.uploader_utils import (
     list_segments_for_upload,
     post_route_upload_finalize,
     pre_route_upload_init,
