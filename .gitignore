@@ -10,5 +10,7 @@ datasets/
 output/
 *.npy
 *.mp4
-openpilot/
+/openpilot/
 data/
+
+!openpilot_service/lib/openpilot/
