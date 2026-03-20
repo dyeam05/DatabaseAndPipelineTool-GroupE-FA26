@@ -44,7 +44,7 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash ~/Miniconda3-latest-Linux-x86_64.sh -b
 source ~/miniconda3/etc/profile.d/conda.sh
 conda tos accept
-cd /workspace
+cd /app
 
 git clone --filter=blob:none --recurse-submodules --also-filter-submodules https://github.com/commaai/openpilot.git
 cd openpilot
@@ -69,5 +69,5 @@ uv add pandas
 uv add opencv-python
 uv add pyarrow
 # Copy over files
-cd /workspace
+cd /app
 ./scripts/copy_over_post_compile_files.sh

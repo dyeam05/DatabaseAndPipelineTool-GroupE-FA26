@@ -1,4 +1,0 @@
-[tool.pytest.ini_options]
-markers = [
-    "integration: integration tests that requrie docker and external resources"
-]
