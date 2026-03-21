@@ -35,7 +35,14 @@ services:
     ports:
       - "8000:8000"
     environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
       PYTHONPATH: /app/shared:/app/backend
+    depends_on:
+      - postgres
 
 
 
