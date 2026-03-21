@@ -2,4 +2,4 @@
 
 set -x
 
-cp /workspace/files/extract_data.py /workspace/openpilot/selfdrive/modeld/extract_data.py
+cp /app/files/extract_data.py /app/openpilot/selfdrive/modeld/extract_data.py

@@ -70,4 +70,4 @@ uv add opencv-python
 uv add pyarrow
 # Copy over files
 cd /app
-./scripts/copy_over_post_compile_files.sh
+# ./scripts/copy_over_post_compile_files.sh

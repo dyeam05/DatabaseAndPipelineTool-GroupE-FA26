@@ -11,7 +11,7 @@ jwt="$1"
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate $CONDA_ENV_NAME
-cd /workspace/openpilot/
+cd /app/openpilot/
 source ./.venv/bin/activate
 
 python ./tools/lib/auth.py jwt "$jwt"
