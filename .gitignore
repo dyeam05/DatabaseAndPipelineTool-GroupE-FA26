@@ -1,3 +1,7 @@
+minio/
+postgres_data/
+
+**.env
 __pycache__/
 *.pyc
 *.pyo
@@ -12,5 +16,6 @@ output/
 *.mp4
 /openpilot/
 data/
+**/.pytest_cache/
 
 !openpilot_service/lib/openpilot/

@@ -1,27 +1,83 @@
 services:
-  dev:
-    image: ubuntu:24.04
-    tty: true
-    stdin_open: true
-
-    # 2GB /dev/shm
-    shm_size: 2g
-
-    # mount current directory into container
-    volumes:
-      - .:/workspace
-    working_dir: /workspace
-
-    # GPU access (Compose v2)
-    # gpus: all
-
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
-      # NVIDIA_VISIBLE_DEVICES: all
-      # NVIDIA_DRIVER_CAPABILITIES: all
-      DEBIAN_FRONTEND: noninteractive
-      LANG: en_US.UTF-8
-      LANGUAGE: en_US:en
-      LC_ALL: en_US.UTF-8
-      CONDA_ENV_NAME: ${CONDA_ENV_NAME}
-      RUN_MODEL_ON_CPU_OR_NOT: ${RUN_MODEL_ON_CPU_OR_NOT}
-      REPLACE_CEREAL_SERVICE_OR_NOT: ${REPLACE_CEREAL_SERVICE_OR_NOT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: quay.io/minio/aistor/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./minio/data:/data
+      - ./minio/minio.license:/minio.license
+      - ./minio/certs:/etc/minio/certs
+    command: server /data --console-address ":9001"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      PYTHONPATH: /app/shared:/app/backend
+    depends_on:
+      - postgres
+
+
+
+
+  open_pilot_download_worker:
+    build:
+      context: .
+      dockerfile: open_pilot_download_worker/Dockerfile
+      args:
+        JWT: ${COMMA_JWT}
+    shm_size: 2g
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      PYTHONPATH: /app/shared:/app/backend
+    volumes:
+      - "./data:/app/data"
+
+  alembic_worker:
+    build:
+      context: .
+      dockerfile: alembic_worker/Dockerfile
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      PYTHONPATH: /app/shared
+    volumes:
+      - ./alembic_worker:/app/alembic_worker
+      - ./shared:/app/shared
+    depends_on:
+      - postgres
+

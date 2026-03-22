@@ -19,7 +19,7 @@ This script builds OpenPilot `v0.9.8`. It will likely not work with any other ve
 - [cuda 13](https://developer.nvidia.com/cuda-13-0-0-download-archive)
 - [nvidia container toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
-### Dependences (Inside Docker, Automatically Installed)
+### Dependencies (Inside Docker, Automatically Installed)
 
 This script requires the following things:
 

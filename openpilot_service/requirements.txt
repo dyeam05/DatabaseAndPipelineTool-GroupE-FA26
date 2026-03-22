@@ -1,3 +1,0 @@
-ipykernel
-pytest
-fastapi[standard]
