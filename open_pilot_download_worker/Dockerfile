@@ -29,7 +29,18 @@ COPY open_pilot_download_worker/scripts/copy_over_post_compile_files.sh /app/scr
 RUN chmod +x /app/scripts/copy_over_post_compile_files.sh \
     && /app/scripts/copy_over_post_compile_files.sh
 
-COPY open_pilot_download_worker/src /app/src/
+# instal req
+COPY open_pilot_download_worker/scripts/install_requirements.sh /app/scripts/install_requirements.sh
+COPY open_pilot_download_worker/requirements.txt /app/requirements.txt
+RUN chmod +x /app/scripts/install_requirements.sh && /app/scripts/install_requirements.sh
 
 WORKDIR /app/src
-CMD ["python", "main.py"]
+
+# Copy Code
+COPY open_pilot_download_worker/src /app/src/
+COPY shared /app/shared
+
+COPY open_pilot_download_worker/scripts/entrypoint.sh /app/src/entrypoint.sh
+RUN chmod +x entrypoint.sh
+ENV PYTHONPATH=/app/shared:/app/b
+CMD ["./entrypoint.sh"]

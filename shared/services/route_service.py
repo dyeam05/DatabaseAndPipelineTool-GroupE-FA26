@@ -10,6 +10,9 @@ class RouteService:
     async def list_routes(self) -> list[Route]:
         return await self._route_repository.list_all()
 
+    async def get_routes_by_status(self, status: RouteStatus) -> list[Route]:
+        return await self._route_repository.get_by_status(status)
+
     async def get_route(self, route_id: str) -> Route | None:
         return await self._route_repository.get_by_id(route_id)
 

@@ -1,6 +1,6 @@
 from collections.abc import AsyncGenerator
 
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -100,3 +100,11 @@ async def get_route(
         raise RouteNotFoundError(route_id)
 
     return route
+
+@app.delete("/routes/{route_id}")
+async def delete_route(
+    route_id: str,
+    route_service: RouteService = Depends(get_transactional_route_service)
+):
+    await route_service.delete_route(route_id=route_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
