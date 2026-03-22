@@ -13,6 +13,9 @@ class RouteService:
     async def get_routes_by_status(self, status: RouteStatus) -> list[Route]:
         return await self._route_repository.get_by_status(status)
 
+    async def get_next_route_by_status(self, status: RouteStatus) -> Route | None:
+        return await self._route_repository.get_next_by_status(status)
+
     async def get_route(self, route_id: str) -> Route | None:
         return await self._route_repository.get_by_id(route_id)
 

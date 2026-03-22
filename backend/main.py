@@ -90,7 +90,7 @@ async def list_routes(
     return await route_service.list_routes()
 
 
-@app.get("/routes/{route_id}", response_model=RouteResponse)
+@app.get("/routes/{route_id:path}", response_model=RouteResponse)
 async def get_route(
     route_id: str,
     route_service: RouteService = Depends(get_route_service),
@@ -101,7 +101,8 @@ async def get_route(
 
     return route
 
-@app.delete("/routes/{route_id}")
+
+@app.delete("/routes/{route_id:path}")
 async def delete_route(
     route_id: str,
     route_service: RouteService = Depends(get_transactional_route_service)

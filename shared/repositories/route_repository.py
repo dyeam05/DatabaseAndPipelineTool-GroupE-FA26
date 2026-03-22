@@ -25,6 +25,16 @@ class RouteRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
+    async def get_next_by_status(self, status: RouteStatus) -> Route | None:
+        stmt = (
+            select(Route)
+            .where(Route.status == status)
+            .order_by(Route.created_at.asc())
+            .limit(1)
+        )
+        result = await self._session.scalars(stmt)
+        return result.first()
+
     async def create(
         self,
         route_id: str,

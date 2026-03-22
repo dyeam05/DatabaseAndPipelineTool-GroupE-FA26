@@ -12,6 +12,7 @@ class RouteStatus(StrEnum):
     DOWNLOADING = "downloading"
     UPLOAD_QUEUE = "upload queue"
     UPLOADING = "uploading"
+    FAILED = "failed"
 
 
 class Route(Base):

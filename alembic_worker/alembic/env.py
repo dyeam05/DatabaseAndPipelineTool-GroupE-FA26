@@ -6,6 +6,9 @@ from alembic import context
 
 from db.base import Base
 import db.models  # noqa: F401
+from db.models.route import RouteStatus
+
+print(RouteStatus)
 
 
 config = context.config

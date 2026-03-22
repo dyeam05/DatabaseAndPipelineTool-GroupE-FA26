@@ -1,8 +1,8 @@
-"""init routes
+"""added routes
 
-Revision ID: 9a77996b33db
+Revision ID: 9cbcdbcc7828
 Revises: 
-Create Date: 2026-03-21 01:47:38.637309
+Create Date: 2026-03-22 20:42:52.802822
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '9a77996b33db'
+revision: str = '9cbcdbcc7828'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,7 +24,9 @@ def upgrade() -> None:
     op.create_table('routes',
     sa.Column('route_id', sa.String(), nullable=False),
     sa.Column('file_path', sa.String(), nullable=True),
-    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', name='route_status'), nullable=False),
+    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', name='route_status'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('test_field', sa.String(), nullable=False),
     sa.CheckConstraint("route_id <> ''", name='ck_routes_route_id_not_empty'),
     sa.PrimaryKeyConstraint('route_id')
     )
