@@ -1,88 +1,50 @@
-# Custom Openpilot
+# Openpilot Data Pipeline
 
-This repo contains the tools needed to get OpenPilot up and running.
+## Authors
+
+- Noah Pursell
+- Trevor Bean
+- Vin Khu Yhn
+- Thomas Petersen
 
 ## Background
 
-OpenPilot is a tool for interfacing/developing with the [Comma AI](https://comma.ai/) Platform. More concretly, it is a code repository.
+This repository contains code for the data pipeline for the [Comma AI](https://comma.ai/) Platform. It is organized as a containerized mono-repo.
 
-Setting up the OpenPilot repository can be troublesome. The documentation is poor and different version have poor compaitibility/things break. The purpose of this  repository is to create a system that allows for the easy installation of OpenPilot.
+## Dependencies (Do These First)
 
-## Version Information
+### Docker
 
-This script builds OpenPilot `v0.9.8`. It will likely not work with any other version.
+1. Install [docker](https://www.docker.com/get-started/) for your operating system.
 
-## Dependencies
-
-## Dependencies Before Running Script
-
-- [cuda 13](https://developer.nvidia.com/cuda-13-0-0-download-archive)
-- [nvidia container toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
-
-### Dependencies (Inside Docker, Automatically Installed)
-
-This script requires the following things:
-
-- Ubuntu OS (may work with WSL)
-- [Git](https://git-scm.com/install/linux). If you get errors like `error: unknown option also-filter-submodules`, you might need to update your git version.
-- [Git LFS](https://git-lfs.com/). Usually can be installed with ```sudo apt-get install git-lfs```.
-- conda (can be either [Anaconda Distribution](https://www.anaconda.com/docs/getting-started/anaconda/install#macos-linux-installation) or [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install#macos-linux-installation))
-
-#### Model Dependencies
-
-The OpenPilot models run using [OpenCL](https://en.wikipedia.org/wiki/OpenCL), a GPU-computing framework. As such, in order to run these models, you need to have a device and drivers compatible with OpoenCL. This script has been setup to allow the installation of [pocl-opencl-icd](https://portablecl.org/), which allows your CPU to be used via the OpenCL interface, meaning you do not have a graphics card. Support for using graphics cards will hopefully be added in the future.
-
-## What The Script Does
-
-The main script does the following:
-
-1. If you have specified to use CPU graphics, it installs `pocl-opencl-icd`.
-2. Clones the OpenPilot repo.
-3. Checks out `v0.9.8`.
-4. Pulls any git lfs files.****
-5. Copies over `./cereal/services/py` into the OpenPilot repo. This allows us to use the GPS Kalman Service, which is deprecated by default in this version. It is important this is done **before** compiling openpilot, as done in this scriopt.
-6. Creates a new conda environment with `python=3.12`.
-7. Installs ``uv`` package and does a refresh on the uv lock. This is important because some of the hashes in the OpenPilot repo are not up-to-date, and would result in package download errors if not refreshed.
-8. Runs OpenPilot setup script.
-9. Compiles OpenPilot
-
-## Usage
-
-### Running the Script
-
-1. Clone the repo: ```git clone https://github.com/CS-4273-Spring2026-GroupI/custom_openpilot.git```.
-1. Run ```docker compose up -d```
-1. Run ```docker exec -it custom_openpilot-dev-1 ./scripts/setup-openpilot.sh```
-
-### Using OpenPilot Repo
-
-#### Register your JWT
+### Comma AI JWT
 
 1. Get a new jwt on [comma.ai's website](https://jwt.comma.ai)
-2. Apply the jwt with ```docker exec -it custom_openpilot-dev-1 ./scripts/register_jwt_docker.sh <jwt>```
+1. Save this for future steps
 
-#### Run Replay
+### ENV File
 
-Run replay with ```docker exec -it custom_openpilot-dev-1 ./scripts/start_replay_in_docker.sh db478799b6f9f210/00000040--8afe968813```
+1. Create a `.env` file at the root directory, copied from the `.example_env` file
+1. Fill out the marked spots
 
-When launching replay from the Python service managers (for notebook workflows), replay is started detached with a PTY-backed session so the ncurses/TUI replay process stays stable while your notebook remains responsive.
+### Minio License
 
-#### Run Modeld
+1. Go to the [minio download page](https://www.min.io/download)
+1. Download a **FREE** license
+1. Create a folder in the root director called `minio`
+1. Move the license into the folder. It should be called `minio/minio.license`
 
-After the script has run, you can navigate inside the openpilot repo with ```cd ./openpilot```.
+## Running the Code
 
-#### Run Extraction
+1. Start the databases with ```docker compose up --build -d postgres minio```.
+1. Create a database migration with ```docker compose run --build --rm alembic_worker alembic -c /app/alembic_worker/alembic.ini revision --autogenerate -m "first migration"```
+1. Push the migration with ```docker compose up --build alembic_worker```
+1. Start the backend and open pilot download worker with ```docker compose up --build backend open_pilot_download_worker```.
 
-```./selfdrive/modeld/extract_data.py --output_dir "/workspace/test1"```
+## Contributing
 
-### Working inside the container
+### Code Organization
 
-When you want to run code inside this repo, you **must** do the following in order:
+#### Backend
 
-1. Enter the Docker container: ```docker exec -it custom_openpilot-dev-1 bash```
-1. Navigate inside the openpilot folder
-1. Source conda: ```source ~/miniconda3/etc/profile.d/conda.sh```
-1. Activate your conda environemnt: ```conda activate openpilot```.
-1. Activate your venv: ```source ./.venv/bin/activate```.
-
-Then, you can run various code files. For example, ```./tools/replay/replay db478799b6f9f210/00000040--8afe968813/23 --all --ecam```
+###
