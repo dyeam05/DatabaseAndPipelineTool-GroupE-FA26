@@ -16,5 +16,6 @@ output/
 *.mp4
 /openpilot/
 data/
+**/.pytest_cache/
 
 !openpilot_service/lib/openpilot/
