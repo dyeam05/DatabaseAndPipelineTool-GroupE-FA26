@@ -73,6 +73,10 @@ This is where the majority of code lives, in the `/shared/` directory. This code
 
 Do not put any code here. This folder `/data/` is used as a shared volume between workers.
 
+## Testing
+
+Testing code is inside the `./tests/` folder. See `./tests/README.md` for more information.
+
 ## TODO
 
 Check out the [course Kanban board](https://cscapstone.cs.ou.edu/pages/account/) for TODOs.
