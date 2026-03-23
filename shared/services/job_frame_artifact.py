@@ -4,7 +4,8 @@ from db.models.job_frame_artifact import JobFrameArtifact, ArtifactRole
 from repositories.job_frame_artifact_repository import JobFrameArtifactRepository
 from services.errors import JobFrameArtifactAlreadyExistsError, JobFrameArtifactNotFoundError
 
-
+# This service is responsible for managing job frame artifacts
+#
 class JobFrameArtifactService:
     def __init__(self, job_frame_artifact_repository: JobFrameArtifactRepository) -> None:
         self._job_frame_artifact_repository = job_frame_artifact_repository

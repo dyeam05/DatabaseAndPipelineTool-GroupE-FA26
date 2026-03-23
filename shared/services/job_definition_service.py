@@ -2,7 +2,7 @@ from db.models.job_definition import JobDefinition, JobType
 from repositories.job_definition_repository import JobDefinitionRepository
 from services.errors import JobDefinitionAlreadyExistsError, JobDefinitionNotFoundError
 
-
+# This service is responsible for managing job definitions, which are templates for creating jobs.(maybe)
 class JobDefinitionService:
     def __init__(self, job_definition_repository: JobDefinitionRepository) -> None:
         self._job_definition_repository = job_definition_repository

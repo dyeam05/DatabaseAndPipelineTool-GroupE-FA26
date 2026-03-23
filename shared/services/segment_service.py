@@ -1,8 +1,7 @@
 from db.models.segment import Segment, SegmenStatus
 from repositories.segment_repository import SegmentRepository
 from services.errors import SegmentAlreadyExistsError, SegmentNotFoundError
-
-
+# Service layer for managing segments
 class SegmentService:
     def __init__(self, segment_repository: SegmentRepository) -> None:
         self._segment_repository = segment_repository
@@ -15,7 +14,6 @@ class SegmentService:
 
     async def get_next_segment_by_status(self, status: SegmenStatus) -> Segment | None:
         return await self._segment_repository.get_next_by_status(status)
-
     async def get_segment(self, route_id: str, segment_id: int) -> Segment | None:
         return await self._segment_repository.get_by_id(route_id, segment_id)
 
@@ -25,8 +23,9 @@ class SegmentService:
         segment_id: int,
         start_time,
         end_time,
-        status: SegmenStatus = SegmenStatus.DOWNLOAD_QUEUE,
+        status: SegmenStatus = SegmenStatus.DOWNLOAD_QUEUE, # default status when creating a segment
     ) -> Segment:
+        # Check if a segment with the same route_id and segment_id  alive
         existing_segment = await self._segment_repository.get_by_id(route_id, segment_id)
         if existing_segment is not None:
             raise SegmentAlreadyExistsError(route_id, segment_id)
@@ -38,7 +37,7 @@ class SegmentService:
             end_time=end_time,
             status=status,
         )
-
+    # Update the status of a segment
     async def set_status(
         self,
         route_id: str,
@@ -51,7 +50,7 @@ class SegmentService:
 
         segment.status = status
         return await self._segment_repository.save(segment)
-
+    # Update the segment_meta of a segment
     async def set_segment_meta(
         self,
         route_id: str,

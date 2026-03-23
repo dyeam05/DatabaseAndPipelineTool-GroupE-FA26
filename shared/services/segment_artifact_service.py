@@ -4,7 +4,8 @@ from db.models.segment_artifact import SegmentArtifact, ArtifactRole
 from repositories.segment_artifact_repository import SegmentArtifactRepository
 from services.errors import SegmentArtifactAlreadyExistsError, SegmentArtifactNotFoundError
 
-
+# Service layer for managing segment artifacts,
+#
 class SegmentArtifactService:
     def __init__(self, segment_artifact_repository: SegmentArtifactRepository) -> None:
         self._segment_artifact_repository = segment_artifact_repository
