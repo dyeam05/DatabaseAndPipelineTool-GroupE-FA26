@@ -10,10 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	curl \
 	&& rm -rf /var/lib/apt/lists/*
 
-# python packages
+# Install pip
+RUN pip install --no-cache-dir --upgrade pip
+
+# Shared Python Packages
+COPY shared/requirements.txt /app/shared_requirements.txt
+RUN pip install --no-cache-dir -r /app/shared_requirements.txt
+
+# Backend packages
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-	pip install --no-cache-dir -r /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
 # Copy application code
 COPY shared /app/shared
