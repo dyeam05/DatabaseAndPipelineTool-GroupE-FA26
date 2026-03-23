@@ -59,7 +59,6 @@ echo "Creating CVAT superuser..."
 docker exec \
     -e DJANGO_SUPERUSER_USERNAME="${CVAT_USERNAME}" \
     -e DJANGO_SUPERUSER_PASSWORD="${CVAT_PASSWORD}" \
-    -e DJANGO_SUPERUSER_EMAIL="${CVAT_EMAIL:-admin@localhost}" \
     cvat_server \
     python manage.py createsuperuser --no-input 2>/dev/null \
     && echo "Superuser created." \
