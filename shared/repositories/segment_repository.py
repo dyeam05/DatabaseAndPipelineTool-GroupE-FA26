@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models.segment import Segment, SegmenStatus
+from db.models.segment import Segment,SegmentStatus 
 
 
 class SegmentRepository:
@@ -17,7 +17,7 @@ class SegmentRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
-    async def get_by_status(self, status: SegmenStatus) -> list[Segment]:
+    async def get_by_status(self, status: SegmentStatus) -> list[Segment]:
         stmt = (
             select(Segment)
             .where(Segment.status == status)
@@ -26,7 +26,7 @@ class SegmentRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
-    async def get_next_by_status(self, status: SegmenStatus) -> Segment | None:
+    async def get_next_by_status(self, status: SegmentStatus) -> Segment | None:
         stmt = (
             select(Segment)
             .where(Segment.status == status)
@@ -42,7 +42,7 @@ class SegmentRepository:
         segment_id: int,
         start_time,
         end_time,
-        status: SegmenStatus,
+        status: SegmentStatus,
     ) -> Segment: # creat new segmetn enity
         segment = Segment(
             route_id=route_id,
