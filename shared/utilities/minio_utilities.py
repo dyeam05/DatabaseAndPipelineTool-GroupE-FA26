@@ -18,8 +18,8 @@ def get_minio_client():
 def get_segment_object_name(segment: Segment):
     return f"v1/routes/{segment.route_id}/segment/{segment.segment_id}"
 
-def get_segment_image_object_name(segment: Segment, frame_number: int):
-    return f"{get_segment_object_name(segment)}/frames/{frame_number}.png"
+def get_segment_image_object_name(segment: Segment, camera_view: str, frame_number: int):
+    return f"{get_segment_object_name(segment)}/{camera_view}/frames/{frame_number}.png"
 
 def get_segment_log_object_name(segment: Segment):
     return f"{get_segment_object_name(segment)}/log.json"

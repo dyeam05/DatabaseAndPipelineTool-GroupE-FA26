@@ -77,6 +77,7 @@ class RouteStatus(StrEnum):
     UPLOAD_QUEUE = "upload queue"
     UPLOADING = "uploading"
     FAILED = "failed"
+    UPLOADED = "uploaded"
 
 route_status_enum = Enum(
     RouteStatus,

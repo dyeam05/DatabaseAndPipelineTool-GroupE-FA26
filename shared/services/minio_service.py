@@ -3,6 +3,7 @@ from pathlib import Path
 import time
 
 from minio.datatypes import Bucket
+from minio.helpers import ObjectWriteResult
 
 from db.models.segment import Segment
 from utilities.minio_utilities import get_minio_client, get_segment_image_object_name, get_segment_log_object_name, is_bucket_in_list_of_buckets
@@ -12,16 +13,20 @@ class MinioService:
         self.minio_client = get_minio_client()
         self.bucket_name = os.environ["MINIO_BUCKET_NAME"]
 
-    def put_segment_image(self, segment: Segment, frame_number: int, frame_path: Path):
-        self.minio_client.fput_object(
+    def put_segment_image(self, segment: Segment, camera_view: str, frame_number: int, frame_path: Path) -> ObjectWriteResult:
+        """
+        Returns the Minio Object Name 
+        """
+        result = self.minio_client.fput_object(
             bucket_name=self.bucket_name,
-            object_name=get_segment_image_object_name(segment, frame_number),
+            object_name=get_segment_image_object_name(segment, camera_view, frame_number),
             content_type="image/png",
             file_path=str(frame_path)
         )
+        return result
 
-    def put_segment_log(self, segment: Segment, log_path: Path):
-        self.minio_client.fput_object(
+    def put_segment_log(self, segment: Segment, log_path: Path) -> ObjectWriteResult:
+        return self.minio_client.fput_object(
             bucket_name=self.bucket_name,
             object_name=get_segment_log_object_name(segment),
             content_type="application/json",

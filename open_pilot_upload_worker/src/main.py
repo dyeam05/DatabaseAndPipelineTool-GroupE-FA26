@@ -1,9 +1,9 @@
 import asyncio
 from pathlib import Path
 import logging
-from re import sub
 import signal
 from datetime import datetime
+import shutil
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -13,10 +13,11 @@ from db.url import build_database_url
 from models.segment_dir import SegmentDir
 from repositories.route_repository import RouteRepository
 from repositories.segment_repository import SegmentRepository
-from services.errors import RouteNotFoundError
+from services.minio_service import MinioService
 from services.route_service import RouteService, RouteStatus
 from services.segment_service import SegmentService
 from utilities.directory_utils import does_directory_have_more_than_n_items, get_subdirectories
+from utilities.file_utilities import get_pngs_in_directory
 
 POLL_INTERVAL_SECONDS = 2.0
 DATA_ROOT = Path("/app/data")
@@ -59,20 +60,45 @@ def get_list_of_segment_dirs(route_data_path: Path):
 
     return segment_dirs
 
-async def upload_segment(route: Route, segment_dir: SegmentDir, route_service: RouteService, segment_service: SegmentService, session: AsyncSession):
+def get_segment_camera_views(segment_dir: SegmentDir) -> list[str]:
+    camera_views = [subdirectory.name for subdirectory in get_subdirectories(segment_dir.path)]
+    return camera_views
+
+async def upload_segment(route: Route, segment_dir: SegmentDir, segment_service: SegmentService, session: AsyncSession):
     # TODO: Fix this later
     segment_start_time = datetime.now()
     segment_end_time = datetime.now()
 
-    await segment_service.create_segment(
+    segment = await segment_service.create_segment(
         route_id=route.route_id,
         segment_id=segment_dir.segment_num,
         start_time=segment_start_time,
         end_time=segment_end_time,
         status=SegmentStatus.UPLOADING
     )
-    
-    # TODO finish this metho
+    await session.commit()
+
+    # upload images
+    minio_service = MinioService()
+    for camera_view in get_segment_camera_views(segment_dir=segment_dir):
+        for image_path in get_pngs_in_directory(dir=segment_dir.path / camera_view):
+            frame_number = int(image_path.name.split(".")[0])
+            write_result = minio_service.put_segment_image(
+                segment=segment,
+                camera_view=camera_view,
+                frame_number=frame_number,
+                frame_path=image_path
+            )
+            
+
+
+
+    # upload logs
+    log_path = segment_dir.path / "logs.json"
+    write_result = minio_service.put_segment_log(
+        segment=segment,
+        log_path=log_path
+    )
 
 
 
@@ -88,13 +114,21 @@ async def _process_route(route: Route, route_service: RouteService, segment_serv
     data_path = DATA_ROOT / route.file_path
     segment_dirs = get_list_of_segment_dirs(data_path)
 
+
     for segment in segment_dirs:
-        upload_segment(route, segment, route_service, segment_service, session)
+        logging.info(f"Uploading segment")
+        await upload_segment(
+            route=route, 
+            segment_dir=segment, 
+            segment_service=segment_service, 
+            session=session
+        )
 
+    logging.info("Deleting Data Files")
+    shutil.rmtree(data_path)
 
-
-
-
+    await route_service.set_status(route_id=route.route_id, status=RouteStatus.UPLOADED)
+    await session.commit()
 
 
 async def main():
@@ -130,6 +164,7 @@ async def main():
 
                 logging.info(f"Route {route_to_process.route_id} found, processing...")
                 await _process_route(route_to_process, route_service, segment_service, session)
+                logging.info(f"Route {route_to_process.route_id} uploaded!")
 
 
 

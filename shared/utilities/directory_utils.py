@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 
+
 def get_subdirectories(path: Path) -> list[Path]:
     return [p for p in path.iterdir() if p.is_dir()]
 
