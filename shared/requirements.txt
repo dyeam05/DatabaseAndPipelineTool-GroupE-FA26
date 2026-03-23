@@ -1,4 +1,4 @@
+minio
 sqlalchemy
 psycopg[binary]
 alembic
-minio
