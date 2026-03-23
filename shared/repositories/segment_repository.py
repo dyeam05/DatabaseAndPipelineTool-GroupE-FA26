@@ -1,8 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models.segment import Segment
-from db.models.route import RouteStatus
+from db.models.segment import Segment, SegmenStatus
 
 
 class SegmentRepository:
@@ -17,7 +16,7 @@ class SegmentRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
-    async def get_by_status(self, status: RouteStatus) -> list[Segment]:
+    async def get_by_status(self, status: SegmenStatus) -> list[Segment]:
         stmt = (
             select(Segment)
             .where(Segment.status == status)
@@ -26,7 +25,7 @@ class SegmentRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
-    async def get_next_by_status(self, status: RouteStatus) -> Segment | None:
+    async def get_next_by_status(self, status: SegmenStatus) -> Segment | None:
         stmt = (
             select(Segment)
             .where(Segment.status == status)
@@ -42,11 +41,15 @@ class SegmentRepository:
         segment_id: int,
         start_time,
         end_time,
-        status: RouteStatus,
+        status: SegmenStatus,
     ) -> Segment:
         segment = Segment(
-            route_id=route_id,segment_id=segment_id,start_time=start_time,
-            end_time=end_time,status=status,segment_meta=None,
+            route_id=route_id,
+            segment_id=segment_id,
+            start_time=start_time,
+            end_time=end_time,
+            status=status,
+            segment_meta=None,
         )
         self._session.add(segment)
         await self._session.flush()

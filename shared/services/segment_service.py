@@ -1,5 +1,4 @@
-from db.models.segment import Segment
-from db.models.route import RouteStatus
+from db.models.segment import Segment, SegmenStatus
 from repositories.segment_repository import SegmentRepository
 from services.errors import SegmentAlreadyExistsError, SegmentNotFoundError
 
@@ -11,10 +10,10 @@ class SegmentService:
     async def list_segments(self) -> list[Segment]:
         return await self._segment_repository.list_all()
 
-    async def get_segments_by_status(self, status: RouteStatus) -> list[Segment]:
+    async def get_segments_by_status(self, status: SegmenStatus) -> list[Segment]:
         return await self._segment_repository.get_by_status(status)
 
-    async def get_next_segment_by_status(self, status: RouteStatus) -> Segment | None:
+    async def get_next_segment_by_status(self, status: SegmenStatus) -> Segment | None:
         return await self._segment_repository.get_next_by_status(status)
 
     async def get_segment(self, route_id: str, segment_id: int) -> Segment | None:
@@ -26,7 +25,7 @@ class SegmentService:
         segment_id: int,
         start_time,
         end_time,
-        status: RouteStatus = RouteStatus.DOWNLOAD_QUEUE,
+        status: SegmenStatus = SegmenStatus.DOWNLOAD_QUEUE,
     ) -> Segment:
         existing_segment = await self._segment_repository.get_by_id(route_id, segment_id)
         if existing_segment is not None:
@@ -40,7 +39,12 @@ class SegmentService:
             status=status,
         )
 
-    async def set_status(self, route_id: str, segment_id: int, status: RouteStatus) -> Segment:
+    async def set_status(
+        self,
+        route_id: str,
+        segment_id: int,
+        status: SegmenStatus,
+    ) -> Segment:
         segment = await self._segment_repository.get_by_id(route_id, segment_id)
         if segment is None:
             raise SegmentNotFoundError(route_id, segment_id)
@@ -48,7 +52,12 @@ class SegmentService:
         segment.status = status
         return await self._segment_repository.save(segment)
 
-    async def set_segment_meta(self, route_id: str, segment_id: int, segment_meta: dict | None) -> Segment:
+    async def set_segment_meta(
+        self,
+        route_id: str,
+        segment_id: int,
+        segment_meta: dict | None,
+    ) -> Segment:
         segment = await self._segment_repository.get_by_id(route_id, segment_id)
         if segment is None:
             raise SegmentNotFoundError(route_id, segment_id)

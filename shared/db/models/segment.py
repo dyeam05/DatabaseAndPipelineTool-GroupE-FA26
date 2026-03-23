@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, Enum, Integer, String, DateTime, func, ForeignKey, JSON
+from sqlalchemy import CheckConstraint, Enum, Integer, String, DateTime, func, ForeignKey, JSON 
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
