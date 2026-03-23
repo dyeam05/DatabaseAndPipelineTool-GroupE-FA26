@@ -6,3 +6,20 @@ class RouteAlreadyExistsError(ValueError):
 class RouteNotFoundError(ValueError):
     def __init__(self, route_id: str) -> None:
         super().__init__(f"Route {route_id} not found")
+
+class SegmentAlreadyExistsError(ValueError):
+    def __init__(self, route_id: str, segment_id: int) -> None:
+        super().__init__(f"Segment {segment_id} for route {route_id} already exists")
+
+class SegmentNotFoundError(ValueError):
+    def __init__(self, route_id: str, segment_id: int) -> None:
+        super().__init__(f"Segment {segment_id} for route {route_id} not found")
+
+class FrameAlreadyExistsError(ValueError):
+    def __init__(self, frame_pk: int) -> None:
+        super().__init__(f"Frame {frame_pk} already exists")
+
+
+class FrameNotFoundError(ValueError):
+    def __init__(self, frame_pk: int) -> None:
+        super().__init__(f"Frame {frame_pk} not found")
