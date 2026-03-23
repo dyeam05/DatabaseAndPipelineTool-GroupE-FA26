@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
-
+# this tell artifact kind, like image, json or parquet
 class ArtifactKind(StrEnum):
     IMAGE = "image"
     JSON = "json"
@@ -42,6 +42,7 @@ class Artifact(Base):
         server_default=func.now(),
         nullable=False,
     )
+    #json field to store some extra information about the artifact
     meta: Mapped[dict | None] = mapped_column(
         JSON,
         nullable=True,

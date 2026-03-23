@@ -3,9 +3,8 @@ from enum import StrEnum
 
 from sqlalchemy import CheckConstraint, Enum, Integer, String, DateTime, func, ForeignKey, JSON 
 from sqlalchemy.orm import Mapped, mapped_column
-
 from db.base import Base
-#status
+# this role tell segment for which stage belong to, like downloading or uploading
 class SegmenStatus(StrEnum):
     DOWNLOAD_QUEUE = "download queue"
     DOWNLOADING = "downloading"
@@ -16,7 +15,8 @@ class SegmenStatus(StrEnum):
 
 class Segment(Base):
     __tablename__ = "segments"
-
+# this check constraint is used to ensure segment_id is non-negative
+#  it should start from 0
     __table_args__ = (
         CheckConstraint("segment_id >= 0", name="ck_segments_segment_id_non_negative"),
     )
@@ -44,6 +44,7 @@ class Segment(Base):
             native_enum=True,
             validate_strings=True,
         ),
+        #nullable=False means every segment must have a status, it cannot be nulls
         nullable=False,
     )
     segment_meta: Mapped[dict | None] = mapped_column(

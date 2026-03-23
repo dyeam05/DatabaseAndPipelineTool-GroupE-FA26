@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
-
+# this tell job type, like object detection, segmentation, depth or annotation
 class JobType(StrEnum):
     OBJECT_DETECTION = "object_detection"
     SEGMENTATION = "segmentation"
@@ -44,7 +44,7 @@ class JobDefinition(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
+        server_default=func.now(), # set default value to current time when creating a new job definition
         nullable=False,
     )
 

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
-
+# this tell camera type, like front regular, front wide or driver
 class CameraType(StrEnum):
     FRONT_REGULAR = "front_regular"
     FRONT_WIDE = "front_wide"
@@ -15,7 +15,8 @@ class CameraType(StrEnum):
 
 class Frame(Base):
     __tablename__ = "frames"
-
+# this foregin key constantraint is used to link frame to segment, 
+# when segment is deleted, all frames belong to this segment will be deleted too
     __table_args__ = (
         ForeignKeyConstraint(
             ["route_id", "segment_id"],

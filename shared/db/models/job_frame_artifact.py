@@ -6,7 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
-
+# this role tell job_frame_artifact for which 
+# artifact belong to, like detection json, segmentation mask, segmentation map, depth map, coco export etc.
 class ArtifactRole(StrEnum):
     DETECTION_JSON = "detection_json"
     SEGMENTATION_MASK = "segmentation_mask"

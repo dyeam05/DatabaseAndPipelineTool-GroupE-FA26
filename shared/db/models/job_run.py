@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
-
+# this tell job status, like queued, running, succeeded, failed or cancelled
 class JobStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -22,6 +22,7 @@ class JobRun(Base):
     job_run_id: Mapped[UUID] = mapped_column(
         primary_key=True,
     )
+    # job def link to job run, one job def can have many job runs, but one job run only link to one job def
     job_def_id: Mapped[int] = mapped_column(
         ForeignKey("job_definitions.job_def_id"),
         nullable=False,
