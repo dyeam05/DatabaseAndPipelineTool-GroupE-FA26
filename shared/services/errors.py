@@ -24,10 +24,18 @@ class FrameNotFoundError(ValueError):
         super().__init__(f"Frame {frame_pk} not found")
 
 class ArtifactAlreadyExistsError(ValueError):
-    def __init__(self, artifact_id) -> None:
+    def __init__(self, artifact_id: str) -> None:
         super().__init__(f"Artifact {artifact_id} already exists")
 
 class ArtifactNotFoundError(ValueError):
-    def __init__(self, artifact_id) -> None:
+    def __init__(self, artifact_id: str) -> None:
         super().__init__(f"Artifact {artifact_id} not found")
+
+class SegmentArtifactAlreadyExistsError(ValueError):
+    def __init__(self, route_id: str, segment_id: int, role: str) -> None:
+        super().__init__(f"Segment artifact with role {role} for segment {segment_id} and route {route_id} already exists")
+
+class SegmentArtifactNotFoundError(ValueError):
+    def __init__(self, route_id: str, segment_id: int, role: str) -> None:
+        super().__init__(f"Segment artifact with role {role} for segment {segment_id} and route {route_id} not found")
 
