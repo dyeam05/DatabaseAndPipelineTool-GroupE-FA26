@@ -54,3 +54,11 @@ class JobDefinitionAlreadyExistsError(ValueError):
 class JobDefinitionNotFoundError(ValueError):
     def __init__(self, job_def_id: int) -> None:
         super().__init__(f"Job definition {job_def_id} not found")
+
+class JobRunAlreadyExistsError(ValueError):
+    def __init__(self, job_run_id) -> None:
+        super().__init__(f"Job run {job_run_id} already exists")
+
+class JobRunNotFoundError(ValueError):
+    def __init__(self, job_run_id) -> None:
+        super().__init__(f"Job run {job_run_id} not found")
