@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.artifact import Artifact, ArtifactKind
-
+# repo for managing Artifact entities in the database
 
 class ArtifactRepository:
     def __init__(self, session: AsyncSession) -> None:

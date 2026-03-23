@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.frame_artifact import FrameArtifact, ArtifactRole
-
+# repo for managing Frame Artifact entities in the database
 
 class FrameArtifactRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -12,7 +12,7 @@ class FrameArtifactRepository:
         self,
         frame_pk: int,
         role: ArtifactRole,
-    ) -> FrameArtifact | None:
+    ) -> FrameArtifact | None: # composite primary key of frame_pk and role
         return await self._session.get(
             FrameArtifact,
             {
