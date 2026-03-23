@@ -64,6 +64,20 @@ services:
     volumes:
       - "./data:/app/data"
 
+  open_pilot_upload_worker:
+    build:
+      context: .
+      dockerfile: open_pilot_upload_worker/Dockerfile
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      PYTHONPATH: /app/shared:/app/backend
+    volumes:
+      - "./data:/app/data"
+
   alembic_worker:
     build:
       context: .
