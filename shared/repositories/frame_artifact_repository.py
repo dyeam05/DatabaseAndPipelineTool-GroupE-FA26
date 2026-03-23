@@ -23,7 +23,7 @@ class FrameArtifactRepository:
 
     async def list_all(self) -> list[FrameArtifact]:
         stmt = select(FrameArtifact)
-        result = await self._session.scalars(stmt)
+        result = await self._session.scalars(stmt) # scalars() is used to extract the FrameArtifact objects from the result set
         return list(result.all())
 
     async def get_by_frame(

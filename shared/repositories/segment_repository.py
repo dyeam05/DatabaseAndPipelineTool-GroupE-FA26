@@ -9,6 +9,7 @@ class SegmentRepository:
         self._session = session
 
     async def get_by_id(self, route_id: str, segment_id: int) -> Segment | None:
+        # get_by_id retrieves a Segment entity composite primary key of route_id and segment_id.
         return await self._session.get(Segment, {"route_id": route_id, "segment_id": segment_id})
 
     async def list_all(self) -> list[Segment]:
@@ -42,7 +43,7 @@ class SegmentRepository:
         start_time,
         end_time,
         status: SegmenStatus,
-    ) -> Segment:
+    ) -> Segment: # creat new segmetn enity
         segment = Segment(
             route_id=route_id,
             segment_id=segment_id,
@@ -52,7 +53,7 @@ class SegmentRepository:
             segment_meta=None,
         )
         self._session.add(segment)
-        await self._session.flush()
+        await self._session.flush() # persist the new segment entity to the database
         return segment
 
     async def save(self, segment: Segment) -> Segment:

@@ -31,7 +31,7 @@ class JobFrameArtifactRepository:
     async def get_by_job_run(
         self,
         job_run_id,
-    ) -> list[JobFrameArtifact]:
+    ) -> list[JobFrameArtifact]: # get all frame artifacts associated with a specific job run ID
         stmt = (
             select(JobFrameArtifact)
             .where(JobFrameArtifact.job_run_id == job_run_id)

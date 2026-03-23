@@ -9,10 +9,10 @@ class JobRunRepository:
         self._session = session
 
     async def get_by_id(self, job_run_id) -> JobRun | None:
-        return await self._session.get(JobRun, job_run_id)
+        return await self._session.get(JobRun, job_run_id) # id refer to job_run_id in JobRun model
 
     async def list_all(self) -> list[JobRun]:
-        stmt = select(JobRun).order_by(JobRun.queued_at.desc())
+        stmt = select(JobRun).order_by(JobRun.queued_at.desc()) # order by queued_at in descending order to get the most recent job runs first
         result = await self._session.scalars(stmt)
         return list(result.all())
 

@@ -6,7 +6,7 @@ from db.models.segment_artifact import SegmentArtifact, ArtifactRole
 
 class SegmentArtifactRepository:
     def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+        self._session = session # session refer to the database session used to interact with the database
 
     async def get_by_id(
         self,
@@ -15,7 +15,7 @@ class SegmentArtifactRepository:
         role: ArtifactRole,
     ) -> SegmentArtifact | None:
         return await self._session.get(
-            SegmentArtifact,
+            SegmentArtifact, # composite primary key of route_id, segment_id, and role
             {
                 "route_id": route_id,
                 "segment_id": segment_id,

@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.job_definition import JobDefinition, JobType
-
+# repo for managing JobDefinition entities in the database
 
 class JobDefinitionRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -12,7 +12,7 @@ class JobDefinitionRepository:
         return await self._session.get(JobDefinition, job_def_id)
 
     async def list_all(self) -> list[JobDefinition]:
-        stmt = select(JobDefinition).order_by(JobDefinition.created_at.desc())
+        stmt = select(JobDefinition).order_by(JobDefinition.created_at.desc()) # order by created_at in descending order to get the most recent job definitions first
         result = await self._session.scalars(stmt)
         return list(result.all())
 
