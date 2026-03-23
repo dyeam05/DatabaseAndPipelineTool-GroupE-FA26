@@ -31,7 +31,7 @@ RUN chmod +x /app/scripts/copy_over_post_compile_files.sh \
 
 # instal req
 COPY open_pilot_download_worker/scripts/install_requirements.sh /app/scripts/install_requirements.sh
-COPY open_pilot_download_worker/requirements.txt /app/requirements.txt
+COPY shared/requirements.txt /app/requirements.txt
 RUN chmod +x /app/scripts/install_requirements.sh && /app/scripts/install_requirements.sh
 
 WORKDIR /app/src

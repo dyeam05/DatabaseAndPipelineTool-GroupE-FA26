@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from db.enums import SegmentStatus
 from db.models.route import Route
 from db.url import build_database_url
-from open_pilot_upload_worker.src.models import SegmentDir
+from models.segment_dir import SegmentDir
 from repositories.route_repository import RouteRepository
 from repositories.segment_repository import SegmentRepository
 from services.errors import RouteNotFoundError
