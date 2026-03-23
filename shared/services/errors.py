@@ -46,3 +46,11 @@ class FrameArtifactAlreadyExistsError(ValueError):
 class FrameArtifactNotFoundError(ValueError):
     def __init__(self, frame_pk: int, role: str) -> None:
         super().__init__(f"Frame artifact with role {role} for frame {frame_pk} not found")
+
+class JobDefinitionAlreadyExistsError(ValueError):
+    def __init__(self, job_def_id: int) -> None:
+        super().__init__(f"Job definition {job_def_id} already exists")
+
+class JobDefinitionNotFoundError(ValueError):
+    def __init__(self, job_def_id: int) -> None:
+        super().__init__(f"Job definition {job_def_id} not found")
