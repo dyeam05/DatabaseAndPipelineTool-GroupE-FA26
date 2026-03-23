@@ -1,5 +1,15 @@
 {
 	"extraPaths": [
 		"./shared"
-	]
+	],
+	"include": [
+		"."
+	],
+	"exclude": [
+		"**/__pycache__"
+	],
+	"analysis": {
+		"autoSearchPaths": true,
+		"useLibraryCodeForTypes": true
+	}
 }
