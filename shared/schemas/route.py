@@ -7,7 +7,7 @@ from db.models.route import RouteStatus
 
 class CreateRouteRequest(BaseModel):
     route_id: str
-    status: RouteStatus = RouteStatus.PENDING
+    status: RouteStatus = RouteStatus.DOWNLOAD_QUEUE
 
 
 class RouteResponse(BaseModel):

@@ -26,7 +26,7 @@ class SegmentService:
         segment_id: int,
         start_time,
         end_time,
-        status: RouteStatus = RouteStatus.PENDING,
+        status: RouteStatus = RouteStatus.DOWNLOAD_QUEUE,
     ) -> Segment:
         existing_segment = await self._segment_repository.get_by_id(route_id, segment_id)
         if existing_segment is not None:

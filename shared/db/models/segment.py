@@ -1,10 +1,18 @@
 from datetime import datetime
+from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, Enum, Integer, String, DateTime, func, ForeignKey
+from sqlalchemy import CheckConstraint, Enum, Integer, String, DateTime, func, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
-from db.models.route import RouteStatus
+#status
+class SegmenStatus(StrEnum):
+    DOWNLOAD_QUEUE = "download queue"
+    DOWNLOADING = "downloading"
+    UPLOAD_QUEUE = "upload queue"
+    UPLOADING = "uploading"
+    FAILED = "failed"
+
 
 class Segment(Base):
     __tablename__ = "segments"
@@ -14,7 +22,7 @@ class Segment(Base):
     )
 
     route_id: Mapped[str] = mapped_column(
-        ForeignKey("routes.route_id"),
+        ForeignKey("routes.route_id", ondelete="CASCADE"),
         primary_key=True,
     )
     segment_id: Mapped[int] = mapped_column(
@@ -29,16 +37,17 @@ class Segment(Base):
         DateTime(timezone=True),
         nullable=False,
     )
-    status: Mapped[RouteStatus] = mapped_column(
+    status: Mapped[SegmenStatus] = mapped_column(
         Enum(
-            RouteStatus,
-            name="route_status",
+            SegmenStatus,
+            name="segment_status",
             native_enum=True,
             validate_strings=True,
         ),
         nullable=False,
     )
     segment_meta: Mapped[dict | None] = mapped_column(
+        JSON,
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
