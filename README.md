@@ -4,7 +4,7 @@
 
 - Noah Pursell
 - Trevor Bean
-- Vin Huynh
+- Vinh Khang Huynh
 - Thomas Petersen
 
 ## Background
