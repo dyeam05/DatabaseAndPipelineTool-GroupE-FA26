@@ -7,8 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.base import Base
 
 # this role tell job_frame_artifact for which
-class ArtifactRole(StrEnum):
-    FRAME_IMAGE = "frame_image"
+from db.models.artifact_role import ArtifactRole
 
 class FrameArtifact(Base):
     __tablename__ = "frame_artifacts"

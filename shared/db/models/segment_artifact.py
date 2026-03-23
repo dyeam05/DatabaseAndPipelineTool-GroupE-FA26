@@ -7,8 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.base import Base
 
 # this role tell segment_log for which segment belong to
-class ArtifactRole(StrEnum):
-    SEGMENT_LOG = "segment_log"
+from db.models.artifact_role import ArtifactRole
 
 
 class SegmentArtifact(Base):

@@ -36,10 +36,11 @@ class ArtifactService:
             kind=kind,
         )
 
+# this method is used to set the meta field of an artifact, which is a JSON field that can store any additional information
     async def set_meta(
         self,
         artifact_id: UUID,
-        meta: dict | None,
+        meta: dict | None, # for now do dict
     ) -> Artifact:
         artifact = await self._artifact_repository.get_by_id(artifact_id)
         if artifact is None:

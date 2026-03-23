@@ -1,6 +1,7 @@
 from uuid import UUID
 from db.models.segment_artifact import ArtifactRole
-
+# This file defines custom exceptions for the services layer. 
+# These exceptions are used to indicate specific error conditions that can occur when working 
 class RouteAlreadyExistsError(ValueError):
     def __init__(self, route_id: str) -> None:
         super().__init__(f"Route {route_id} already exists")

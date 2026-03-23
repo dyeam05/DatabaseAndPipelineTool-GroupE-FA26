@@ -8,12 +8,7 @@ from db.base import Base
 
 # this role tell job_frame_artifact for which 
 # artifact belong to, like detection json, segmentation mask, segmentation map, depth map, coco export etc.
-class ArtifactRole(StrEnum):
-    DETECTION_JSON = "detection_json"
-    SEGMENTATION_MASK = "segmentation_mask"
-    SEGMENTATION_MAP = "segmentation_map"
-    DEPTH_MAP = "depth_map"
-    COCO_EXPORT = "coco_export"
+from db.models.artifact_role import ArtifactRole
 
 
 class JobFrameArtifact(Base):
