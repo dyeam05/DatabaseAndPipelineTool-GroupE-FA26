@@ -1,5 +1,7 @@
 minio/
 postgres_data/
+cvat/
+cvat_share/
 
 **.env
 __pycache__/

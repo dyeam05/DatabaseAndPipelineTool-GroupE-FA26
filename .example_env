@@ -13,3 +13,7 @@ MINIO_ROOT_PASSWORD=fill this out
 
 # Comma AI
 COMMA_JWT=fill this out
+
+# CVAT
+CVAT_USERNAME=fill this out
+CVAT_PASSWORD=fill this out
