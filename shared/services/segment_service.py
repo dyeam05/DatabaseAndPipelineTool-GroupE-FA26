@@ -1,4 +1,4 @@
-from db.models.segment import Segment, SegmenStatus
+from db.models.segment import Segment, SegmentStatus 
 from repositories.segment_repository import SegmentRepository
 from services.errors import SegmentAlreadyExistsError, SegmentNotFoundError
 # Service layer for managing segments
@@ -9,10 +9,10 @@ class SegmentService:
     async def list_segments(self) -> list[Segment]:
         return await self._segment_repository.list_all()
 
-    async def get_segments_by_status(self, status: SegmenStatus) -> list[Segment]:
+    async def get_segments_by_status(self, status: SegmentStatus) -> list[Segment]:
         return await self._segment_repository.get_by_status(status)
 
-    async def get_next_segment_by_status(self, status: SegmenStatus) -> Segment | None:
+    async def get_next_segment_by_status(self, status: SegmentStatus) -> Segment | None:
         return await self._segment_repository.get_next_by_status(status)
     async def get_segment(self, route_id: str, segment_id: int) -> Segment | None:
         return await self._segment_repository.get_by_id(route_id, segment_id)
@@ -23,7 +23,7 @@ class SegmentService:
         segment_id: int,
         start_time,
         end_time,
-        status: SegmenStatus = SegmenStatus.DOWNLOAD_QUEUE, # default status when creating a segment
+        status: SegmentStatus = SegmentStatus.DOWNLOAD_QUEUE, # default status when creating a segment
     ) -> Segment:
         # Check if a segment with the same route_id and segment_id  alive
         existing_segment = await self._segment_repository.get_by_id(route_id, segment_id)
@@ -42,7 +42,7 @@ class SegmentService:
         self,
         route_id: str,
         segment_id: int,
-        status: SegmenStatus,
+        status: SegmentStatus,
     ) -> Segment:
         segment = await self._segment_repository.get_by_id(route_id, segment_id)
         if segment is None:

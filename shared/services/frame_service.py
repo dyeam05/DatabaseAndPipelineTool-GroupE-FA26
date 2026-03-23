@@ -1,6 +1,6 @@
 from db.models.frame import Frame
 from repositories.frame_repository import FrameRepository
-from services.errors import FrameAlreadyExistsError, FrameNotFoundError
+from services.errors import FrameNotFoundError
 # frame service is responsible for handling all frame related operations frames.
 class FrameService:
     def __init__(self, frame_repository: FrameRepository) -> None:

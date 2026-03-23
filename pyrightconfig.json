@@ -2,7 +2,6 @@
 	"extraPaths": [
 		"./shared"
 	],
-	"reportMissingImports": true,
 	"include": [
 		"."
 	],
