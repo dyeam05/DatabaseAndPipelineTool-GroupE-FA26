@@ -21,7 +21,7 @@ class SegmentRepository:
         stmt = (
             select(Segment)
             .where(Segment.status == status)
-            .order_by(Segment.created_at.desc())
+            .order_by(Segment.created_at.desc()) # order by created_at desc to get the most recent.
         )
         result = await self._session.scalars(stmt)
         return list(result.all())

@@ -55,7 +55,7 @@ class SegmentArtifactRepository:
             role=role,
         )
         self._session.add(segment_artifact)
-        await self._session.flush()
+        await self._session.flush() # persist new segment art
         return segment_artifact
 
     async def save(self, segment_artifact: SegmentArtifact) -> SegmentArtifact:

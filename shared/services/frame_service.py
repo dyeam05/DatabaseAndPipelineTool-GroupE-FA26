@@ -41,7 +41,7 @@ class FrameService:
         frame = await self._frame_repository.get_by_id(frame_pk)
         if frame is None:
             raise FrameNotFoundError(frame_pk)
-
+        # save the openpilot features as json in the frame table for now
         frame.openpilot_features = openpilot_features
         return await self._frame_repository.save(frame)
 

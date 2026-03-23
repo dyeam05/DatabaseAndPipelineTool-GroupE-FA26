@@ -13,7 +13,7 @@ class JobFrameArtifactRepository:
         job_run_id,
         frame_pk: int,
         role: ArtifactRole,
-    ) -> JobFrameArtifact | None:
+    ) -> JobFrameArtifact | None: # get a specific job frame artifact 
         return await self._session.get(
             JobFrameArtifact,
             {

@@ -30,7 +30,7 @@ class JobRunRepository:
             select(JobRun)
             .where(JobRun.status == status)
             .order_by(JobRun.queued_at.asc())
-            .limit(1)
+            .limit(1) # for now just get next job run at for simple stuff
         )
         result = await self._session.scalars(stmt)
         return result.first()

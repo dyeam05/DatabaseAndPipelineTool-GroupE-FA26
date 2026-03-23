@@ -51,7 +51,7 @@ class SegmentArtifactService:
         route_id: str,
         segment_id: int,
         role: ArtifactRole,
-    ) -> None:
+    ) -> None: #none because we don't need to return stuff
         segment_artifact = await self._segment_artifact_repository.get_by_id(route_id, segment_id, role)
         if segment_artifact is None:
             raise SegmentArtifactNotFoundError(route_id, segment_id, role)

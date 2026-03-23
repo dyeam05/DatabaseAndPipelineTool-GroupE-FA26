@@ -51,8 +51,10 @@ class JobRunService:
         # When the status of a job run is updated,
         #  we also want to update
         job_run.status = status
+        # THIS IS NEEDED
         if status == JobStatus.RUNNING:
             job_run.started_at = datetime.now(timezone.utc) # Set started_at when the job run starts running
+        # if the job run is either succeeded, failed, or cancelled
         if status in (JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.CANCELLED):
             job_run.finished_at = datetime.now(timezone.utc)
 
@@ -61,7 +63,7 @@ class JobRunService:
     async def set_error(
         self,
         job_run_id: UUID,
-        error: str | None,
+        error: str | None, #error is a string that describes the error that may have during job exec.
     ) -> JobRun:
         job_run = await self._job_run_repository.get_by_id(job_run_id)
         if job_run is None:

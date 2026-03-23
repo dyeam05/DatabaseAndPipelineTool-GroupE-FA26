@@ -18,7 +18,7 @@ class JobDefinitionService:
 
     async def create_job_definition(
         self,
-        type: JobType,
+        type: JobType, # go job detection as such
         name: str,
         config: dict,
         description: str | None = None,

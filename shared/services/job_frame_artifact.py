@@ -32,7 +32,7 @@ class JobFrameArtifactService:
         job_run_id,
         frame_pk: int,
         artifact_id: UUID,
-        role: ArtifactRole,
+        role: ArtifactRole, # artifact role is the type of artifact
     ) -> JobFrameArtifact:
         existing = await self._job_frame_artifact_repository.get_by_id(job_run_id, frame_pk, role)
         if existing is not None:
