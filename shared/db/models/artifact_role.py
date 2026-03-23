@@ -1,5 +1,6 @@
 from enum import StrEnum
-
+# this role tell segment_log for which segment belong to
+# only server as a reference for now
 
 class ArtifactRole(StrEnum):
     FRAME_IMAGE = "frame_image"
