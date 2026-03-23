@@ -38,6 +38,7 @@ class JobDefinition(Base):
         String,
         nullable=True,
     )
+    # config is a json field that store the config for the job definition
     config: Mapped[dict] = mapped_column(
         JSON,
         nullable=False,

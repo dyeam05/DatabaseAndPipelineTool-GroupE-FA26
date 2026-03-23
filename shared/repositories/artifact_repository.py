@@ -13,6 +13,8 @@ class ArtifactRepository:
 
     async def list_all(self) -> list[Artifact]:
         stmt = select(Artifact).order_by(Artifact.created_at.desc())
+        # order by created_at desc to get the most recent artifacts first
+        #then ession.scalars() is used to execute the query and extract the Artifact
         result = await self._session.scalars(stmt)
         return list(result.all())
 

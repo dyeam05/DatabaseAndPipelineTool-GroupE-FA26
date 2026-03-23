@@ -45,10 +45,12 @@ class JobRun(Base):
         server_default=func.now(),
         nullable=False,
     )
+    # set time
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
+    # set time when job run is either succeeded, failed, or cancelled
     finished_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
@@ -57,6 +59,7 @@ class JobRun(Base):
         String,
         nullable=True,
     )
+    # stats stuff. might change later
     stats: Mapped[dict | None] = mapped_column(
         JSON,
         nullable=True,

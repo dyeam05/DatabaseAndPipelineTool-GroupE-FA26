@@ -18,6 +18,7 @@ class FrameRepository:
         return list(result.all())
 
     async def get_by_route_segment(self,route_id: str,segment_id: int,) -> list[Frame]:
+        # make sure in the correct order for a given route and segment
         stmt = (
             select(Frame)
             .where(Frame.route_id == route_id)

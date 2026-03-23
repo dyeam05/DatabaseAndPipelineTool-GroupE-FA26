@@ -53,7 +53,7 @@ class FrameArtifactRepository:
         return frame_artifact
 
     async def save(self, frame_artifact: FrameArtifact) -> FrameArtifact:
-        self._session.add(frame_artifact)
+        self._session.add(frame_artifact) # add the frame artifact to the session.
         await self._session.flush()
         return frame_artifact
 

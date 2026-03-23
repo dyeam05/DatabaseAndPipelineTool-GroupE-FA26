@@ -28,6 +28,7 @@ class Artifact(Base):
         String,
         nullable=False,
     )
+    # this is the kind of the artifact know how to read the artifact
     kind: Mapped[ArtifactKind] = mapped_column(
         Enum(
             ArtifactKind,

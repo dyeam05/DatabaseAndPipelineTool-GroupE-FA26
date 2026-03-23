@@ -30,6 +30,7 @@ class SegmentArtifact(Base):
     artifact_id: Mapped[UUID] = mapped_column(
         primary_key=True,
     )
+    # refer to  ArtifactRole. might change based on schema
     role: Mapped[ArtifactRole] = mapped_column(
         Enum(
             ArtifactRole,
