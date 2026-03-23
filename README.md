@@ -4,7 +4,7 @@
 
 - Noah Pursell
 - Trevor Bean
-- Vin Khu Yhn
+- Vin Huynh
 - Thomas Petersen
 
 ## Background
@@ -47,4 +47,32 @@ This repository contains code for the data pipeline for the [Comma AI](https://c
 
 #### Backend
 
-###
+The backend code is stored in the `/backend/` folder. This is the primary orchestrator for the pipeline. It acts as an API that is interacted with through the front-end that allows for controlling route downloads, processing, and retrieval. It is a FastAPI deployment. When editing the backend, most code should actually be written in the `/shared/` folder. Keep `/backend/main.py` as minimal as possible.
+
+#### Open Pilot Download Worker
+
+The Open Pilot Download Worker, located in `/open_pilot_download_worker/` is a worker that can download videos and logs from OpenPilot. It does this by watching the `Routes` table in the database for any routes that are ready to be downloaded. When it sees a new route ready to download, it begins to download the route and save it in a folder under `/data/`.
+
+#### Postgres
+
+SQL storage for the project.
+
+#### Alembic Worker
+
+Alembic Worker, located in `/alembic_worker/` is the tool we use for Postgres SQL migrations. It looks at the models defined in the `/shared/db/` code, and updates the SQL database to reflect the schema. Look at `/alembic_worker/readme.md` for information on how to use it.
+
+#### Minio
+
+S3 Bucket storage for the project.
+
+### Shared
+
+This is where the majority of code lives, in the `/shared/` directory. This code is copied into the other containers, such as the backend or the worker containers.
+
+### Data
+
+Do not put any code here. This folder `/data/` is used as a shared volume between workers.
+
+## TODO
+
+Check out the [course Kanban board](https://cscapstone.cs.ou.edu/pages/account/) for TODOs.
