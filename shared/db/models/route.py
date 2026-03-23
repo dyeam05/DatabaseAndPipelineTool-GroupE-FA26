@@ -8,10 +8,9 @@ from db.base import Base
 
 
 class RouteStatus(StrEnum):
-    DOWNLOAD_QUEUE = "download queue"
-    DOWNLOADING = "downloading"
-    UPLOAD_QUEUE = "upload queue"
-    UPLOADING = "uploading"
+    PENDING = "pending"
+    INGESTING = "ingesting"
+    COMPLETE = "complete"
     FAILED = "failed"
 
 
