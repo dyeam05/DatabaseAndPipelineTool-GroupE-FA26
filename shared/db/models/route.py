@@ -5,14 +5,8 @@ from sqlalchemy import CheckConstraint, Enum, String, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+from db.enums import RouteStatus, route_status_enum
 
-
-class RouteStatus(StrEnum):
-    DOWNLOAD_QUEUE = "download queue"
-    DOWNLOADING = "downloading"
-    UPLOAD_QUEUE = "upload queue"
-    UPLOADING = "uploading"
-    FAILED = "failed"
 
 
 class Route(Base):
@@ -31,12 +25,7 @@ class Route(Base):
         nullable=True,
     )
     status: Mapped[RouteStatus] = mapped_column(
-        Enum(
-            RouteStatus,
-            name="route_status",
-            native_enum=True,
-            validate_strings=True,
-        ),
+        route_status_enum,
         nullable=False,
     )
 

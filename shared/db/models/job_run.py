@@ -6,14 +6,9 @@ from sqlalchemy import Enum, String, DateTime, func, ForeignKey, JSON, BigIntege
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+from db.enums import JobStatus, job_status_enum
 
 # this tell job status, like queued, running, succeeded, failed or cancelled
-class JobStatus(StrEnum):
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
 
 
 class JobRun(Base):
@@ -32,12 +27,7 @@ class JobRun(Base):
         nullable=False,
     )
     status: Mapped[JobStatus] = mapped_column(
-        Enum(
-            JobStatus,
-            name="job_status",
-            native_enum=True,
-            validate_strings=True,
-        ),
+        job_status_enum,
         nullable=False,
     )
     queued_at: Mapped[datetime] = mapped_column(

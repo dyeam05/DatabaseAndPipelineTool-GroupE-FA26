@@ -1,17 +1,14 @@
 from datetime import datetime
-from enum import StrEnum
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Enum, String, DateTime, func, JSON
+from sqlalchemy import String, DateTime, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+from db.enums import ArtifactKind, artifact_kind_enum
 
 # this tell artifact kind, like image, json or parquet
-class ArtifactKind(StrEnum):
-    IMAGE = "image"
-    JSON = "json"
-    PARQUET = "parquet"
 
 
 class Artifact(Base):
@@ -30,12 +27,7 @@ class Artifact(Base):
     )
     # this is the kind of the artifact know how to read the artifact
     kind: Mapped[ArtifactKind] = mapped_column(
-        Enum(
-            ArtifactKind,
-            name="artifact_kind",
-            native_enum=True,
-            validate_strings=True,
-        ),
+        artifact_kind_enum,
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -44,7 +36,7 @@ class Artifact(Base):
         nullable=False,
     )
     #json field to store some extra information about the artifact
-    meta: Mapped[dict | None] = mapped_column(
+    meta: Mapped[dict[Any, Any] | None] = mapped_column(
         JSON,
         nullable=True,
     )

@@ -5,13 +5,9 @@ from sqlalchemy import Enum, String, DateTime, func, JSON, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+from db.enums import JobType, job_type_enum
 
 # this tell job type, like object detection, segmentation, depth or annotation
-class JobType(StrEnum):
-    OBJECT_DETECTION = "object_detection"
-    SEGMENTATION = "segmentation"
-    DEPTH = "depth"
-    ANNOTATION = "annotation"
 
 
 class JobDefinition(Base):
@@ -22,12 +18,7 @@ class JobDefinition(Base):
         primary_key=True,
     )
     type: Mapped[JobType] = mapped_column(
-        Enum(
-            JobType,
-            name="job_type",
-            native_enum=True,
-            validate_strings=True,
-        ),
+        job_type_enum,
         nullable=False,
     )
     name: Mapped[str] = mapped_column(

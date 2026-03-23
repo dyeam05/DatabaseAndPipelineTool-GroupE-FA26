@@ -5,9 +5,9 @@ from sqlalchemy import Enum, ForeignKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+from db.enums import ArtifactRole, artifact_role_enum
 
 # this role tell segment_log for which segment belong to
-from db.models.artifact_role import ArtifactRole
 
 
 class SegmentArtifact(Base):
@@ -32,12 +32,7 @@ class SegmentArtifact(Base):
     )
     # refer to  ArtifactRole. might change based on schema
     role: Mapped[ArtifactRole] = mapped_column(
-        Enum(
-            ArtifactRole,
-            name="artifact_role",
-            native_enum=True,
-            validate_strings=True,
-        ),
+        artifact_role_enum,
         primary_key=True,
     )
 

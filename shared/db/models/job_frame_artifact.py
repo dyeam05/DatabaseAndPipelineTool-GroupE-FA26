@@ -5,10 +5,10 @@ from sqlalchemy import Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+from db.enums import ArtifactRole, artifact_role_enum
 
 # this role tell job_frame_artifact for which 
 # artifact belong to, like detection json, segmentation mask, segmentation map, depth map, coco export etc.
-from db.models.artifact_role import ArtifactRole
 
 
 class JobFrameArtifact(Base):
@@ -27,12 +27,7 @@ class JobFrameArtifact(Base):
         primary_key=True,
     )
     role: Mapped[ArtifactRole] = mapped_column(
-        Enum(
-            ArtifactRole,
-            name="artifact_role",
-            native_enum=True,
-            validate_strings=True,
-        ),
+        artifact_role_enum,
         primary_key=True,
     )
 

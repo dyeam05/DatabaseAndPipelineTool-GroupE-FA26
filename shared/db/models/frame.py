@@ -5,12 +5,9 @@ from sqlalchemy import BigInteger, Enum, Integer, DateTime, func, ForeignKeyCons
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+from db.enums import CameraType, camera_type_enum
 
 # this tell camera type, like front regular, front wide or driver
-class CameraType(StrEnum):
-    FRONT_REGULAR = "front_regular"
-    FRONT_WIDE = "front_wide"
-    DRIVER = "driver"
 
 
 class Frame(Base):
@@ -41,12 +38,7 @@ class Frame(Base):
         nullable=False,
     )
     camera: Mapped[CameraType] = mapped_column(
-        Enum(
-            CameraType,
-            name="camera_type",
-            native_enum=True,
-            validate_strings=True,
-        ),
+        camera_type_enum,
         nullable=False,
     )
     log_mono_time: Mapped[int | None] = mapped_column(
