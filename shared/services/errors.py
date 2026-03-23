@@ -19,7 +19,15 @@ class FrameAlreadyExistsError(ValueError):
     def __init__(self, frame_pk: int) -> None:
         super().__init__(f"Frame {frame_pk} already exists")
 
-
 class FrameNotFoundError(ValueError):
     def __init__(self, frame_pk: int) -> None:
         super().__init__(f"Frame {frame_pk} not found")
+
+class ArtifactAlreadyExistsError(ValueError):
+    def __init__(self, artifact_id) -> None:
+        super().__init__(f"Artifact {artifact_id} already exists")
+
+class ArtifactNotFoundError(ValueError):
+    def __init__(self, artifact_id) -> None:
+        super().__init__(f"Artifact {artifact_id} not found")
+

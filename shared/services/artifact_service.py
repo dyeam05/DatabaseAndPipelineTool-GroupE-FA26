@@ -1,0 +1,56 @@
+from uuid import UUID
+
+from db.models.artifact import Artifact, ArtifactKind
+from repositories.artifact_repository import ArtifactRepository
+from services.errors import ArtifactAlreadyExistsError, ArtifactNotFoundError
+
+
+class ArtifactService:
+    def __init__(self, artifact_repository: ArtifactRepository) -> None:
+        self._artifact_repository = artifact_repository
+
+    async def list_artifacts(self) -> list[Artifact]:
+        return await self._artifact_repository.list_all()
+
+    async def get_artifacts_by_kind(self, kind: ArtifactKind) -> list[Artifact]:
+        return await self._artifact_repository.get_by_kind(kind)
+
+    async def get_artifact(self, artifact_id: UUID) -> Artifact | None:
+        return await self._artifact_repository.get_by_id(artifact_id)
+
+    async def create_artifact(
+        self,
+        artifact_id: UUID,
+        bucket: str,
+        object_key: str,
+        kind: ArtifactKind,
+    ) -> Artifact:
+        existing_artifact = await self._artifact_repository.get_by_id(artifact_id)
+        if existing_artifact is not None:
+            raise ArtifactAlreadyExistsError(artifact_id)
+
+        return await self._artifact_repository.create(
+            artifact_id=artifact_id,
+            bucket=bucket,
+            object_key=object_key,
+            kind=kind,
+        )
+
+    async def set_meta(
+        self,
+        artifact_id: UUID,
+        meta: dict | None,
+    ) -> Artifact:
+        artifact = await self._artifact_repository.get_by_id(artifact_id)
+        if artifact is None:
+            raise ArtifactNotFoundError(artifact_id)
+
+        artifact.meta = meta
+        return await self._artifact_repository.save(artifact)
+
+    async def delete_artifact(self, artifact_id: UUID) -> None:
+        artifact = await self._artifact_repository.get_by_id(artifact_id)
+        if artifact is None:
+            raise ArtifactNotFoundError(artifact_id)
+
+        await self._artifact_repository.delete(artifact)
