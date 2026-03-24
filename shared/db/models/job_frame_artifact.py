@@ -9,8 +9,7 @@ from db.enums import ArtifactRole, artifact_role_enum
 
 # this role tell job_frame_artifact for which 
 # artifact belong to, like detection json, segmentation mask, segmentation map, depth map, coco export etc.
-
-
+#  enforece one artifact role per frame
 class JobFrameArtifact(Base):
     __tablename__ = "job_frame_artifacts"
 
@@ -24,7 +23,7 @@ class JobFrameArtifact(Base):
     )
     artifact_id: Mapped[UUID] = mapped_column(
         ForeignKey("artifacts.artifact_id"),
-        primary_key=True,
+        nullable=False,
     )
     role: Mapped[ArtifactRole] = mapped_column(
         artifact_role_enum,

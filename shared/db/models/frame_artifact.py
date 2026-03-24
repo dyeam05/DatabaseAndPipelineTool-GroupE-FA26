@@ -8,7 +8,7 @@ from db.base import Base
 from db.enums import ArtifactRole, artifact_role_enum
 
 # this role tell job_frame_artifact for which
-
+# enforece one artifact role per frame
 class FrameArtifact(Base):
     __tablename__ = "frame_artifacts"
 
@@ -18,7 +18,7 @@ class FrameArtifact(Base):
     )
     artifact_id: Mapped[UUID] = mapped_column(
         ForeignKey("artifacts.artifact_id"),
-        primary_key=True,
+         nullable=False,
     )
     role: Mapped[ArtifactRole] = mapped_column(
         artifact_role_enum,
