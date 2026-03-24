@@ -1,7 +1,7 @@
 from enum import StrEnum
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, Enum, String, DateTime, func
+from sqlalchemy import CheckConstraint, Enum, String, DateTime, func, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
@@ -15,20 +15,30 @@ class Route(Base):
     __table_args__ = (
         CheckConstraint("route_id <> ''", name="ck_routes_route_id_not_empty"),
     )
-
     route_id: Mapped[str] = mapped_column(
         String,
         primary_key=True,
     )
-    file_path: Mapped[str | None] = mapped_column(
-        String,
+    start_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    end_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    num_segments_expected: Mapped[int | None] = mapped_column(
+        Integer,
         nullable=True,
     )
     status: Mapped[RouteStatus] = mapped_column(
         route_status_enum,
         nullable=False,
     )
-
+    meta: Mapped[dict | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -36,4 +46,4 @@ class Route(Base):
     )
 
     def __repr__(self):
-        return f"{self.route_id}, {self.file_path}, {self.status}"
+        return f"{self.route_id}, {self.status}"
