@@ -5,6 +5,8 @@ from repositories.frame_artifact_repository import FrameArtifactRepository
 from services.errors import FrameArtifactAlreadyExistsError, FrameArtifactNotFoundError
 
 # This service is responsible for managing frame artifacts, which are associated with frames and have specific roles.
+
+
 class FrameArtifactService:
     def __init__(self, frame_artifact_repository: FrameArtifactRepository) -> None:
         self._frame_artifact_repository = frame_artifact_repository
@@ -21,9 +23,14 @@ class FrameArtifactService:
     async def get_frame_artifact(
         self,
         frame_pk: int,
-        role: ArtifactRole, # role refer to the type of artifact. migh add more later
+        artifact_id: UUID,
+        role: ArtifactRole,  # role refer to the type of artifact. migh add more later
     ) -> FrameArtifact | None:
-        return await self._frame_artifact_repository.get_by_id(frame_pk, role)
+        return await self._frame_artifact_repository.get_by_id(
+            frame_pk=frame_pk,
+            artifact_id=artifact_id,
+            role=role
+        )
 
     async def create_frame_artifact(
         self,
@@ -31,7 +38,11 @@ class FrameArtifactService:
         artifact_id: UUID,
         role: ArtifactRole,
     ) -> FrameArtifact:
-        existing = await self._frame_artifact_repository.get_by_id(frame_pk, role)
+        existing = await self._frame_artifact_repository.get_by_id(
+            frame_pk=frame_pk,
+            artifact_id=artifact_id,
+            role=role
+        )
         if existing is not None:
             raise FrameArtifactAlreadyExistsError(frame_pk, role)
 
@@ -44,9 +55,14 @@ class FrameArtifactService:
     async def delete_frame_artifact(
         self,
         frame_pk: int,
+        artifact_id: UUID,
         role: ArtifactRole,
     ) -> None:
-        frame_artifact = await self._frame_artifact_repository.get_by_id(frame_pk, role)
+        frame_artifact = await self._frame_artifact_repository.get_by_id(
+            frame_pk=frame_pk,
+            artifact_id=artifact_id,
+            role=role
+        )
         if frame_artifact is None:
             raise FrameArtifactNotFoundError(frame_pk, role)
 

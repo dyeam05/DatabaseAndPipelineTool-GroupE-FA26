@@ -38,7 +38,7 @@ class CameraType(StrEnum):
 
 camera_type_enum =  Enum(
     CameraType,
-    name="camer_type_num",
+    name="camera_type_enum",
     native_enum=True,
     validate_strings=True
 )
@@ -92,6 +92,7 @@ class SegmentStatus(StrEnum):
     UPLOAD_QUEUE = "upload queue"
     UPLOADING = "uploading"
     FAILED = "failed"
+    UPLOADED = "uploaded"
 
 segment_status_enum = Enum(
     SegmentStatus,

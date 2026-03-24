@@ -1,8 +1,8 @@
 """first migration
 
-Revision ID: b8b6ffb6162f
+Revision ID: 09d5d905cce1
 Revises: 
-Create Date: 2026-03-23 19:17:02.222574
+Create Date: 2026-03-23 23:09:08.649446
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'b8b6ffb6162f'
+revision: str = '09d5d905cce1'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -42,7 +42,7 @@ def upgrade() -> None:
     op.create_table('routes',
     sa.Column('route_id', sa.String(), nullable=False),
     sa.Column('file_path', sa.String(), nullable=True),
-    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', name='route_status_enum'), nullable=False),
+    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', 'UPLOADED', name='route_status_enum'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint("route_id <> ''", name='ck_routes_route_id_not_empty'),
     sa.PrimaryKeyConstraint('route_id')
@@ -66,7 +66,7 @@ def upgrade() -> None:
     sa.Column('segment_id', sa.Integer(), nullable=False),
     sa.Column('start_time', sa.DateTime(timezone=True), nullable=False),
     sa.Column('end_time', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', name='segment_status_enum'), nullable=False),
+    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', 'UPLOADED', name='segment_status_enum'), nullable=False),
     sa.Column('segment_meta', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint('segment_id >= 0', name='ck_segments_segment_id_non_negative'),
@@ -78,7 +78,7 @@ def upgrade() -> None:
     sa.Column('route_id', sa.String(), nullable=False),
     sa.Column('segment_id', sa.Integer(), nullable=False),
     sa.Column('frame_id', sa.Integer(), nullable=False),
-    sa.Column('camera', sa.Enum('FRONT_REGULAR', 'FRONT_WIDE', 'DRIVER', name='camer_type_num'), nullable=False),
+    sa.Column('camera', sa.Enum('FRONT_REGULAR', 'FRONT_WIDE', 'DRIVER', name='camera_type_enum'), nullable=False),
     sa.Column('log_mono_time', sa.BigInteger(), nullable=True),
     sa.Column('openpilot_features', sa.JSON(), nullable=True),
     sa.Column('width_px', sa.Integer(), nullable=True),

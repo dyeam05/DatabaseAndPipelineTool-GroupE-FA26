@@ -7,15 +7,26 @@ import shutil
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from models.segment_dir import SegmentDir
 from db.enums import SegmentStatus
 from db.models.route import Route
+from db.models.segment import Segment
 from db.url import build_database_url
-from models.segment_dir import SegmentDir
+from repositories import artifact_repository, frame_artifact_repository
+from repositories.frame_repository import FrameRepository
 from repositories.route_repository import RouteRepository
 from repositories.segment_repository import SegmentRepository
+from repositories.frame_artifact_repository import FrameArtifactRepository
+from repositories.artifact_repository import ArtifactRepository
+from services import frame_uploader_service
+from services.frame_artifact_service import FrameArtifactService
+from services.frame_service import FrameService
+from services.frame_uploader_service import FrameUploaderService
 from services.minio_service import MinioService
 from services.route_service import RouteService, RouteStatus
 from services.segment_service import SegmentService
+from services.artifact_service import ArtifactService
+from utilities.camera_type_utils import folder_name_to_camera_type
 from utilities.directory_utils import does_directory_have_more_than_n_items, get_subdirectories
 from utilities.file_utilities import get_pngs_in_directory
 
@@ -64,7 +75,8 @@ def get_segment_camera_views(segment_dir: SegmentDir) -> list[str]:
     camera_views = [subdirectory.name for subdirectory in get_subdirectories(segment_dir.path)]
     return camera_views
 
-async def upload_segment(route: Route, segment_dir: SegmentDir, segment_service: SegmentService, session: AsyncSession):
+
+async def upload_segment(route: Route, segment_dir: SegmentDir, segment_service: SegmentService, frame_uploader_service: FrameUploaderService, session: AsyncSession):
     # TODO: Fix this later
     segment_start_time = datetime.now()
     segment_end_time = datetime.now()
@@ -80,19 +92,17 @@ async def upload_segment(route: Route, segment_dir: SegmentDir, segment_service:
 
     # upload images
     minio_service = MinioService()
-    for camera_view in get_segment_camera_views(segment_dir=segment_dir):
-        for image_path in get_pngs_in_directory(dir=segment_dir.path / camera_view):
+    for camera_view_folder_name in get_segment_camera_views(segment_dir=segment_dir):
+        camera_view = folder_name_to_camera_type(folder_name=camera_view_folder_name)
+        for image_path in get_pngs_in_directory(dir=segment_dir.path / camera_view_folder_name):
             frame_number = int(image_path.name.split(".")[0])
-            write_result = minio_service.put_segment_image(
+            await frame_uploader_service.create_frame(
                 segment=segment,
                 camera_view=camera_view,
                 frame_number=frame_number,
                 frame_path=image_path
             )
             
-
-
-
     # upload logs
     log_path = segment_dir.path / "logs.json"
     write_result = minio_service.put_segment_log(
@@ -100,9 +110,11 @@ async def upload_segment(route: Route, segment_dir: SegmentDir, segment_service:
         log_path=log_path
     )
 
+    await segment_service.set_status(route_id=segment.route_id, segment_id=segment.segment_id, status=SegmentStatus.UPLOADED)
 
 
-async def _process_route(route: Route, route_service: RouteService, segment_service: SegmentService, session: AsyncSession):
+
+async def _process_route(route: Route, route_service: RouteService, segment_service: SegmentService, frame_uploader_service: FrameUploaderService, session: AsyncSession):
     await route_service.set_status(route_id=route.route_id, status=RouteStatus.UPLOADING)
     await session.commit()
 
@@ -121,7 +133,8 @@ async def _process_route(route: Route, route_service: RouteService, segment_serv
             route=route, 
             segment_dir=segment, 
             segment_service=segment_service, 
-            session=session
+            session=session,
+            frame_uploader_service=frame_uploader_service
         )
 
     logging.info("Deleting Data Files")
@@ -148,6 +161,17 @@ async def main():
             route_service = RouteService(route_repository=route_repository)
             segment_repository = SegmentRepository(session=session)
             segment_service = SegmentService(segment_repository=segment_repository)
+            frame_repository = FrameRepository(session=session)
+            frame_service = FrameService(frame_repository=frame_repository)
+            frame_artifact_repository = FrameArtifactRepository(session=session)
+            frame_artifact_service = FrameArtifactService(frame_artifact_repository=frame_artifact_repository)
+            artifact_repository = ArtifactRepository(session=session)
+            artifact_service = ArtifactService(artifact_repository=artifact_repository)
+            frame_uploader_service = FrameUploaderService(
+                frame_service=frame_service,
+                frame_artifact_service=frame_artifact_service,
+                artifact_service=artifact_service
+            )
 
             logging.info("Checking for stale routes.")
             await _mark_stale_uploading_routes_as_failed(route_service)
@@ -163,7 +187,7 @@ async def main():
                     continue
 
                 logging.info(f"Route {route_to_process.route_id} found, processing...")
-                await _process_route(route_to_process, route_service, segment_service, session)
+                await _process_route(route=route_to_process, route_service=route_service, segment_service=segment_service, frame_uploader_service=frame_uploader_service, session=session)
                 logging.info(f"Route {route_to_process.route_id} uploaded!")
 
 
