@@ -18,6 +18,7 @@ from services.route_service import RouteService, RouteStatus
 POLL_INTERVAL_SECONDS = 2.0
 OPENPILOT_DIR = Path("/app/openpilot")
 DATA_ROOT = Path("/app/data")
+ROUTE_PROCESS_TIMEOUT_SECONDS = float(os.getenv("ROUTE_PROCESS_TIMEOUT_SECONDS", "0"))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -172,6 +173,8 @@ async def _process_route(
     extraction_stream_task: asyncio.Task[None] | None = None
     replay_stream_task: asyncio.Task[None] | None = None
     extraction_exit_code: int | None = None
+    extraction_wait_task: asyncio.Task[int] | None = None
+    replay_wait_task: asyncio.Task[int] | None = None
 
     try:
         extraction_process = await _start_extraction_process(output_dir)
@@ -194,7 +197,36 @@ async def _process_route(
             _stream_process_output(replay_process, "replay", route.route_id)
         )
 
-        extraction_exit_code = await extraction_process.wait()
+        extraction_wait_task = asyncio.create_task(extraction_process.wait())
+        replay_wait_task = asyncio.create_task(replay_process.wait())
+
+        route_start_time = asyncio.get_running_loop().time()
+        while True:
+            done, _ = await asyncio.wait(
+                {extraction_wait_task, replay_wait_task},
+                timeout=1.0,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if ROUTE_PROCESS_TIMEOUT_SECONDS > 0:
+                elapsed = asyncio.get_running_loop().time() - route_start_time
+                if elapsed > ROUTE_PROCESS_TIMEOUT_SECONDS:
+                    raise RuntimeError(
+                        f"route processing exceeded timeout ({ROUTE_PROCESS_TIMEOUT_SECONDS}s) "
+                        f"for route {route.route_id}"
+                    )
+
+            if replay_wait_task in done and not extraction_wait_task.done():
+                replay_exit_code = replay_wait_task.result()
+                raise RuntimeError(
+                    f"replay exited early with code {replay_exit_code} "
+                    f"while extraction still running for route {route.route_id}"
+                )
+
+            if extraction_wait_task in done:
+                extraction_exit_code = extraction_wait_task.result()
+                break
+
         logger.info(
             "Extraction exited for route=%s code=%s",
             route.route_id,
@@ -242,6 +274,11 @@ async def _process_route(
     finally:
         await _force_stop_process(replay_process)
         await _force_stop_process(extraction_process)
+
+        if extraction_wait_task is not None and not extraction_wait_task.done():
+            extraction_wait_task.cancel()
+        if replay_wait_task is not None and not replay_wait_task.done():
+            replay_wait_task.cancel()
 
         if extraction_stream_task is not None:
             await extraction_stream_task
