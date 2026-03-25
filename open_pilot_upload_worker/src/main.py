@@ -26,8 +26,8 @@ from services.minio_service import MinioService
 from services.route_service import RouteService, RouteStatus
 from services.segment_service import SegmentService
 from services.artifact_service import ArtifactService
-from utilities.camera_type_utils import folder_name_to_camera_type
-from utilities.directory_utils import does_directory_have_more_than_n_items, get_subdirectories
+from utilities.camera_type_utilities import folder_name_to_camera_type
+from utilities.directory_utilities import does_directory_have_more_than_n_items, get_subdirectories
 from utilities.file_utilities import get_pngs_in_directory
 
 POLL_INTERVAL_SECONDS = 2.0

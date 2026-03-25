@@ -1,1 +1,2 @@
 from schemas.route import CreateRouteRequest, RouteResponse
+from schemas.openpilot_route_metadata import OpenPilotRouteMetadata

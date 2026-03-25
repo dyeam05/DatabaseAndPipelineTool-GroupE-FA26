@@ -36,4 +36,4 @@ class Route(Base):
     )
 
     def __repr__(self):
-        return f"{self.route_id}, {self.file_path}, {self.status}"
+        return f"Route({self.route_id}, {self.file_path}, {self.status})"
