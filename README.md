@@ -81,3 +81,7 @@ Testing code is inside the `./tests/` folder. See `./tests/README.md` for more i
 ## TODO
 
 Check out the [course Kanban board](https://cscapstone.cs.ou.edu/pages/account/) for TODOs.
+
+## Important link
+
+- [Comma Connect](https://connect.comma.ai/)
