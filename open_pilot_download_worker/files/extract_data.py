@@ -39,6 +39,13 @@ import cv2
 PROCESS_NAME = "selfdrive.modeld.modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
 
+VISION_CONNECT_TIMEOUT_SECONDS = float(os.getenv("VISION_CONNECT_TIMEOUT_SECONDS", "30"))
+NO_FRAME_RECONNECT_SECONDS = float(os.getenv("NO_FRAME_RECONNECT_SECONDS", "3"))
+EXTRACT_STALL_TIMEOUT_SECONDS = float(os.getenv("EXTRACT_STALL_TIMEOUT_SECONDS", "60"))
+HEALTH_LOG_INTERVAL_SECONDS = float(os.getenv("HEALTH_LOG_INTERVAL_SECONDS", "10"))
+RECONNECT_COOLDOWN_SECONDS = float(os.getenv("RECONNECT_COOLDOWN_SECONDS", "5"))
+MAX_EXTRA_CAMERA_RECONNECT_ATTEMPTS = int(os.getenv("MAX_EXTRA_CAMERA_RECONNECT_ATTEMPTS", "3"))
+
 VISION_PKL_PATH = Path(__file__).parent / 'models/driving_vision_tinygrad.pkl'
 POLICY_PKL_PATH = Path(__file__).parent / 'models/driving_policy_tinygrad.pkl'
 VISION_METADATA_PATH = Path(__file__).parent / 'models/driving_vision_metadata.pkl'
@@ -183,6 +190,13 @@ def main(output_path: Path, demo=False):
         with open(dir / "logs.json", "w", encoding="utf-8") as file:
             json.dump(frame_logs, file, allow_nan=False)
 
+    def flush_segment_logs(frame_logs: list[dict[str, Any]], segment_num: int):
+        if segment_num < 0 or len(frame_logs) == 0:
+            return
+        segment_dir = output_path / f"{segment_num}"
+        save_logs_as_json(frame_logs, segment_dir)
+        frame_logs.clear()
+
     def decode_nv12_to_bgr(buf: VisionBuf) -> np.ndarray:
         h = buf.height
         w = buf.width
@@ -219,6 +233,42 @@ def main(output_path: Path, demo=False):
         front_wide_path.mkdir(parents=True, exist_ok=True)
         return front_path, front_wide_path
 
+    def connect_vision_clients(context: CLContext) -> tuple[VisionIpcClient, VisionIpcClient, bool, bool]:
+        start_wait = time.monotonic()
+        while True:
+            available_streams = VisionIpcClient.available_streams("camerad", block=False)
+            if available_streams:
+                use_extra = VisionStreamType.VISION_STREAM_WIDE_ROAD in available_streams and VisionStreamType.VISION_STREAM_ROAD in available_streams
+                main_wide = VisionStreamType.VISION_STREAM_ROAD not in available_streams
+                break
+
+            if time.monotonic() - start_wait > VISION_CONNECT_TIMEOUT_SECONDS:
+                raise RuntimeError("Timed out waiting for camerad streams")
+            time.sleep(0.1)
+
+        main_stream = VisionStreamType.VISION_STREAM_WIDE_ROAD if main_wide else VisionStreamType.VISION_STREAM_ROAD
+        vipc_main = VisionIpcClient("camerad", main_stream, True, context)
+        vipc_extra = VisionIpcClient("camerad", VisionStreamType.VISION_STREAM_WIDE_ROAD, False, context)
+        cloudlog.warning(f"vision stream set up, main_wide_camera: {main_wide}, use_extra_client: {use_extra}")
+
+        start_connect = time.monotonic()
+        while not vipc_main.connect(False):
+            if time.monotonic() - start_connect > VISION_CONNECT_TIMEOUT_SECONDS:
+                raise RuntimeError("Timed out connecting to main camerad VisionIPC stream")
+            time.sleep(0.1)
+
+        while use_extra and not vipc_extra.connect(False):
+            if time.monotonic() - start_connect > VISION_CONNECT_TIMEOUT_SECONDS:
+                raise RuntimeError("Timed out connecting to extra camerad VisionIPC stream")
+            time.sleep(0.1)
+
+        cloudlog.warning(f"connected main cam with buffer size: {vipc_main.buffer_len} ({vipc_main.width} x {vipc_main.height})")
+        if use_extra:
+            cloudlog.warning(
+                f"connected extra cam with buffer size: {vipc_extra.buffer_len} ({vipc_extra.width} x {vipc_extra.height})")
+
+        return vipc_main, vipc_extra, use_extra, main_wide
+
     logs: list[dict[str, Any]] = []
 
     print(f"Creating output director: {output_path}")
@@ -237,29 +287,7 @@ def main(output_path: Path, demo=False):
     model = ModelState(cl_context)
     cloudlog.warning("models loaded, modeld starting")
 
-    # visionipc clients
-    while True:
-        available_streams = VisionIpcClient.available_streams("camerad", block=False)
-        if available_streams:
-            use_extra_client = VisionStreamType.VISION_STREAM_WIDE_ROAD in available_streams and VisionStreamType.VISION_STREAM_ROAD in available_streams
-            main_wide_camera = VisionStreamType.VISION_STREAM_ROAD not in available_streams
-            break
-        time.sleep(.1)
-
-    vipc_client_main_stream = VisionStreamType.VISION_STREAM_WIDE_ROAD if main_wide_camera else VisionStreamType.VISION_STREAM_ROAD
-    vipc_client_main = VisionIpcClient("camerad", vipc_client_main_stream, True, cl_context)
-    vipc_client_extra = VisionIpcClient("camerad", VisionStreamType.VISION_STREAM_WIDE_ROAD, False, cl_context)
-    cloudlog.warning(f"vision stream set up, main_wide_camera: {main_wide_camera}, use_extra_client: {use_extra_client}")
-
-    while not vipc_client_main.connect(False):
-        time.sleep(0.1)
-    while use_extra_client and not vipc_client_extra.connect(False):
-        time.sleep(0.1)
-
-    cloudlog.warning(f"connected main cam with buffer size: {vipc_client_main.buffer_len} ({vipc_client_main.width} x {vipc_client_main.height})")
-    if use_extra_client:
-        cloudlog.warning(
-            f"connected extra cam with buffer size: {vipc_client_extra.buffer_len} ({vipc_client_extra.width} x {vipc_client_extra.height})")
+    vipc_client_main, vipc_client_extra, use_extra_client, main_wide_camera = connect_vision_clients(cl_context)
 
     # messaging
     pm = PubMaster(["modelV2", "drivingModelData", "cameraOdometry"])
@@ -308,25 +336,65 @@ def main(output_path: Path, demo=False):
 
     # track last seen time stamp to determine if we have gone back in time => route has looped to the begining and we can exit
     last_main_timestamp = -1
+    last_main_frame_time = time.monotonic()
+    last_progress_time = time.monotonic()
+    last_health_log_time = time.monotonic()
+    consecutive_main_empty_reads = 0
+    consecutive_extra_empty_reads = 0
+    last_main_reconnect_time = 0.0
+    last_extra_reconnect_time = 0.0
+    extra_camera_reconnect_attempts = 0
+
     while True:
+        now = time.monotonic()
+        if now - last_health_log_time >= HEALTH_LOG_INTERVAL_SECONDS:
+            cloudlog.info(
+                f"health frame_id={last_vipc_frame_id} seg={previous_segment_num} "
+                f"main_empty_reads={consecutive_main_empty_reads} extra_empty_reads={consecutive_extra_empty_reads} "
+                f"seconds_since_main_frame={now - last_main_frame_time:.2f} "
+                f"seconds_since_progress={now - last_progress_time:.2f}")
+            last_health_log_time = now
+
+        if now - last_progress_time > EXTRACT_STALL_TIMEOUT_SECONDS:
+            raise RuntimeError(
+                f"Extraction stalled for {EXTRACT_STALL_TIMEOUT_SECONDS}s without frame progress")
+
         # Keep receiving frames until we are at least 1 frame ahead of previous extra frame
 
         while meta_main.timestamp_sof < meta_extra.timestamp_sof + 25000000:
             buf_main = vipc_client_main.recv()
-            meta_main = FrameMeta(vipc_client_main)
             if buf_main is None:
+                consecutive_main_empty_reads += 1
                 break
+
+            meta_main = FrameMeta(vipc_client_main)
+            consecutive_main_empty_reads = 0
+            last_main_frame_time = time.monotonic()
 
             if last_main_timestamp != -1 and meta_main.timestamp_sof < last_main_timestamp:
                 print(f"Replay looped (time went backwards). Saving last logs and exiting...")
 
-                if previous_segment_num >= 0:
-                    save_logs_as_json(logs, output_path / f"{previous_segment_num}")
+                flush_segment_logs(logs, previous_segment_num)
                 sys.exit(0)
 
             last_main_timestamp = meta_main.timestamp_sof
 
         if buf_main is None:
+            no_main_frame_for = time.monotonic() - last_main_frame_time
+            if no_main_frame_for > NO_FRAME_RECONNECT_SECONDS:
+                now = time.monotonic()
+                if now - last_main_reconnect_time > RECONNECT_COOLDOWN_SECONDS:
+                    cloudlog.warning(
+                        f"No main camera frames for {no_main_frame_for:.2f}s, reconnecting VisionIPC clients")
+                    vipc_client_main, vipc_client_extra, use_extra_client, main_wide_camera = connect_vision_clients(cl_context)
+                    meta_main = FrameMeta()
+                    meta_extra = FrameMeta()
+                    consecutive_main_empty_reads = 0
+                    consecutive_extra_empty_reads = 0
+                    last_main_frame_time = time.monotonic()
+                    last_main_reconnect_time = now
+                    extra_camera_reconnect_attempts = 0
+
             cloudlog.debug("vipc_client_main no frame")
             continue
 
@@ -334,12 +402,45 @@ def main(output_path: Path, demo=False):
             # Keep receiving extra frames until frame id matches main camera
             while True:
                 buf_extra = vipc_client_extra.recv()
-                meta_extra = FrameMeta(vipc_client_extra)
-                if buf_extra is None or meta_main.timestamp_sof < meta_extra.timestamp_sof + 25000000:
+                if buf_extra is None:
+                    consecutive_extra_empty_reads += 1
                     break
+                meta_extra = FrameMeta(vipc_client_extra)
+                consecutive_extra_empty_reads = 0
+                if meta_main.timestamp_sof < meta_extra.timestamp_sof + 25000000:
+                    break
+
             if buf_extra is None:
+                no_main_frame_for = time.monotonic() - last_main_frame_time
+                if no_main_frame_for > NO_FRAME_RECONNECT_SECONDS:
+                    now = time.monotonic()
+                    if now - last_extra_reconnect_time > RECONNECT_COOLDOWN_SECONDS:
+                        extra_camera_reconnect_attempts += 1
+                        if extra_camera_reconnect_attempts > MAX_EXTRA_CAMERA_RECONNECT_ATTEMPTS:
+                            cloudlog.warning(
+                                f"Extra camera unavailable for {no_main_frame_for:.2f}s after {extra_camera_reconnect_attempts} reconnect attempts; falling back to main camera only")
+                            use_extra_client = False
+                            extra_camera_reconnect_attempts = 0
+                        else:
+                            cloudlog.warning(
+                                f"No extra camera frames while main stream active for {no_main_frame_for:.2f}s, reconnecting VisionIPC clients (attempt {extra_camera_reconnect_attempts}/{MAX_EXTRA_CAMERA_RECONNECT_ATTEMPTS})")
+                            vipc_client_main, vipc_client_extra, use_extra_client, main_wide_camera = connect_vision_clients(cl_context)
+                            meta_main = FrameMeta()
+                            meta_extra = FrameMeta()
+                            consecutive_main_empty_reads = 0
+                            consecutive_extra_empty_reads = 0
+                            last_main_frame_time = time.monotonic()
+                            last_extra_reconnect_time = now
+                    else:
+                        skip_secs = RECONNECT_COOLDOWN_SECONDS - (now - last_extra_reconnect_time)
+                        cloudlog.debug(f"extra camera reconnect on cooldown, trying again in {skip_secs:.2f}s")
+
                 cloudlog.debug("vipc_client_extra no frame")
-                continue
+                if not use_extra_client:
+                    buf_extra = buf_main
+                    meta_extra = meta_main
+                else:
+                    continue
             if abs(meta_main.timestamp_sof - meta_extra.timestamp_sof) > 10000000:
                 cloudlog.error(f"frames out of sync! main: {meta_main.frame_id} ({meta_main.timestamp_sof / 1e9:.5f}),\
                          extra: {meta_extra.frame_id} ({meta_extra.timestamp_sof / 1e9:.5f})")
@@ -417,6 +518,7 @@ def main(output_path: Path, demo=False):
             pm.send('drivingModelData', drivingdata_send)
             pm.send('cameraOdometry', posenet_send)
         last_vipc_frame_id = meta_main.frame_id
+        last_progress_time = time.monotonic()
 
         # print(sm["roadEncodeIdx"])
 
@@ -431,7 +533,7 @@ def main(output_path: Path, demo=False):
 
             # if the previous segment is not -1, then we need to save our log file to the output:
             if previous_segment_num >= 0:
-                save_logs_as_json(logs, output_path / f"{previous_segment_num}")
+                flush_segment_logs(logs, previous_segment_num)
 
             previous_segment_num = current_segment_num
 
@@ -445,16 +547,24 @@ def main(output_path: Path, demo=False):
             "model_output": to_json_compatible(model_output) if model_output is not None else None,
         })
 
-        recover_img(
-            buf=buf_main,
-            saved_path=current_front_dir / f"{vipc_frame_id}.png"
-        )
+        try:
+            recover_img(
+                buf=buf_main,
+                saved_path=current_front_dir / f"{vipc_frame_id}.png"
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to write front frame image for segment={current_segment_num} frame={vipc_frame_id}") from exc
 
         if use_extra_client:
-            recover_img(
-                buf=buf_extra,
-                saved_path=current_front_wide_dir / f"{vipc_frame_id}.png"
-            )
+            try:
+                recover_img(
+                    buf=buf_extra,
+                    saved_path=current_front_wide_dir / f"{vipc_frame_id}.png"
+                )
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Failed to write wide frame image for segment={current_segment_num} frame={vipc_frame_id}") from exc
 
         # logs['vehicle_states'].append(sm["carState"].to_dict())
         # logs['carControls'].append(sm["carControl"].to_dict())

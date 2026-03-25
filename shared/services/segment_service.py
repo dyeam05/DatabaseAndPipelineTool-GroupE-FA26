@@ -1,3 +1,4 @@
+from datetime import datetime
 from db.models.segment import Segment, SegmentStatus 
 from repositories.segment_repository import SegmentRepository
 from services.errors import SegmentAlreadyExistsError, SegmentNotFoundError
@@ -21,8 +22,8 @@ class SegmentService:
         self,
         route_id: str,
         segment_id: int,
-        start_time,
-        end_time,
+        start_time: datetime,
+        end_time: datetime,
         status: SegmentStatus = SegmentStatus.DOWNLOAD_QUEUE, # default status when creating a segment
     ) -> Segment:
         # Check if a segment with the same route_id and segment_id  alive

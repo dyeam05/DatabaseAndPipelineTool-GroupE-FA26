@@ -1,3 +1,4 @@
+from db.enums import CameraType
 from db.models.frame import Frame
 from repositories.frame_repository import FrameRepository
 from services.errors import FrameNotFoundError
@@ -24,7 +25,7 @@ class FrameService:
         route_id: str,
         segment_id: int,
         frame_id: int,
-        camera,
+        camera: CameraType,
     ) -> Frame:
         return await self._frame_repository.create(
             route_id=route_id,
