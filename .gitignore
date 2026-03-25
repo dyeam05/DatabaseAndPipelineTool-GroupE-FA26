@@ -19,3 +19,4 @@ data/
 **/.pytest_cache/
 
 !openpilot_service/lib/openpilot/
+!shared/minio/

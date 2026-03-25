@@ -39,7 +39,8 @@ This repository contains code for the data pipeline for the [Comma AI](https://c
 1. Start the databases with ```docker compose up --build -d postgres minio```.
 1. Create a database migration with ```docker compose run --build --rm alembic_worker alembic -c /app/alembic_worker/alembic.ini revision --autogenerate -m "first migration"```
 1. Push the migration with ```docker compose up --build alembic_worker```
-1. Start the backend and open pilot download worker with ```docker compose up --build backend open_pilot_download_worker```.
+1. Ensure minio bucket is created with ```docker compose up --build minio_initializer```
+1. Start the backend and open pilot download worker with ```docker compose up --build backend open_pilot_download_worker open_pilot_upload_worker```.
 
 ## Contributing
 
@@ -80,3 +81,7 @@ Testing code is inside the `./tests/` folder. See `./tests/README.md` for more i
 ## TODO
 
 Check out the [course Kanban board](https://cscapstone.cs.ou.edu/pages/account/) for TODOs.
+
+## Important link
+
+- [Comma Connect](https://connect.comma.ai/)

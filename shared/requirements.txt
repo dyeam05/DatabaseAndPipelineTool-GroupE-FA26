@@ -1,0 +1,6 @@
+minio
+sqlalchemy
+psycopg[binary]
+alembic
+httpx
+pydantic

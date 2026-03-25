@@ -1,4 +1,5 @@
 from uuid import UUID
+import uuid
 
 from db.models.artifact import Artifact, ArtifactKind
 from repositories.artifact_repository import ArtifactRepository
@@ -19,17 +20,12 @@ class ArtifactService:
 
     async def create_artifact(
         self,
-        artifact_id: UUID,
         bucket: str,
         object_key: str,
         kind: ArtifactKind,
     ) -> Artifact:
-        existing_artifact = await self._artifact_repository.get_by_id(artifact_id) # check if artifact with the same id already exists
-        if existing_artifact is not None:
-            raise ArtifactAlreadyExistsError(artifact_id)
-
         return await self._artifact_repository.create(
-            artifact_id=artifact_id,
+            artifact_id=uuid.uuid4(),
             bucket=bucket,
             object_key=object_key,
             kind=kind,

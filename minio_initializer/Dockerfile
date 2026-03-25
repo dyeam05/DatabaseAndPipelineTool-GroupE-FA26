@@ -1,10 +1,15 @@
+
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/shared
 
 WORKDIR /app
+
+# system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	build-essential \
+	curl \
+	&& rm -rf /var/lib/apt/lists/*
 
 # Install pip
 RUN pip install --no-cache-dir --upgrade pip
@@ -13,9 +18,10 @@ RUN pip install --no-cache-dir --upgrade pip
 COPY shared/requirements.txt /app/shared_requirements.txt
 RUN pip install --no-cache-dir -r /app/shared_requirements.txt
 
-# Copy over code files
-COPY alembic_worker/alembic.ini /app/alembic_worker/alembic.ini
-COPY alembic_worker/alembic /app/alembic_worker/alembic
+# Copy application code
 COPY shared /app/shared
+COPY minio_initializer/src /app/src
 
-CMD ["alembic", "-c", "/app/alembic_worker/alembic.ini", "upgrade", "head"]
+WORKDIR /app/src
+
+CMD ["python", "main.py"]

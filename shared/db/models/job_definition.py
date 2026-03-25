@@ -41,4 +41,4 @@ class JobDefinition(Base):
     )
 
     def __repr__(self):
-        return f"{self.job_def_id}, {self.type}, {self.name}"
+        return f"JobDefinition({self.job_def_id}, {self.type}, {self.name})"

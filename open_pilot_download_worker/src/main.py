@@ -8,16 +8,23 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from db.enums import SegmentStatus
 from db.models.route import Route
+from db.models.segment import Segment
 from db.url import build_database_url
 from repositories.route_repository import RouteRepository
+from repositories.segment_repository import SegmentRepository
 from services.errors import RouteNotFoundError
+from services.open_pilot_route_service import OpenPilotRouteService
 from services.route_service import RouteService, RouteStatus
+from services.segment_service import SegmentService
+from utilities.timing_utilities import convert_milliseconds_to_timestamp
 
 
 POLL_INTERVAL_SECONDS = 2.0
 OPENPILOT_DIR = Path("/app/openpilot")
 DATA_ROOT = Path("/app/data")
+ROUTE_PROCESS_TIMEOUT_SECONDS = float(os.getenv("ROUTE_PROCESS_TIMEOUT_SECONDS", "0"))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -148,105 +155,188 @@ async def _mark_stale_downloading_routes_as_failed(route_service: RouteService) 
         logger.warning("Marked stale route as failed on startup: route=%s", route.route_id)
 
 
-async def _process_route(
-    route: Route,
-    route_service: RouteService,
-    session: AsyncSession,
-) -> None:
-    output_dir = DATA_ROOT / uuid4().hex
-    output_dir.mkdir(parents=True, exist_ok=True)
-    logger.info("Picked route=%s output_dir=%s", route.route_id, output_dir)
+async def _extract_single_segment(segment_path: str, output_dir: Path) -> None:
+    """
+    Extract a single segment: orchestrate replay and extraction processes.
 
-    try:
-        logger.info("Setting status DOWNLOADING for route=%s", route.route_id)
-        await route_service.set_status(route.route_id, RouteStatus.DOWNLOADING)
-        await session.commit()
-        logger.info("Committed status DOWNLOADING for route=%s", route.route_id)
-    except RouteNotFoundError:
-        await session.rollback()
-        logger.warning("Route disappeared before processing start: route=%s", route.route_id)
-        return
-
+    Raises RuntimeError on timeout, replay early exit, or extraction failure.
+    """
     extraction_process: asyncio.subprocess.Process | None = None
     replay_process: asyncio.subprocess.Process | None = None
     extraction_stream_task: asyncio.Task[None] | None = None
     replay_stream_task: asyncio.Task[None] | None = None
     extraction_exit_code: int | None = None
+    extraction_wait_task: asyncio.Task[int] | None = None
+    replay_wait_task: asyncio.Task[int] | None = None
 
     try:
         extraction_process = await _start_extraction_process(output_dir)
         logger.info(
             "Started extraction for route=%s pid=%s",
-            route.route_id,
+            segment_path,
             extraction_process.pid,
         )
         extraction_stream_task = asyncio.create_task(
-            _stream_process_output(extraction_process, "extract", route.route_id)
+            _stream_process_output(extraction_process, "extract", segment_path)
         )
 
-        replay_process = await _start_replay_process(route.route_id)
+        replay_process = await _start_replay_process(segment_path)
         logger.info(
             "Started replay for route=%s pid=%s",
-            route.route_id,
+            segment_path,
             replay_process.pid,
         )
         replay_stream_task = asyncio.create_task(
-            _stream_process_output(replay_process, "replay", route.route_id)
+            _stream_process_output(replay_process, "replay", segment_path)
         )
 
-        extraction_exit_code = await extraction_process.wait()
+        extraction_wait_task = asyncio.create_task(extraction_process.wait())
+        replay_wait_task = asyncio.create_task(replay_process.wait())
+
+        route_start_time = asyncio.get_running_loop().time()
+        while True:
+            done, _ = await asyncio.wait(
+                {extraction_wait_task, replay_wait_task},
+                timeout=1.0,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if ROUTE_PROCESS_TIMEOUT_SECONDS > 0:
+                elapsed = asyncio.get_running_loop().time() - route_start_time
+                if elapsed > ROUTE_PROCESS_TIMEOUT_SECONDS:
+                    raise RuntimeError(
+                        f"route processing exceeded timeout ({ROUTE_PROCESS_TIMEOUT_SECONDS}s) "
+                        f"for route {segment_path}"
+                    )
+
+            if replay_wait_task in done and not extraction_wait_task.done():
+                replay_exit_code = replay_wait_task.result()
+                raise RuntimeError(
+                    f"replay exited early with code {replay_exit_code} "
+                    f"while extraction still running for route {segment_path}"
+                )
+
+            if extraction_wait_task in done:
+                extraction_exit_code = extraction_wait_task.result()
+                break
+
         logger.info(
             "Extraction exited for route=%s code=%s",
-            route.route_id,
+            segment_path,
             extraction_exit_code,
         )
         if extraction_exit_code != 0:
             raise RuntimeError(
                 f"extraction exited with code {extraction_exit_code} "
-                f"for route {route.route_id}"
+                f"for route {segment_path}"
             )
-
-        file_count, file_sample = _output_dir_snapshot(output_dir)
-        logger.info(
-            "Output snapshot before save route=%s dir=%s file_count=%s sample=%s",
-            route.route_id,
-            output_dir,
-            file_count,
-            file_sample,
-        )
-        logger.info("Saving file_path for route=%s path=%s", route.route_id, output_dir)
-        await route_service.set_file_path(route.route_id, str(output_dir))
-        logger.info("Setting status UPLOAD_QUEUE for route=%s", route.route_id)
-        await route_service.set_status(route.route_id, RouteStatus.UPLOAD_QUEUE)
-        await session.commit()
-        route_after_save = await route_service.get_route(route.route_id)
-        logger.info(
-            "Committed route update route=%s status=%s file_path=%s",
-            route.route_id,
-            route_after_save.status if route_after_save is not None else None,
-            route_after_save.file_path if route_after_save is not None else None,
-        )
-    except RouteNotFoundError:
-        await session.rollback()
-        logger.warning("Route missing during finalize: route=%s", route.route_id)
-    except Exception as exc:
-        logger.exception("Route failed route=%s error=%s", route.route_id, exc)
-        try:
-            logger.info("Setting status FAILED for route=%s", route.route_id)
-            await route_service.set_status(route.route_id, RouteStatus.FAILED)
-            await session.commit()
-            logger.info("Committed status FAILED for route=%s", route.route_id)
-        except RouteNotFoundError:
-            await session.rollback()
-            logger.warning("Route removed before FAILED update: route=%s", route.route_id)
     finally:
         await _force_stop_process(replay_process)
         await _force_stop_process(extraction_process)
+
+        if extraction_wait_task is not None and not extraction_wait_task.done():
+            extraction_wait_task.cancel()
+        if replay_wait_task is not None and not replay_wait_task.done():
+            replay_wait_task.cancel()
 
         if extraction_stream_task is not None:
             await extraction_stream_task
         if replay_stream_task is not None:
             await replay_stream_task
+
+
+async def create_segments_for_route(route: Route, segment_service: SegmentService) -> list[Segment]:
+    open_pilot_route_service = OpenPilotRouteService()
+    route_metadata = await open_pilot_route_service.get_route_metadata(route_name=route.route_id)
+
+    if not route_metadata:
+        raise ValueError(f"Could not get metadata for route {route}")
+
+    num_segments = len(route_metadata.segment_numbers)
+
+    segments: list[Segment] = []
+    for segment_index in range(num_segments):
+        segment = await segment_service.create_segment(
+            route_id=route.route_id,
+            segment_id=route_metadata.segment_numbers[segment_index],
+            start_time=convert_milliseconds_to_timestamp(route_metadata.segment_start_times[segment_index]),
+            end_time=convert_milliseconds_to_timestamp(route_metadata.segment_end_times[segment_index]),
+            status=SegmentStatus.DOWNLOAD_QUEUE
+        )
+        segments.append(segment)
+
+    return segments
+
+
+async def process_route(route_to_process: Route, route_service: RouteService, segment_service: SegmentService, session: AsyncSession):
+    logging.info(f"Processing route {route_to_process.route_id}")
+    await route_service.set_status(
+        route_id=route_to_process.route_id,
+        status=RouteStatus.DOWNLOADING
+    )
+    await session.commit()
+
+    try:
+        segments_to_download: list[Segment] = await create_segments_for_route(
+            route_to_process,
+            segment_service
+        )
+        await session.commit()
+        logging.info(f"Found {len(segments_to_download)} segments for {route_to_process.route_id}")
+
+        unique_path = str(uuid4())
+        data_dir = DATA_ROOT / unique_path
+        await route_service.set_file_path(
+            route_id=route_to_process.route_id,
+            file_path=unique_path
+        )
+        await session.commit()
+
+        for segment in segments_to_download:
+            await segment_service.set_status(
+                route_id=segment.route_id,
+                segment_id=segment.segment_id,
+                status=SegmentStatus.DOWNLOADING
+            )
+            await session.commit()
+
+            try:
+                await _extract_single_segment(
+                    # should look like this: "db478799b6f9f210/00000040--8afe968813/1"
+                    segment_path=f"{route_to_process.route_id}/{segment.segment_id}",
+                    output_dir=data_dir / str(segment.segment_id)
+                )
+                await segment_service.set_status(
+                    route_id=segment.route_id,
+                    segment_id=segment.segment_id,
+                    status=SegmentStatus.UPLOAD_QUEUE
+                )
+                await session.commit()
+                logging.info(f"Successfully uploaded segment {segment}")
+            except Exception as e:
+                logging.error(f"Failed to download segment {segment}... skipping")
+                await segment_service.set_status(
+                    route_id=segment.route_id,
+                    segment_id=segment.segment_id,
+                    status=SegmentStatus.FAILED
+                )
+                await session.commit()
+
+    except Exception as e:
+        await route_service.set_status(
+            route_id=route_to_process.route_id,
+            status=RouteStatus.FAILED
+        )
+        await session.commit()
+        logging.error(f"Could not process route {route_to_process}", e)
+
+    logging.info(f"Rout processed {route_to_process.route_id}")
+    await route_service.set_status(
+        route_id=route_to_process.route_id,
+        status=RouteStatus.UPLOAD_QUEUE
+    )
+    await session.commit()
+    
 
 
 async def main():
@@ -262,6 +352,8 @@ async def main():
         async with SessionLocal() as session:
             route_repository = RouteRepository(session=session)
             route_service = RouteService(route_repository=route_repository)
+            segment_repository = SegmentRepository(session=session)
+            segment_service = SegmentService(segment_repository=segment_repository)
 
             await _mark_stale_downloading_routes_as_failed(route_service)
             await session.commit()
@@ -275,7 +367,12 @@ async def main():
                     await asyncio.sleep(POLL_INTERVAL_SECONDS)
                     continue
 
-                await _process_route(route_to_process, route_service, session)
+                await process_route(
+                    route_to_process=route_to_process,
+                    route_service=route_service,
+                    segment_service=segment_service,
+                    session=session
+                )
 
             logger.info("Stop event received, shutting down worker")
     finally:
