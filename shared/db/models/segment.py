@@ -49,4 +49,4 @@ class Segment(Base):
     )
 
     def __repr__(self):
-        return f"{self.route_id}, {self.segment_id}, {self.status}"
+        return f"Segment({self.route_id}, {self.segment_id}, {self.status})"

@@ -32,4 +32,4 @@ class JobFrameArtifact(Base):
     )
 
     def __repr__(self):
-        return f"{self.job_run_id}, {self.frame_pk}, {self.artifact_id}, {self.role}"
+        return f"JobFrameArtifact({self.job_run_id}, {self.frame_pk}, {self.artifact_id}, {self.role})"
