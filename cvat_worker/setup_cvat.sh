@@ -5,7 +5,7 @@ set -e
 
 # Verify we're at the repo root
 if [ ! -f "docker-compose.yaml" ]; then
-    echo "Error: run this script from the repo root, not from inside cvat_worker/"
+    echo "Error: run this script from the repo root"
     exit 1
 fi
 
@@ -16,21 +16,17 @@ if [ ! -f ".env" ]; then
 fi
 set -a; source .env; set +a
 
-if [ -z "${CVAT_USERNAME}" ] || [ -z "${CVAT_PASSWORD}" ]; then
-    echo "Error: CVAT_USERNAME and CVAT_PASSWORD must be set in .env"
+if [ -z "${CVAT_EMAIL}" ] || [ -z "${CVAT_PASSWORD}" ]; then
+    echo "Error: CVAT_EMAIL and CVAT_PASSWORD must be set in .env"
     exit 1
 fi
+
+CVAT_USERNAME="${CVAT_EMAIL%%@*}"
 
 # Clone CVAT once
 if [ ! -d "cvat" ]; then
     echo "Cloning CVAT..."
     git clone https://github.com/cvat-ai/cvat
-fi
-
-# Create shared image directory that CVAT will mount
-if [ ! -d "cvat_share" ]; then
-    echo "Creating cvat_share directory..."
-    mkdir cvat_share
 fi
 
 # Create the external Docker network that connects CVAT to cvat_worker
@@ -47,9 +43,9 @@ docker compose \
 
 # Wait for Django to be ready (checks DB connection too)
 echo "Waiting for CVAT to be ready..."
-until docker exec cvat_server python manage.py check --database default > /dev/null 2>&1; do
+until [ "$(docker exec cvat_server python manage.py showmigrations --plan 2>/dev/null | grep -c '^\[ \]')" = "0" ]; do
     printf "."
-    sleep 5
+    sleep 3
 done
 
 # Create superuser using credentials from .env
@@ -58,6 +54,7 @@ done
 echo "Creating CVAT superuser..."
 docker exec \
     -e DJANGO_SUPERUSER_USERNAME="${CVAT_USERNAME}" \
+    -e DJANGO_SUPERUSER_EMAIL="${CVAT_EMAIL}" \
     -e DJANGO_SUPERUSER_PASSWORD="${CVAT_PASSWORD}" \
     cvat_server \
     python manage.py createsuperuser --no-input 2>/dev/null \

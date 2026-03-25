@@ -15,5 +15,5 @@ MINIO_ROOT_PASSWORD=fill this out
 COMMA_JWT=fill this out
 
 # CVAT
-CVAT_USERNAME=fill this out
+CVAT_EMAIL=fill this out
 CVAT_PASSWORD=fill this out
