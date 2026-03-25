@@ -25,11 +25,11 @@ class Route(Base):
     )
     start_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        nullable=False,
+        nullable=True,
     )
     end_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        nullable=False,
+        nullable=True,
     )
     num_segments_expected: Mapped[int | None] = mapped_column(
         Integer,
@@ -37,7 +37,7 @@ class Route(Base):
     )
     status: Mapped[RouteStatus] = mapped_column(
         route_status_enum,
-        nullable=False,
+        nullable=True,
     )
     meta: Mapped[dict | None] = mapped_column(
         JSON,
@@ -46,7 +46,7 @@ class Route(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False,
+        nullable=True,
     )
     def __repr__(self):
         return f"{self.route_id}, {self.file_path}, {self.status}"
