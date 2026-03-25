@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 from cvat_sdk import make_client
 from cvat_sdk.core.proxies.tasks import ResourceType
 
-from scripts.create_tasks import create_tasks_from_folder
-from scripts.export_annotations import export_task_coco
-from scripts.auto_annotate import annotate_task
+from cvat_share.create_tasks import create_tasks_from_folder
+from shared.cvat_client.export_annotations import export_task_coco
+from shared.cvat_client.auto_annotate import annotate_task
 
 load_dotenv()
 
@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 CVAT_HOST = os.environ.get("CVAT_HOST", "http://localhost:8080")
-CVAT_USER = os.environ["CVAT_USER"]
-CVAT_PASS = os.environ["CVAT_PASS"]
+CVAT_EMAIL = os.environ["CVAT_EMAIL"]
+CVAT_PASSWORD = os.environ["CVAT_PASSWORD"]
 
 # Docker-mounted share folder on the host machine
 CVAT_SHARE_ROOT = os.environ.get("CVAT_SHARE_ROOT", "share")
@@ -91,7 +91,7 @@ class PipelineResult:
 # -----------------------------------------------------------------------------
 
 def ensure_env() -> None:
-    missing = [k for k in ["CVAT_USER", "CVAT_PASS"] if not os.environ.get(k)]
+    missing = [k for k in ["CVAT_EMAIL", "CVAT_PASSWORD"] if not os.environ.get(k)]
     if missing:
         raise RuntimeError(f"Missing required environment variables: {missing}")
 
@@ -148,7 +148,7 @@ def check_cvat_connection() -> None:
     logger.info("Checking CVAT connectivity/authentication at %s", CVAT_HOST)
 
     try:
-        with make_client(CVAT_HOST, credentials=(CVAT_USER, CVAT_PASS)) as client:
+        with make_client(CVAT_HOST, credentials=(CVAT_EMAIL, CVAT_PASSWORD)) as client:
             # A simple authenticated operation
             _ = client.tasks.list(return_json=False)
     except Exception as e:

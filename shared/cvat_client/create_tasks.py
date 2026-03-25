@@ -9,8 +9,8 @@ load_dotenv()
 # UPLOAD A DATASET, creates tasks in batches of 100
 
 CVAT_HOST = os.environ.get("CVAT_HOST", "http://localhost:8080")
-CVAT_USER = os.environ["CVAT_USER"]
-CVAT_PASS = os.environ["CVAT_PASS"]
+CVAT_EMAIL = os.environ["CVAT_EMAIL"]
+CVAT_PASSWORD = os.environ["CVAT_PASSWORD"]
 
 BATCH_SIZE = 100
 
@@ -42,7 +42,7 @@ def create_task(task_name: str,
         raise ValueError("file_names must not be empty")
     
     # create a single cvat task for # of images
-    with make_client(CVAT_HOST, credentials=(CVAT_USER, CVAT_PASS)) as client:
+    with make_client(CVAT_HOST, credentials=(CVAT_EMAIL, CVAT_PASSWORD)) as client:
         task_spec = TaskWriteRequest(
             name=task_name,
             labels=AV_LABEL_REQUESTS,
@@ -61,10 +61,10 @@ def create_task(task_name: str,
 
 
 
-def create_tasks_from_folder(local_image_dir: str = "raw_images", 
-                             task_title: str = "av_dataset", 
+def create_tasks_from_folder(local_image_dir: str = "raw_images",
+                             task_title: str = "av_dataset",
                              resource_type: ResourceType = ResourceType.SHARE,
-                             share_subdir: str = None) -> list[int]:
+                             share_subdir: str | None = None) -> list[int]:
     # upload all images in a dir to a CVAT task in batches
     # one task per batch
 
@@ -112,4 +112,4 @@ def create_tasks_from_folder(local_image_dir: str = "raw_images",
 
 
 if __name__ == "__main__":
-    create_tasks_from_folder("raw_images", "av_dataset")
+    create_tasks_from_folder("cvat_share/images", "av_dataset", share_subdir="images")

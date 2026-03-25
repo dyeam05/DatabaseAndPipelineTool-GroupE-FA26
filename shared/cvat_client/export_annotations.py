@@ -8,8 +8,8 @@ import zipfile
 load_dotenv()
 
 CVAT_HOST = os.environ.get("CVAT_HOST", "http://localhost:8080")
-CVAT_USER = os.environ["CVAT_USER"]
-CVAT_PASS = os.environ["CVAT_PASS"]
+CVAT_EMAIL = os.environ["CVAT_EMAIL"]
+CVAT_PASSWORD = os.environ["CVAT_PASSWORD"]
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "annotations")
 COCO_FORMAT = "COCO 1.0"
@@ -23,7 +23,7 @@ def export_task_coco(task_id: int, output_dir: str = OUTPUT_DIR) -> str:
     out_path = os.path.join(output_dir, f"task_{task_id}.json")
 
     # create a cvat client to use proxys
-    with make_client(CVAT_HOST, credentials=(CVAT_USER, CVAT_PASS)) as client:
+    with make_client(CVAT_HOST, credentials=(CVAT_EMAIL, CVAT_PASSWORD)) as client:
         task = client.tasks.retrieve(task_id)
         # model_proxy.py in cvat repo
         task.export_dataset(
@@ -47,7 +47,7 @@ def export_task_coco(task_id: int, output_dir: str = OUTPUT_DIR) -> str:
 
 # export every task currently in cvat
 def export_all_tasks(output_dir: str = OUTPUT_DIR):
-    with make_client(CVAT_HOST, credentials=(CVAT_USER, CVAT_PASS)) as client:
+    with make_client(CVAT_HOST, credentials=(CVAT_EMAIL, CVAT_PASSWORD)) as client:
         tasks = client.tasks.list()
 
 
@@ -56,4 +56,4 @@ def export_all_tasks(output_dir: str = OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    export_task_coco(6, "annotations")
+    export_task_coco(1, "annotations")

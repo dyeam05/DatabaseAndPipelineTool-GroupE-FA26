@@ -14,9 +14,9 @@ import cvat_sdk.auto_annotation as cvataa
 load_dotenv()
 
 # Constants
-CVAT_HOST = "http://localhost:8080"
-CVAT_USER = os.environ["CVAT_USER"]
-CVAT_PASS = os.environ["CVAT_PASS"]
+CVAT_HOST = os.environ.get("CVAT_HOST", "http://localhost:8080")
+CVAT_EMAIL = os.environ["CVAT_EMAIL"]
+CVAT_PASSWORD = os.environ["CVAT_PASSWORD"]
 MODEL = "PekingU/rtdetr_v2_r50vd"
 
 # these labels are already trained in the RTDetr
@@ -84,17 +84,14 @@ class AVDetectionFunction():
 
 # reusable function for pipeline.py to call, conf_threshold is included for potential future use but idk if we will need it
 def annotate_task(task_id: int, conf_threshold: float = 0.5) -> None:
-    with make_client(CVAT_HOST, credentials=(CVAT_USER, CVAT_PASS)) as client:
+    with make_client(CVAT_HOST, credentials=(CVAT_EMAIL, CVAT_PASSWORD)) as client:
         func = AVDetectionFunction()
         cvataa.annotate_task(client, task_id, func)
 
 if __name__ == '__main__':
-    model = AutoModelForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r50vd")
-    print(model.config.id2label)
-
     # log into the CVAT server
-    with make_client(CVAT_HOST, credentials=(CVAT_USER, CVAT_PASS)) as client:
+    with make_client(CVAT_HOST, credentials=(CVAT_EMAIL, CVAT_PASSWORD)) as client:
         func = AVDetectionFunction()
 
         # annotate task 12345 using the function
-        cvataa.annotate_task(client, 6, func) # client, task_id, function
+        cvataa.annotate_task(client, 1, func) # client, task_id, function
