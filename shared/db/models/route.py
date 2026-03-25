@@ -45,7 +45,6 @@ class Route(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=True,
     )
     def __repr__(self):
         return f"Route({self.route_id}, {self.file_path}, {self.status})"
