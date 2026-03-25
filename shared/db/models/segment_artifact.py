@@ -38,4 +38,4 @@ class SegmentArtifact(Base):
     )
 
     def __repr__(self):
-        return f"{self.route_id}, {self.segment_id}, {self.artifact_id}, {self.role}"
+        return f"SegmentArtifact({self.route_id}, {self.segment_id}, {self.artifact_id}, {self.role})"

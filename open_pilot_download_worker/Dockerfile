@@ -1,5 +1,4 @@
 FROM ubuntu:24.04
-ARG JWT
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
@@ -17,18 +16,19 @@ COPY open_pilot_download_worker/scripts/setup-openpilot.sh /app/scripts/setup-op
 COPY open_pilot_download_worker/files/cereal_service_with_gps_kalman.py /app/files/cereal_service_with_gps_kalman.py
 
 RUN chmod +x /app/scripts/setup-openpilot.sh \
-&& /app/scripts/setup-openpilot.sh
+    && /app/scripts/setup-openpilot.sh
 
 # Run jwt script
+ARG JWT
 COPY open_pilot_download_worker/scripts/register_jwt_docker.sh /app/scripts/register_jwt_docker.sh
 RUN chmod +x /app/scripts/register_jwt_docker.sh \
-&& /app/scripts/register_jwt_docker.sh "${JWT}"
+    && /app/scripts/register_jwt_docker.sh "${JWT}"
 
 # Run file copy script
 COPY open_pilot_download_worker/files /app/files/
 COPY open_pilot_download_worker/scripts/copy_over_post_compile_files.sh /app/scripts/copy_over_post_compile_files.sh
 RUN chmod +x /app/scripts/copy_over_post_compile_files.sh \
-&& /app/scripts/copy_over_post_compile_files.sh
+    && /app/scripts/copy_over_post_compile_files.sh
 
 # instal req
 COPY open_pilot_download_worker/scripts/install_requirements.sh /app/scripts/install_requirements.sh

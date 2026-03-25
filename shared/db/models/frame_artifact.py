@@ -26,4 +26,4 @@ class FrameArtifact(Base):
     )
 
     def __repr__(self):
-        return f"{self.frame_pk}, {self.artifact_id}, {self.role}"
+        return f"FrameArtifact({self.frame_pk}, {self.artifact_id}, {self.role})"

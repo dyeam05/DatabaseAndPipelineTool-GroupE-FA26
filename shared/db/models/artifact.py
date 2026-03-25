@@ -42,4 +42,4 @@ class Artifact(Base):
     )
 
     def __repr__(self):
-        return f"{self.artifact_id}, {self.bucket}, {self.object_key}, {self.kind}"
+        return f"Artifact({self.artifact_id}, {self.bucket}, {self.object_key}, {self.kind})"
