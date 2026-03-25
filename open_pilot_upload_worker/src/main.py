@@ -39,15 +39,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def _mark_stale_uploading_routes_as_failed(route_service: RouteService):
-    stale_routes = await route_service.get_routes_by_status(status=RouteStatus.UPLOADING)
-    if not stale_routes:
+async def _mark_stale_uploading_segments_as_failed(segment_service: SegmentService):
+    logging.info("Checking for stale segments")
+    stale_segments = await segment_service.get_segments_by_status(status=SegmentStatus.UPLOADING)
+    if not stale_segments:
         logging.info("No stale routes detected on startup")
         return
 
-    for route in stale_routes:
-        await route_service.set_status(route_id=route.route_id, status=RouteStatus.FAILED)
-        logger.warning(f"Marked stale route as failed on startupe: route={route.route_id}")
+    for segment in stale_segments:
+        await segment_service.set_status(
+            route_id=segment.route_id,
+            segment_id=segment.segment_id,
+            status=SegmentStatus.FAILED
+        )
+        logger.warning(f"Marked stale segment as failed on startup: {segment}")
+
 
 
 def get_list_of_segment_dirs(route_data_path: Path):
@@ -71,30 +77,18 @@ def get_list_of_segment_dirs(route_data_path: Path):
 
     return segment_dirs
 
-def get_segment_camera_views(segment_dir: SegmentDir) -> list[str]:
-    camera_views = [subdirectory.name for subdirectory in get_subdirectories(segment_dir.path)]
+def get_segment_camera_views(segment_path: Path) -> list[str]:
+    camera_views = [subdirectory.name for subdirectory in get_subdirectories(segment_path)]
     return camera_views
 
 
-async def upload_segment(route: Route, segment_dir: SegmentDir, segment_service: SegmentService, frame_uploader_service: FrameUploaderService, session: AsyncSession):
-    # TODO: Fix this later
-    segment_start_time = datetime.now()
-    segment_end_time = datetime.now()
-
-    segment = await segment_service.create_segment(
-        route_id=route.route_id,
-        segment_id=segment_dir.segment_num,
-        start_time=segment_start_time,
-        end_time=segment_end_time,
-        status=SegmentStatus.UPLOADING
-    )
-    await session.commit()
-
-    # upload images
+async def upload_segment(segment: Segment, segment_path: Path, segment_service: SegmentService, frame_uploader_service: FrameUploaderService, session: AsyncSession):
+    logging.info(f"Uploading segment {segment}")
     minio_service = MinioService()
-    for camera_view_folder_name in get_segment_camera_views(segment_dir=segment_dir):
+
+    for camera_view_folder_name in get_segment_camera_views(segment_path=segment_path):
         camera_view = folder_name_to_camera_type(folder_name=camera_view_folder_name)
-        for image_path in get_pngs_in_directory(dir=segment_dir.path / camera_view_folder_name):
+        for image_path in get_pngs_in_directory(dir=segment_path / camera_view_folder_name):
             frame_number = int(image_path.name.split(".")[0])
             await frame_uploader_service.create_frame(
                 segment=segment,
@@ -102,46 +96,94 @@ async def upload_segment(route: Route, segment_dir: SegmentDir, segment_service:
                 frame_number=frame_number,
                 frame_path=image_path
             )
-            
+            await session.commit()
+
     # upload logs
-    log_path = segment_dir.path / "logs.json"
+    log_path = segment_path / "logs.json"
     write_result = minio_service.put_segment_log(
         segment=segment,
         log_path=log_path
     )
 
     await segment_service.set_status(route_id=segment.route_id, segment_id=segment.segment_id, status=SegmentStatus.UPLOADED)
-
-
-
-async def _process_route(route: Route, route_service: RouteService, segment_service: SegmentService, frame_uploader_service: FrameUploaderService, session: AsyncSession):
-    await route_service.set_status(route_id=route.route_id, status=RouteStatus.UPLOADING)
     await session.commit()
-
-    if not route.file_path:
-        await route_service.set_status(route_id=route.route_id, status=RouteStatus.FAILED)
-        await session.commit()
-        raise ValueError(f"Route {route.route_id} has no file_path")
-
-    data_path = DATA_ROOT / route.file_path
-    segment_dirs = get_list_of_segment_dirs(data_path)
+    logging.info(f"Uploaded segment {segment}")
 
 
-    for segment in segment_dirs:
-        logging.info(f"Uploading segment")
-        await upload_segment(
-            route=route, 
-            segment_dir=segment, 
-            segment_service=segment_service, 
-            session=session,
-            frame_uploader_service=frame_uploader_service
-        )
 
-    logging.info("Deleting Data Files")
-    shutil.rmtree(data_path)
+async def _process_segment(segment: Segment, route_service: RouteService, segment_service: SegmentService, frame_uploader_service: FrameUploaderService, session: AsyncSession):
 
-    await route_service.set_status(route_id=route.route_id, status=RouteStatus.UPLOADED)
-    await session.commit()
+    logging.info(f"Processing segment {segment}")
+    # We set the route status to uploading as soon as we start uploading any segments
+    await route_service.set_status(route_id=segment.route_id, status=RouteStatus.UPLOADING)
+    await segment_service.set_status(
+        route_id=segment.route_id,
+        segment_id=segment.segment_id,
+        status=SegmentStatus.UPLOADING
+    )
+
+    try:
+        route = await route_service.get_route(route_id=segment.route_id)
+        if not route:
+            raise ValueError(f"Could not find route with id {segment.route_id} for segment {segment}")
+        if not route.file_path:
+            await route_service.set_status(route_id=route.route_id, status=RouteStatus.FAILED)
+            await session.commit()
+            raise ValueError(f"Route {route.route_id} has no file_path")
+        try :
+            segment_path = DATA_ROOT / route.file_path / str(segment.segment_id)
+            await upload_segment(
+                segment=segment,
+                segment_path=segment_path,
+                segment_service=segment_service,
+                frame_uploader_service=frame_uploader_service,
+                session=session
+            )
+
+            logging.info("Deleting Data Files")
+            shutil.rmtree(segment_path)
+
+            await segment_service.set_status(
+                route_id=segment.route_id,
+                segment_id=segment.segment_id,
+                status=SegmentStatus.UPLOADED
+            )
+            await session.commit()
+            logging.info(f"Processed segment {segment}")
+        except Exception as e:
+            logging.error(f"Failed to process segment {segment}", e)
+            await segment_service.set_status(
+                route_id=segment.route_id,
+                segment_id=segment.segment_id,
+                status=SegmentStatus.FAILED
+            )
+            await session.commit()
+
+        if (await are_all_segments_for_route_processed(route=route, segment_service=segment_service)):
+            logging.info(f"All segments for {route} processed. Marking segment as uploaded")
+            await route_service.set_status(route_id=route.route_id, status=RouteStatus.UPLOADED)
+        else:
+            logging.info(f"All segments for {route} are not processed. Leaving status as 'uploading'")
+
+    except Exception as e:
+        logging.error(f"Error processing route", e)
+        await session.rollback()
+
+
+
+
+async def are_all_segments_for_route_processed(route: Route, segment_service: SegmentService):
+    """
+    Returns True when all the segments for a route are either UPLOADED or FAILED
+    """
+    segments_for_route = await segment_service.get_segments_by_route(route_id=route.route_id)
+
+    for segment in segments_for_route:
+        logging.info(f"status, {segment.status}")
+        if segment.status in [SegmentStatus.DOWNLOAD_QUEUE, SegmentStatus.DOWNLOADING, SegmentStatus.UPLOAD_QUEUE, SegmentStatus.UPLOADING]:
+            return False
+
+    return True
 
 
 async def main():
@@ -173,27 +215,25 @@ async def main():
                 artifact_service=artifact_service
             )
 
-            logging.info("Checking for stale routes.")
-            await _mark_stale_uploading_routes_as_failed(route_service)
+            await _mark_stale_uploading_segments_as_failed(segment_service=segment_service)
             await session.commit()
 
             while not stop_event.is_set():
-                route_to_process = await route_service.get_next_route_by_status(status=RouteStatus.UPLOAD_QUEUE)
+                segment_to_process = await segment_service.get_next_segment_by_status(status=SegmentStatus.UPLOAD_QUEUE)
 
-                if route_to_process is None:
-                    logging.info("No routes found...")
+                if segment_to_process is None:
+                    logging.info("No segments found...")
                     await session.rollback()
                     await asyncio.sleep(POLL_INTERVAL_SECONDS)
                     continue
 
-                logging.info(f"Route {route_to_process.route_id} found, processing...")
-                await _process_route(route=route_to_process, route_service=route_service, segment_service=segment_service, frame_uploader_service=frame_uploader_service, session=session)
-                logging.info(f"Route {route_to_process.route_id} uploaded!")
-
-
-
-
-
+                await _process_segment(
+                    segment=segment_to_process,
+                    route_service=route_service,
+                    segment_service=segment_service,
+                    frame_uploader_service=frame_uploader_service,
+                    session=session
+                )
     finally:
         await engine.dispose()
         logger.info("Worker shutdown complete")

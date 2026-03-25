@@ -1,7 +1,15 @@
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.segment import Segment,SegmentStatus 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 class SegmentRepository:
@@ -25,6 +33,17 @@ class SegmentRepository:
         )
         result = await self._session.scalars(stmt)
         return list(result.all())
+
+    async def get_by_route(self, route_id: str) -> list[Segment]:
+        stmt = (
+            select(Segment)
+            .where(Segment.route_id == route_id)
+        )
+        result = await self._session.scalars(stmt)
+        
+        return list(result.all())
+
+
 
     async def get_next_by_status(self, status: SegmentStatus) -> Segment | None:
         stmt = (

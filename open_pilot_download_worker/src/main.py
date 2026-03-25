@@ -284,7 +284,14 @@ async def process_route(route_to_process: Route, route_service: RouteService, se
         await session.commit()
         logging.info(f"Found {len(segments_to_download)} segments for {route_to_process.route_id}")
 
-        data_dir = DATA_ROOT / str(uuid4())
+        unique_path = str(uuid4())
+        data_dir = DATA_ROOT / unique_path
+        await route_service.set_file_path(
+            route_id=route_to_process.route_id,
+            file_path=unique_path
+        )
+        await session.commit()
+
         for segment in segments_to_download:
             await segment_service.set_status(
                 route_id=segment.route_id,
