@@ -19,6 +19,10 @@ class Route(Base):
         String,
         primary_key=True,
     )
+    file_path: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
     start_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -44,6 +48,5 @@ class Route(Base):
         server_default=func.now(),
         nullable=False,
     )
-
     def __repr__(self):
-        return f"{self.route_id}, {self.status}"
+        return f"{self.route_id}, {self.file_path}, {self.status}"
