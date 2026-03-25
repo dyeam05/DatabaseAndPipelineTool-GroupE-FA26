@@ -37,7 +37,6 @@ class Route(Base):
     )
     status: Mapped[RouteStatus] = mapped_column(
         route_status_enum,
-        nullable=True,
     )
     meta: Mapped[dict | None] = mapped_column(
         JSON,
