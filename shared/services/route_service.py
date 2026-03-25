@@ -1,6 +1,7 @@
 from db.models.route import Route, RouteStatus
 from repositories.route_repository import RouteRepository
 from services.errors import RouteAlreadyExistsError, RouteNotFoundError
+from utilities.open_pilot_utilities import is_valid_route_str
 
 
 class RouteService:
@@ -27,6 +28,9 @@ class RouteService:
         existing_route = await self._route_repository.get_by_id(route_id)
         if existing_route is not None:
             raise RouteAlreadyExistsError(route_id)
+
+        if not is_valid_route_str(route_id):
+            raise ValueError(f"'{route_id}' is not a valid route string")
 
         return await self._route_repository.create(
             route_id=route_id,

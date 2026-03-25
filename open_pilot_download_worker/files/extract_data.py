@@ -190,11 +190,11 @@ def main(output_path: Path, demo=False):
         with open(dir / "logs.json", "w", encoding="utf-8") as file:
             json.dump(frame_logs, file, allow_nan=False)
 
-    def flush_segment_logs(frame_logs: list[dict[str, Any]], segment_num: int):
-        if segment_num < 0 or len(frame_logs) == 0:
+    def flush_logs(frame_logs: list[dict[str, Any]], dir: Path):
+        if len(frame_logs) == 0:
             return
-        segment_dir = output_path / f"{segment_num}"
-        save_logs_as_json(frame_logs, segment_dir)
+        frame_logs.sort(key=lambda entry: entry["timestamp_sof"])
+        save_logs_as_json(frame_logs, dir)
         frame_logs.clear()
 
     def decode_nv12_to_bgr(buf: VisionBuf) -> np.ndarray:
@@ -225,10 +225,9 @@ def main(output_path: Path, demo=False):
             raise ValueError("Did not sucessfully save image")
         return bgr
 
-    def ensure_segment_dirs(base_path: Path, segment_num: int) -> tuple[Path, Path]:
-        segment_path = base_path / str(segment_num)
-        front_path = segment_path / "front"
-        front_wide_path = segment_path / "front_wide"
+    def ensure_output_dirs(base_path: Path) -> tuple[Path, Path]:
+        front_path = base_path / "front"
+        front_wide_path = base_path / "front_wide"
         front_path.mkdir(parents=True, exist_ok=True)
         front_wide_path.mkdir(parents=True, exist_ok=True)
         return front_path, front_wide_path
@@ -269,7 +268,13 @@ def main(output_path: Path, demo=False):
 
         return vipc_main, vipc_extra, use_extra, main_wide
 
+    if output_path.parent == output_path or not output_path.name.isdigit():
+        raise ValueError("--output_dir must point to a segment path like <uuid>/<segment_num>")
+
     logs: list[dict[str, Any]] = []
+    seen_frame_ids: set[int] = set()
+    current_front_dir, current_front_wide_dir = ensure_output_dirs(output_path)
+    should_exit_after_flush = False
 
     print(f"Creating output director: {output_path}")
     os.makedirs(output_path, exist_ok=True)
@@ -331,11 +336,6 @@ def main(output_path: Path, demo=False):
 
     DH = DesireHelper()
 
-    # variable to track the previous segment number to know when to make a new dir
-    previous_segment_num = -1
-
-    # track last seen time stamp to determine if we have gone back in time => route has looped to the begining and we can exit
-    last_main_timestamp = -1
     last_main_frame_time = time.monotonic()
     last_progress_time = time.monotonic()
     last_health_log_time = time.monotonic()
@@ -345,236 +345,230 @@ def main(output_path: Path, demo=False):
     last_extra_reconnect_time = 0.0
     extra_camera_reconnect_attempts = 0
 
-    while True:
-        now = time.monotonic()
-        if now - last_health_log_time >= HEALTH_LOG_INTERVAL_SECONDS:
-            cloudlog.info(
-                f"health frame_id={last_vipc_frame_id} seg={previous_segment_num} "
-                f"main_empty_reads={consecutive_main_empty_reads} extra_empty_reads={consecutive_extra_empty_reads} "
-                f"seconds_since_main_frame={now - last_main_frame_time:.2f} "
-                f"seconds_since_progress={now - last_progress_time:.2f}")
-            last_health_log_time = now
+    try:
+        while True:
+            now = time.monotonic()
+            if now - last_health_log_time >= HEALTH_LOG_INTERVAL_SECONDS:
+                cloudlog.info(
+                    f"health frame_id={last_vipc_frame_id} seg={output_path.name} "
+                    f"main_empty_reads={consecutive_main_empty_reads} extra_empty_reads={consecutive_extra_empty_reads} "
+                    f"seconds_since_main_frame={now - last_main_frame_time:.2f} "
+                    f"seconds_since_progress={now - last_progress_time:.2f}")
+                last_health_log_time = now
 
-        if now - last_progress_time > EXTRACT_STALL_TIMEOUT_SECONDS:
-            raise RuntimeError(
-                f"Extraction stalled for {EXTRACT_STALL_TIMEOUT_SECONDS}s without frame progress")
+            if now - last_progress_time > EXTRACT_STALL_TIMEOUT_SECONDS:
+                raise RuntimeError(
+                    f"Extraction stalled for {EXTRACT_STALL_TIMEOUT_SECONDS}s without frame progress")
 
-        # Keep receiving frames until we are at least 1 frame ahead of previous extra frame
+            # Keep receiving frames until we are at least 1 frame ahead of previous extra frame
 
-        while meta_main.timestamp_sof < meta_extra.timestamp_sof + 25000000:
-            buf_main = vipc_client_main.recv()
-            if buf_main is None:
-                consecutive_main_empty_reads += 1
-                break
+            while meta_main.timestamp_sof < meta_extra.timestamp_sof + 25000000:
+                buf_main = vipc_client_main.recv()
+                if buf_main is None:
+                    consecutive_main_empty_reads += 1
+                    break
 
-            meta_main = FrameMeta(vipc_client_main)
-            consecutive_main_empty_reads = 0
-            last_main_frame_time = time.monotonic()
+                meta_main = FrameMeta(vipc_client_main)
+                consecutive_main_empty_reads = 0
+                last_main_frame_time = time.monotonic()
 
-            if last_main_timestamp != -1 and meta_main.timestamp_sof < last_main_timestamp:
-                print(f"Replay looped (time went backwards). Saving last logs and exiting...")
+                if meta_main.frame_id in seen_frame_ids:
+                    cloudlog.warning(
+                        f"Replay loop detected by repeated frame_id={meta_main.frame_id}. Flushing logs and exiting")
+                    should_exit_after_flush = True
+                    break
 
-                flush_segment_logs(logs, previous_segment_num)
+                seen_frame_ids.add(meta_main.frame_id)
+
+            if should_exit_after_flush:
+                flush_logs(logs, output_path)
                 sys.exit(0)
 
-            last_main_timestamp = meta_main.timestamp_sof
-
-        if buf_main is None:
-            no_main_frame_for = time.monotonic() - last_main_frame_time
-            if no_main_frame_for > NO_FRAME_RECONNECT_SECONDS:
-                now = time.monotonic()
-                if now - last_main_reconnect_time > RECONNECT_COOLDOWN_SECONDS:
-                    cloudlog.warning(
-                        f"No main camera frames for {no_main_frame_for:.2f}s, reconnecting VisionIPC clients")
-                    vipc_client_main, vipc_client_extra, use_extra_client, main_wide_camera = connect_vision_clients(cl_context)
-                    meta_main = FrameMeta()
-                    meta_extra = FrameMeta()
-                    consecutive_main_empty_reads = 0
-                    consecutive_extra_empty_reads = 0
-                    last_main_frame_time = time.monotonic()
-                    last_main_reconnect_time = now
-                    extra_camera_reconnect_attempts = 0
-
-            cloudlog.debug("vipc_client_main no frame")
-            continue
-
-        if use_extra_client:
-            # Keep receiving extra frames until frame id matches main camera
-            while True:
-                buf_extra = vipc_client_extra.recv()
-                if buf_extra is None:
-                    consecutive_extra_empty_reads += 1
-                    break
-                meta_extra = FrameMeta(vipc_client_extra)
-                consecutive_extra_empty_reads = 0
-                if meta_main.timestamp_sof < meta_extra.timestamp_sof + 25000000:
-                    break
-
-            if buf_extra is None:
+            if buf_main is None:
                 no_main_frame_for = time.monotonic() - last_main_frame_time
                 if no_main_frame_for > NO_FRAME_RECONNECT_SECONDS:
                     now = time.monotonic()
-                    if now - last_extra_reconnect_time > RECONNECT_COOLDOWN_SECONDS:
-                        extra_camera_reconnect_attempts += 1
-                        if extra_camera_reconnect_attempts > MAX_EXTRA_CAMERA_RECONNECT_ATTEMPTS:
-                            cloudlog.warning(
-                                f"Extra camera unavailable for {no_main_frame_for:.2f}s after {extra_camera_reconnect_attempts} reconnect attempts; falling back to main camera only")
-                            use_extra_client = False
-                            extra_camera_reconnect_attempts = 0
+                    if now - last_main_reconnect_time > RECONNECT_COOLDOWN_SECONDS:
+                        cloudlog.warning(
+                            f"No main camera frames for {no_main_frame_for:.2f}s, reconnecting VisionIPC clients")
+                        vipc_client_main, vipc_client_extra, use_extra_client, main_wide_camera = connect_vision_clients(cl_context)
+                        meta_main = FrameMeta()
+                        meta_extra = FrameMeta()
+                        consecutive_main_empty_reads = 0
+                        consecutive_extra_empty_reads = 0
+                        last_main_frame_time = time.monotonic()
+                        last_main_reconnect_time = now
+                        extra_camera_reconnect_attempts = 0
+
+                cloudlog.debug("vipc_client_main no frame")
+                continue
+
+            if use_extra_client:
+                # Keep receiving extra frames until frame id matches main camera
+                while True:
+                    buf_extra = vipc_client_extra.recv()
+                    if buf_extra is None:
+                        consecutive_extra_empty_reads += 1
+                        break
+                    meta_extra = FrameMeta(vipc_client_extra)
+                    consecutive_extra_empty_reads = 0
+                    if meta_main.timestamp_sof < meta_extra.timestamp_sof + 25000000:
+                        break
+
+                if buf_extra is None:
+                    no_main_frame_for = time.monotonic() - last_main_frame_time
+                    if no_main_frame_for > NO_FRAME_RECONNECT_SECONDS:
+                        now = time.monotonic()
+                        if now - last_extra_reconnect_time > RECONNECT_COOLDOWN_SECONDS:
+                            extra_camera_reconnect_attempts += 1
+                            if extra_camera_reconnect_attempts > MAX_EXTRA_CAMERA_RECONNECT_ATTEMPTS:
+                                cloudlog.warning(
+                                    f"Extra camera unavailable for {no_main_frame_for:.2f}s after {extra_camera_reconnect_attempts} reconnect attempts; falling back to main camera only")
+                                use_extra_client = False
+                                extra_camera_reconnect_attempts = 0
+                            else:
+                                cloudlog.warning(
+                                    f"No extra camera frames while main stream active for {no_main_frame_for:.2f}s, reconnecting VisionIPC clients (attempt {extra_camera_reconnect_attempts}/{MAX_EXTRA_CAMERA_RECONNECT_ATTEMPTS})")
+                                vipc_client_main, vipc_client_extra, use_extra_client, main_wide_camera = connect_vision_clients(cl_context)
+                                meta_main = FrameMeta()
+                                meta_extra = FrameMeta()
+                                consecutive_main_empty_reads = 0
+                                consecutive_extra_empty_reads = 0
+                                last_main_frame_time = time.monotonic()
+                                last_extra_reconnect_time = now
                         else:
-                            cloudlog.warning(
-                                f"No extra camera frames while main stream active for {no_main_frame_for:.2f}s, reconnecting VisionIPC clients (attempt {extra_camera_reconnect_attempts}/{MAX_EXTRA_CAMERA_RECONNECT_ATTEMPTS})")
-                            vipc_client_main, vipc_client_extra, use_extra_client, main_wide_camera = connect_vision_clients(cl_context)
-                            meta_main = FrameMeta()
-                            meta_extra = FrameMeta()
-                            consecutive_main_empty_reads = 0
-                            consecutive_extra_empty_reads = 0
-                            last_main_frame_time = time.monotonic()
-                            last_extra_reconnect_time = now
+                            skip_secs = RECONNECT_COOLDOWN_SECONDS - (now - last_extra_reconnect_time)
+                            cloudlog.debug(f"extra camera reconnect on cooldown, trying again in {skip_secs:.2f}s")
+
+                    cloudlog.debug("vipc_client_extra no frame")
+                    if not use_extra_client:
+                        buf_extra = buf_main
+                        meta_extra = meta_main
                     else:
-                        skip_secs = RECONNECT_COOLDOWN_SECONDS - (now - last_extra_reconnect_time)
-                        cloudlog.debug(f"extra camera reconnect on cooldown, trying again in {skip_secs:.2f}s")
+                        continue
 
-                cloudlog.debug("vipc_client_extra no frame")
-                if not use_extra_client:
-                    buf_extra = buf_main
-                    meta_extra = meta_main
-                else:
-                    continue
-            if abs(meta_main.timestamp_sof - meta_extra.timestamp_sof) > 10000000:
-                cloudlog.error(f"frames out of sync! main: {meta_main.frame_id} ({meta_main.timestamp_sof / 1e9:.5f}),\
-                         extra: {meta_extra.frame_id} ({meta_extra.timestamp_sof / 1e9:.5f})")
-        else:
-            # Use single camera
-            buf_extra = buf_main
-            meta_extra = meta_main
+                if abs(meta_main.timestamp_sof - meta_extra.timestamp_sof) > 10000000:
+                    cloudlog.error(f"frames out of sync! main: {meta_main.frame_id} ({meta_main.timestamp_sof / 1e9:.5f}),\
+                             extra: {meta_extra.frame_id} ({meta_extra.timestamp_sof / 1e9:.5f})")
+            else:
+                # Use single camera
+                buf_extra = buf_main
+                meta_extra = meta_main
 
-        sm.update(0)
-        desire = DH.desire
-        is_rhd = sm["driverMonitoringState"].isRHD
-        frame_id = sm["roadCameraState"].frameId
-        v_ego = max(sm["carState"].vEgo, 0.)
-        lateral_control_params = np.array([v_ego, steer_delay], dtype=np.float32)
-        if sm.updated["liveCalibration"] and sm.seen['roadCameraState'] and sm.seen['deviceState']:
-            device_from_calib_euler = np.array(sm["liveCalibration"].rpyCalib, dtype=np.float32)
-            dc = DEVICE_CAMERAS[(str(sm['deviceState'].deviceType), str(sm['roadCameraState'].sensor))]
-            model_transform_main = get_warp_matrix(
-                device_from_calib_euler, dc.ecam.intrinsics if main_wide_camera else dc.fcam.intrinsics, False).astype(np.float32)
-            model_transform_extra = get_warp_matrix(device_from_calib_euler, dc.ecam.intrinsics, True).astype(np.float32)
-            live_calib_seen = True
+            sm.update(0)
+            desire = DH.desire
+            is_rhd = sm["driverMonitoringState"].isRHD
+            frame_id = sm["roadCameraState"].frameId
+            v_ego = max(sm["carState"].vEgo, 0.)
+            lateral_control_params = np.array([v_ego, steer_delay], dtype=np.float32)
+            if sm.updated["liveCalibration"] and sm.seen['roadCameraState'] and sm.seen['deviceState']:
+                device_from_calib_euler = np.array(sm["liveCalibration"].rpyCalib, dtype=np.float32)
+                dc = DEVICE_CAMERAS[(str(sm['deviceState'].deviceType), str(sm['roadCameraState'].sensor))]
+                model_transform_main = get_warp_matrix(
+                    device_from_calib_euler, dc.ecam.intrinsics if main_wide_camera else dc.fcam.intrinsics, False).astype(np.float32)
+                model_transform_extra = get_warp_matrix(device_from_calib_euler, dc.ecam.intrinsics, True).astype(np.float32)
+                live_calib_seen = True
 
-        traffic_convention = np.zeros(2)
-        traffic_convention[int(is_rhd)] = 1
+            traffic_convention = np.zeros(2)
+            traffic_convention[int(is_rhd)] = 1
 
-        vec_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
-        if desire >= 0 and desire < ModelConstants.DESIRE_LEN:
-            vec_desire[desire] = 1
+            vec_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
+            if desire >= 0 and desire < ModelConstants.DESIRE_LEN:
+                vec_desire[desire] = 1
 
-        # tracked dropped frames
-        vipc_dropped_frames = max(0, meta_main.frame_id - last_vipc_frame_id - 1)
-        frames_dropped = frame_dropped_filter.update(min(vipc_dropped_frames, 10))
-        if run_count < 10:  # let frame drops warm up
-            frame_dropped_filter.x = 0.
-            frames_dropped = 0.
-        run_count = run_count + 1
+            # tracked dropped frames
+            vipc_dropped_frames = max(0, meta_main.frame_id - last_vipc_frame_id - 1)
+            frames_dropped = frame_dropped_filter.update(min(vipc_dropped_frames, 10))
+            if run_count < 10:  # let frame drops warm up
+                frame_dropped_filter.x = 0.
+                frames_dropped = 0.
+            run_count = run_count + 1
 
-        frame_drop_ratio = frames_dropped / (1 + frames_dropped)
-        prepare_only = vipc_dropped_frames > 0
-        if prepare_only:
-            cloudlog.error(f"skipping model eval. Dropped {vipc_dropped_frames} frames")
+            frame_drop_ratio = frames_dropped / (1 + frames_dropped)
+            prepare_only = vipc_dropped_frames > 0
+            if prepare_only:
+                cloudlog.error(f"skipping model eval. Dropped {vipc_dropped_frames} frames")
 
-        inputs: dict[str, np.ndarray] = {
-            'desire': vec_desire,
-            'traffic_convention': traffic_convention,
-            'lateral_control_params': lateral_control_params,
-        }
-        logged_model_inputs = to_json_compatible(inputs)
+            inputs: dict[str, np.ndarray] = {
+                'desire': vec_desire,
+                'traffic_convention': traffic_convention,
+                'lateral_control_params': lateral_control_params,
+            }
+            logged_model_inputs = to_json_compatible(inputs)
 
-        mt1 = time.perf_counter()
-        model_output = model.run(buf_main, buf_extra, model_transform_main, model_transform_extra, inputs, prepare_only)
-        mt2 = time.perf_counter()
-        model_execution_time = mt2 - mt1
+            mt1 = time.perf_counter()
+            model_output = model.run(buf_main, buf_extra, model_transform_main, model_transform_extra, inputs, prepare_only)
+            mt2 = time.perf_counter()
+            model_execution_time = mt2 - mt1
 
-        if model_output is not None:
-            modelv2_send = messaging.new_message('modelV2')
-            drivingdata_send = messaging.new_message('drivingModelData')
-            posenet_send = messaging.new_message('cameraOdometry')
-            fill_model_msg(drivingdata_send, modelv2_send, model_output, v_ego, steer_delay,
-                           publish_state, meta_main.frame_id, meta_extra.frame_id, frame_id,
-                           frame_drop_ratio, meta_main.timestamp_eof, model_execution_time, live_calib_seen)
+            if model_output is not None:
+                modelv2_send = messaging.new_message('modelV2')
+                drivingdata_send = messaging.new_message('drivingModelData')
+                posenet_send = messaging.new_message('cameraOdometry')
+                fill_model_msg(drivingdata_send, modelv2_send, model_output, v_ego, steer_delay,
+                               publish_state, meta_main.frame_id, meta_extra.frame_id, frame_id,
+                               frame_drop_ratio, meta_main.timestamp_eof, model_execution_time, live_calib_seen)
 
-            desire_state = modelv2_send.modelV2.meta.desireState
-            l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]
-            r_lane_change_prob = desire_state[log.Desire.laneChangeRight]
-            lane_change_prob = l_lane_change_prob + r_lane_change_prob
-            DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob)
-            modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
-            modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
-            drivingdata_send.drivingModelData.meta.laneChangeState = DH.lane_change_state
-            drivingdata_send.drivingModelData.meta.laneChangeDirection = DH.lane_change_direction
+                desire_state = modelv2_send.modelV2.meta.desireState
+                l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]
+                r_lane_change_prob = desire_state[log.Desire.laneChangeRight]
+                lane_change_prob = l_lane_change_prob + r_lane_change_prob
+                DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob)
+                modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
+                modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
+                drivingdata_send.drivingModelData.meta.laneChangeState = DH.lane_change_state
+                drivingdata_send.drivingModelData.meta.laneChangeDirection = DH.lane_change_direction
 
-            fill_pose_msg(posenet_send, model_output, meta_main.frame_id, vipc_dropped_frames, meta_main.timestamp_eof, live_calib_seen)
-            pm.send('modelV2', modelv2_send)
-            pm.send('drivingModelData', drivingdata_send)
-            pm.send('cameraOdometry', posenet_send)
-        last_vipc_frame_id = meta_main.frame_id
-        last_progress_time = time.monotonic()
+                fill_pose_msg(posenet_send, model_output, meta_main.frame_id, vipc_dropped_frames, meta_main.timestamp_eof, live_calib_seen)
+                pm.send('modelV2', modelv2_send)
+                pm.send('drivingModelData', drivingdata_send)
+                pm.send('cameraOdometry', posenet_send)
+            last_vipc_frame_id = meta_main.frame_id
+            last_progress_time = time.monotonic()
 
-        # print(sm["roadEncodeIdx"])
+            vipc_frame_id = meta_main.frame_id
 
-        vipc_frame_id = meta_main.frame_id
+            # raise Exception
+            logs.append({
+                "frame_id": vipc_frame_id,
+                "timestamp_sof": meta_main.timestamp_sof,
+                "vehicle_state": to_json_compatible(sm['liveLocationKalmanDEPRECATED'].to_dict()),
+                "car_control": to_json_compatible(sm['carControl'].to_dict()),
+                "car_state": to_json_compatible(sm['carState'].to_dict()),
+                "model_inputs": logged_model_inputs,
+                "model_output": to_json_compatible(model_output) if model_output is not None else None,
+            })
 
-        # Check if the segment number has changed
-        current_segment_num = sm['roadEncodeIdx'].segmentNum
-        current_front_dir = output_path / str(current_segment_num) / "front"
-        current_front_wide_dir = output_path / str(current_segment_num) / "front_wide"
-        if current_segment_num != previous_segment_num:
-            current_front_dir, current_front_wide_dir = ensure_segment_dirs(output_path, current_segment_num)
-
-            # if the previous segment is not -1, then we need to save our log file to the output:
-            if previous_segment_num >= 0:
-                flush_segment_logs(logs, previous_segment_num)
-
-            previous_segment_num = current_segment_num
-
-        # raise Exception
-        logs.append({
-            "frame_id": vipc_frame_id,
-            "vehicle_state": to_json_compatible(sm['liveLocationKalmanDEPRECATED'].to_dict()),
-            "car_control": to_json_compatible(sm['carControl'].to_dict()),
-            "car_state": to_json_compatible(sm['carState'].to_dict()),
-            "model_inputs": logged_model_inputs,
-            "model_output": to_json_compatible(model_output) if model_output is not None else None,
-        })
-
-        try:
-            recover_img(
-                buf=buf_main,
-                saved_path=current_front_dir / f"{vipc_frame_id}.png"
-            )
-        except Exception as exc:
-            raise RuntimeError(
-                f"Failed to write front frame image for segment={current_segment_num} frame={vipc_frame_id}") from exc
-
-        if use_extra_client:
             try:
                 recover_img(
-                    buf=buf_extra,
-                    saved_path=current_front_wide_dir / f"{vipc_frame_id}.png"
+                    buf=buf_main,
+                    saved_path=current_front_dir / f"{vipc_frame_id}.png"
                 )
             except Exception as exc:
                 raise RuntimeError(
-                    f"Failed to write wide frame image for segment={current_segment_num} frame={vipc_frame_id}") from exc
+                    f"Failed to write front frame image for segment={output_path.name} frame={vipc_frame_id}") from exc
 
-        # logs['vehicle_states'].append(sm["carState"].to_dict())
-        # logs['carControls'].append(sm["carControl"].to_dict())
-        # logs['controlsStates'].append(sm['controlsState'].to_dict())
-        # logs['model_inputs'].append(inputs)
-        # logs['liveLocationKalmanDEPRECATED'].append(sm['liveLocationKalmanDEPRECATED'].to_dict())
+            if use_extra_client:
+                try:
+                    recover_img(
+                        buf=buf_extra,
+                        saved_path=current_front_wide_dir / f"{vipc_frame_id}.png"
+                    )
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"Failed to write wide frame image for segment={output_path.name} frame={vipc_frame_id}") from exc
 
-        # print(logs)
+            # logs['vehicle_states'].append(sm["carState"].to_dict())
+            # logs['carControls'].append(sm["carControl"].to_dict())
+            # logs['controlsStates'].append(sm['controlsState'].to_dict())
+            # logs['model_inputs'].append(inputs)
+            # logs['liveLocationKalmanDEPRECATED'].append(sm['liveLocationKalmanDEPRECATED'].to_dict())
 
-        # raise Exception
+            # print(logs)
+
+            # raise Exception
+    finally:
+        flush_logs(logs, output_path)
 
 
 if __name__ == "__main__":
@@ -582,7 +576,7 @@ if __name__ == "__main__":
         import argparse
         parser = argparse.ArgumentParser()
         parser.add_argument('--demo', action='store_true', help='A boolean for demo mode.')
-        parser.add_argument('--output_dir', help='Output Directory')
+        parser.add_argument('--output_dir', required=True, help='Segment output directory in the form <uuid>/<segment_num>')
         args = parser.parse_args()
         output_path: Path = Path(args.output_dir)
         main(demo=args.demo, output_path=output_path)
