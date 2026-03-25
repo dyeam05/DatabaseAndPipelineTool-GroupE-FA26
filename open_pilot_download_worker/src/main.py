@@ -270,7 +270,7 @@ async def create_segments_for_route(route: Route, segment_service: SegmentServic
 
 async def process_route(route_to_process: Route, route_service: RouteService, segment_service: SegmentService, session: AsyncSession):
     logging.info(f"Processing route {route_to_process.route_id}")
-    route = await route_service.set_status(
+    await route_service.set_status(
         route_id=route_to_process.route_id,
         status=RouteStatus.DOWNLOADING
     )
@@ -322,6 +322,14 @@ async def process_route(route_to_process: Route, route_service: RouteService, se
         )
         await session.commit()
         logging.error(f"Could not process route {route_to_process}", e)
+
+    logging.info(f"Rout processed {route_to_process.route_id}")
+    await route_service.set_status(
+        route_id=route_to_process.route_id,
+        status=RouteStatus.UPLOAD_QUEUE
+    )
+    await session.commit()
+    
 
 
 async def main():
