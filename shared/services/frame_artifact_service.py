@@ -23,25 +23,22 @@ class FrameArtifactService:
     async def get_frame_artifact(
         self,
         frame_pk: int,
-        artifact_id: UUID,
         role: ArtifactRole,  # role refer to the type of artifact. migh add more later
     ) -> FrameArtifact | None:
         return await self._frame_artifact_repository.get_by_id(
             frame_pk=frame_pk,
-            artifact_id=artifact_id,
-            role=role
+            role=role,
         )
 
     async def create_frame_artifact(
-        self,
-        frame_pk: int,
-        artifact_id: UUID,
-        role: ArtifactRole,
+    self,
+    frame_pk: int,
+    artifact_id: UUID,
+    role: ArtifactRole,
     ) -> FrameArtifact:
         existing = await self._frame_artifact_repository.get_by_id(
             frame_pk=frame_pk,
-            artifact_id=artifact_id,
-            role=role
+            role=role,
         )
         if existing is not None:
             raise FrameArtifactAlreadyExistsError(frame_pk, role)
@@ -55,13 +52,11 @@ class FrameArtifactService:
     async def delete_frame_artifact(
         self,
         frame_pk: int,
-        artifact_id: UUID,
         role: ArtifactRole,
     ) -> None:
         frame_artifact = await self._frame_artifact_repository.get_by_id(
             frame_pk=frame_pk,
-            artifact_id=artifact_id,
-            role=role
+            role=role,
         )
         if frame_artifact is None:
             raise FrameArtifactNotFoundError(frame_pk, role)

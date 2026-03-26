@@ -14,14 +14,12 @@ class FrameArtifactRepository:
     async def get_by_id(
         self,
         frame_pk: int,
-        artifact_id: UUID,
         role: ArtifactRole,
     ) -> FrameArtifact | None:  # composite primary key of frame_pk and role
         return await self._session.get(
             FrameArtifact,
             {
                 "frame_pk": frame_pk,
-                "artifact_id": artifact_id,
                 "role": role,
             },
         )

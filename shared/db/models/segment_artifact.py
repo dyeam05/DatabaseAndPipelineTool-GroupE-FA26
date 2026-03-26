@@ -1,7 +1,7 @@
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKeyConstraint
+from sqlalchemy import Enum, ForeignKeyConstraint, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
@@ -28,7 +28,8 @@ class SegmentArtifact(Base):
         primary_key=True,
     )
     artifact_id: Mapped[UUID] = mapped_column(
-        primary_key=True,
+    ForeignKey("artifacts.artifact_id", ondelete="CASCADE"),
+    nullable=False,
     )
     # refer to  ArtifactRole. might change based on schema
     role: Mapped[ArtifactRole] = mapped_column(
