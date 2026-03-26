@@ -2,8 +2,10 @@ services:
   # Expose cvat_server on the shared network so cvat_worker can reach it by name
   cvat_server:
     networks:
-      - default
-      - cvat_network
+      default:
+      cvat_network:
+        aliases:
+          - cvat-server
     volumes:
       - cvat_share:/home/django/share:ro
 
