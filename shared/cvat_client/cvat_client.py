@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 from cvat_sdk import make_client
 from cvat_sdk.core.proxies.tasks import ResourceType
 
-from cvat_share.create_tasks import create_tasks_from_folder
-from shared.cvat_client.export_annotations import export_task_coco
-from shared.cvat_client.auto_annotate import annotate_task
+from .create_tasks import create_tasks_from_folder
+from .export_annotations import export_task_coco
+from .auto_annotate import annotate_task
 
 load_dotenv()
 
@@ -34,7 +34,7 @@ CVAT_EMAIL = os.environ["CVAT_EMAIL"]
 CVAT_PASSWORD = os.environ["CVAT_PASSWORD"]
 
 # Docker-mounted share folder on the host machine
-CVAT_SHARE_ROOT = os.environ.get("CVAT_SHARE_ROOT", "share")
+CVAT_SHARE_ROOT = os.environ.get("CVAT_SHARE_ROOT", "cvat_share")
 
 # Where exported COCO json files should go
 ANNOTATION_OUTPUT_DIR = os.environ.get("ANNOTATION_OUTPUT_DIR", "annotations")
@@ -285,13 +285,10 @@ def run_pipeline_for_segment(segment: SegmentJob) -> PipelineResult:
 # -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    # Example manual run:
-    # host dir: share/segment_001
-    # CVAT share path inside Docker: segment_001
     segment = SegmentJob(
         segment_id="001",
-        local_image_dir=os.path.join(CVAT_SHARE_ROOT, "segment_001"),
-        share_subdir="segment_001",
+        local_image_dir=os.path.join(CVAT_SHARE_ROOT, "segment_test"),
+        share_subdir="segment_test",
         task_title_prefix="av_segment",
         resource_type="SHARE",
         conf_threshold=0.5,
