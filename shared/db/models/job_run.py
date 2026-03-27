@@ -56,4 +56,4 @@ class JobRun(Base):
     )
 
     def __repr__(self):
-        return f"{self.job_run_id}, {self.job_def_id}, {self.route_id}, {self.status}"
+        return f"JobRun({self.job_run_id}, {self.job_def_id}, {self.route_id}, {self.status})"

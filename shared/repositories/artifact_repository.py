@@ -1,8 +1,11 @@
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.artifact import Artifact, ArtifactKind
 # repo for managing Artifact entities in the database
+
 
 class ArtifactRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -14,7 +17,7 @@ class ArtifactRepository:
     async def list_all(self) -> list[Artifact]:
         stmt = select(Artifact).order_by(Artifact.created_at.desc())
         # order by created_at desc to get the most recent artifacts first
-        #then ession.scalars() is used to execute the query and extract the Artifact
+        # then session.scalars() is used to execute the query and extract the Artifact
         result = await self._session.scalars(stmt)
         return list(result.all())
 
@@ -29,7 +32,7 @@ class ArtifactRepository:
 
     async def create(
         self,
-        artifact_id,
+        artifact_id: UUID,
         bucket: str,
         object_key: str,
         kind: ArtifactKind,

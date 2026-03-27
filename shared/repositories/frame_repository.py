@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.enums import CameraType
 from db.models.frame import Frame
 # frame repository is responsible for interacting
 #  with the database to perform CRUD operations on Frame objects.
@@ -33,7 +34,7 @@ class FrameRepository:
         route_id: str,
         segment_id: int,
         frame_id: int,
-        camera,
+        camera: CameraType,
     ) -> Frame:
         frame = Frame(route_id=route_id,segment_id=segment_id,frame_id=frame_id,camera=camera,
         )

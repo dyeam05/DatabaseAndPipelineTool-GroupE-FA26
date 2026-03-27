@@ -64,4 +64,4 @@ class Frame(Base):
     )
 
     def __repr__(self):
-        return f"{self.frame_pk}, {self.route_id}, {self.segment_id}, {self.frame_id}"
+        return f"Frame({self.frame_pk}, {self.route_id}, {self.segment_id}, {self.frame_id})"

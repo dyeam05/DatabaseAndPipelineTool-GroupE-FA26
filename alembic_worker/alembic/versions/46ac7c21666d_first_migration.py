@@ -1,8 +1,9 @@
-"""create classes
+"""first migration
 
-Revision ID: f5f71b709d81
+
+Revision ID: 46ac7c21666d
 Revises: 
-Create Date: 2026-03-23 15:54:13.909860
+Create Date: 2026-03-25 23:55:42.119025
 
 """
 from typing import Sequence, Union
@@ -12,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f5f71b709d81'
+revision: str = '46ac7c21666d'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -42,7 +43,11 @@ def upgrade() -> None:
     op.create_table('routes',
     sa.Column('route_id', sa.String(), nullable=False),
     sa.Column('file_path', sa.String(), nullable=True),
-    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', name='route_status_enum'), nullable=False),
+    sa.Column('start_time', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('end_time', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('num_segments_expected', sa.Integer(), nullable=True),
+    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', 'UPLOADED', name='route_status_enum'), nullable=False),
+    sa.Column('meta', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint("route_id <> ''", name='ck_routes_route_id_not_empty'),
     sa.PrimaryKeyConstraint('route_id')
@@ -66,7 +71,7 @@ def upgrade() -> None:
     sa.Column('segment_id', sa.Integer(), nullable=False),
     sa.Column('start_time', sa.DateTime(timezone=True), nullable=False),
     sa.Column('end_time', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', name='segment_status_enum'), nullable=False),
+    sa.Column('status', sa.Enum('DOWNLOAD_QUEUE', 'DOWNLOADING', 'UPLOAD_QUEUE', 'UPLOADING', 'FAILED', 'UPLOADED', name='segment_status_enum'), nullable=False),
     sa.Column('segment_meta', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint('segment_id >= 0', name='ck_segments_segment_id_non_negative'),
@@ -78,7 +83,7 @@ def upgrade() -> None:
     sa.Column('route_id', sa.String(), nullable=False),
     sa.Column('segment_id', sa.Integer(), nullable=False),
     sa.Column('frame_id', sa.Integer(), nullable=False),
-    sa.Column('camera', sa.Enum('FRONT_REGULAR', 'FRONT_WIDE', 'DRIVER', name='camer_type_num'), nullable=False),
+    sa.Column('camera', sa.Enum('FRONT_REGULAR', 'FRONT_WIDE', 'DRIVER', name='camera_type_enum'), nullable=False),
     sa.Column('log_mono_time', sa.BigInteger(), nullable=True),
     sa.Column('openpilot_features', sa.JSON(), nullable=True),
     sa.Column('width_px', sa.Integer(), nullable=True),
@@ -92,8 +97,9 @@ def upgrade() -> None:
     sa.Column('segment_id', sa.Integer(), nullable=False),
     sa.Column('artifact_id', sa.Uuid(), nullable=False),
     sa.Column('role', sa.Enum('FRAME_IMAGE', 'SEGMENT_LOG', 'COCO_EXPORT', 'DETECTION_JSON', 'SEGMENTATION_MASK', 'SEGMENTATION_MAP', 'DEPTH_MAP', name='artifact_role_enum'), nullable=False),
+    sa.ForeignKeyConstraint(['artifact_id'], ['artifacts.artifact_id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['route_id', 'segment_id'], ['segments.route_id', 'segments.segment_id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('route_id', 'segment_id', 'artifact_id', 'role')
+    sa.PrimaryKeyConstraint('route_id', 'segment_id', 'role')
     )
     op.create_table('frame_artifacts',
     sa.Column('frame_pk', sa.BigInteger(), nullable=False),
@@ -101,7 +107,7 @@ def upgrade() -> None:
     sa.Column('role', sa.Enum('FRAME_IMAGE', 'SEGMENT_LOG', 'COCO_EXPORT', 'DETECTION_JSON', 'SEGMENTATION_MASK', 'SEGMENTATION_MAP', 'DEPTH_MAP', name='artifact_role_enum'), nullable=False),
     sa.ForeignKeyConstraint(['artifact_id'], ['artifacts.artifact_id'], ),
     sa.ForeignKeyConstraint(['frame_pk'], ['frames.frame_pk'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('frame_pk', 'artifact_id', 'role')
+    sa.PrimaryKeyConstraint('frame_pk', 'role')
     )
     op.create_table('job_frame_artifacts',
     sa.Column('job_run_id', sa.Uuid(), nullable=False),
@@ -111,7 +117,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['artifact_id'], ['artifacts.artifact_id'], ),
     sa.ForeignKeyConstraint(['frame_pk'], ['frames.frame_pk'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['job_run_id'], ['job_runs.job_run_id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('job_run_id', 'frame_pk', 'artifact_id', 'role')
+    sa.PrimaryKeyConstraint('job_run_id', 'frame_pk', 'role')
     )
     # ### end Alembic commands ###
 

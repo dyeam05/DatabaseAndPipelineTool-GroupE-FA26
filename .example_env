@@ -10,6 +10,7 @@ POSTGRES_DB=db
 # Minio
 MINIO_ROOT_USER=fill this out
 MINIO_ROOT_PASSWORD=fill this out
+MINIO_BUCKET_NAME=data
 
 # Comma AI
 COMMA_JWT=fill this out
