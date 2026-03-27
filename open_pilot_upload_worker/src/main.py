@@ -2,7 +2,6 @@ import asyncio
 from pathlib import Path
 import logging
 import signal
-from datetime import datetime
 import shutil
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -12,13 +11,11 @@ from db.enums import SegmentStatus
 from db.models.route import Route
 from db.models.segment import Segment
 from db.url import build_database_url
-from repositories import artifact_repository, frame_artifact_repository
 from repositories.frame_repository import FrameRepository
 from repositories.route_repository import RouteRepository
 from repositories.segment_repository import SegmentRepository
 from repositories.frame_artifact_repository import FrameArtifactRepository
 from repositories.artifact_repository import ArtifactRepository
-from services import frame_uploader_service
 from services.frame_artifact_service import FrameArtifactService
 from services.frame_service import FrameService
 from services.frame_uploader_service import FrameUploaderService
@@ -166,7 +163,7 @@ async def _process_segment(segment: Segment, route_service: RouteService, segmen
             logging.info(f"All segments for {route} are not processed. Leaving status as 'uploading'")
 
     except Exception as e:
-        logging.error(f"Error processing route", e)
+        logging.error("Error processing route", e)
         await session.rollback()
 
 

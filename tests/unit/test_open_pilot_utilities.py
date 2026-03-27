@@ -1,6 +1,4 @@
-import pytest
 
-from services.open_pilot_route_service import OpenPilotRouteService
 from utilities.open_pilot_utilities import is_valid_route_str
 
 

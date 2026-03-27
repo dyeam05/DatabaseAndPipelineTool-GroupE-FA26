@@ -3,7 +3,7 @@ import uuid
 
 from db.models.artifact import Artifact, ArtifactKind
 from repositories.artifact_repository import ArtifactRepository
-from services.errors import ArtifactAlreadyExistsError, ArtifactNotFoundError
+from services.errors import ArtifactNotFoundError
 # This service is responsible for managing artifacts, which are the outputs of jobs. 
 class ArtifactService:
     def __init__(self, artifact_repository: ArtifactRepository) -> None:

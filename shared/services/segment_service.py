@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 
 from db.models.segment import Segment, SegmentStatus 
