@@ -79,7 +79,7 @@ class JobSegmentRunStatus(StrEnum):
     CANCELLED = "cancelled"
 
 job_segment_run_enum = Enum(
-    JobStatus,
+    JobSegmentRunStatus,
     name="job_segment_run_enum",
     native_enum=True,
     validate_strings=True
