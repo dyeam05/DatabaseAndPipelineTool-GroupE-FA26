@@ -8,8 +8,12 @@ class JobRunRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_by_id(self, job_run_id) -> JobRun | None:
-        return await self._session.get(JobRun, job_run_id) # id refer to job_run_id in JobRun model
+    async def get_by_id(self, job_run_num:int, job_def_id:int, route_id:str) -> JobRun | None:
+        return await self._session.get(JobRun, {
+            "job_run_num":job_run_num, 
+            "job_def_id": job_def_id, 
+            "route_id": route_id
+        }) # id refer to job_run_id in JobRun model
 
     async def list_all(self) -> list[JobRun]:
         stmt = select(JobRun).order_by(JobRun.queued_at.desc()) # order by queued_at in descending order to get the most recent job runs first
@@ -37,16 +41,15 @@ class JobRunRepository:
 
     async def create(
         self,
-        job_run_id,
+        job_run_num:int,
         job_def_id: int,
         route_id: str,
-        status: JobStatus,
     ) -> JobRun:
         job_run = JobRun(
-            job_run_id=job_run_id,
+            job_run_id=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
-            status=status,
+            status=JobStatus.QUEUED,
         )
         self._session.add(job_run)
         await self._session.flush()

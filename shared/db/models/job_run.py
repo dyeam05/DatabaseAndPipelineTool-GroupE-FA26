@@ -14,17 +14,18 @@ from db.enums import JobStatus, job_status_enum
 class JobRun(Base):
     __tablename__ = "job_runs"
 
-    job_run_id: Mapped[UUID] = mapped_column(
+    job_run_num: Mapped[int] = mapped_column(
         primary_key=True,
+        autoincrement=True
     )
     # job def link to job run, one job def can have many job runs, but one job run only link to one job def
     job_def_id: Mapped[int] = mapped_column(
         ForeignKey("job_definitions.job_def_id"),
-        nullable=False,
+        primary_key=True,
     )
     route_id: Mapped[str] = mapped_column(
         ForeignKey("routes.route_id"),
-        nullable=False,
+        primary_key=True,
     )
     status: Mapped[JobStatus] = mapped_column(
         job_status_enum,
@@ -56,4 +57,4 @@ class JobRun(Base):
     )
 
     def __repr__(self):
-        return f"JobRun({self.job_run_id}, {self.job_def_id}, {self.route_id}, {self.status})"
+        return f"JobRun({self.job_run_num}, {self.job_def_id}, {self.route_id}, {self.status})"

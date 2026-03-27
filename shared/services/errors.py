@@ -49,26 +49,26 @@ class FrameArtifactNotFoundError(ValueError):
         super().__init__(f"Frame artifact with role {role} for frame {frame_pk} not found")
 
 class JobDefinitionAlreadyExistsError(ValueError):
-    def __init__(self, job_def_id: int) -> None:
+    def __init__(self, job_def_id:int) -> None:
         super().__init__(f"Job definition {job_def_id} already exists")
 
 class JobDefinitionNotFoundError(ValueError):
-    def __init__(self, job_def_id: int) -> None:
+    def __init__(self, job_def_id:int) -> None:
         super().__init__(f"Job definition {job_def_id} not found")
 
 class JobRunAlreadyExistsError(ValueError):
-    def __init__(self, job_run_id: UUID) -> None:
-        super().__init__(f"Job run {job_run_id} already exists")
+    def __init__(self, job_run_num: int, job_def_id:int, route_id:str) -> None:
+        super().__init__(f"Job run {(job_run_num, job_def_id, route_id)} already exists")
 
 class JobRunNotFoundError(ValueError):
-    def __init__(self, job_run_id: UUID) -> None:
-        super().__init__(f"Job run {job_run_id} not found")
+    def __init__(self, job_run_num: int, job_def_id:int, route_id:str) -> None:
+        super().__init__(f"Job run {(job_run_num, job_def_id, route_id)} not found")
 
 class JobFrameArtifactAlreadyExistsError(ValueError):
-    def __init__(self, job_run_id: UUID, frame_pk: int, role: ArtifactRole) -> None:
-        super().__init__(f"Job frame artifact with role {role} for frame {frame_pk} and job run {job_run_id} already exists")
+    def __init__(self, job_run_num: int, job_def_id:int, route_id:str, frame_pk: int, role: ArtifactRole) -> None:
+        super().__init__(f"Job frame artifact with role {role} for frame {frame_pk} and job run {(job_run_num, job_def_id, route_id)} already exists")
 
 
 class JobFrameArtifactNotFoundError(ValueError):
-    def __init__(self, job_run_id: UUID, frame_pk: int, role: ArtifactRole) -> None:
-        super().__init__(f"Job frame artifact with role {role} for frame {frame_pk} and job run {job_run_id} not found")
+    def __init__(self, job_run_num: int, job_def_id:int, route_id:str, frame_pk: int, role: ArtifactRole) -> None:
+        super().__init__(f"Job frame artifact with role {role} for frame {frame_pk} and job run {(job_run_num, job_def_id, route_id)} not found")

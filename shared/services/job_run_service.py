@@ -18,35 +18,55 @@ class JobRunService:
     async def get_next_job_run_by_status(self, status: JobStatus) -> JobRun | None:
         return await self._job_run_repository.get_next_by_status(status)
 
-    async def get_job_run(self, job_run_id: UUID) -> JobRun | None:
-        return await self._job_run_repository.get_by_id(job_run_id)
+    async def get_job_run(self, job_run_num: int, job_def_id: int, route_id: str) -> JobRun | None:
+        return await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id
+        )
 
     async def create_job_run(
         self,
-        job_run_id: UUID,
+        job_run_num: int,
         job_def_id: int,
         route_id: str,
-        status: JobStatus = JobStatus.QUEUED, # Default status is QUEUED when a job run is created
     ) -> JobRun:
-        existing = await self._job_run_repository.get_by_id(job_run_id)
+        existing = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id
+        )
         if existing is not None:
-            raise JobRunAlreadyExistsError(job_run_id)
+            raise JobRunAlreadyExistsError(
+                job_run_num=job_run_num, 
+                job_def_id=job_def_id,
+                route_id=route_id
+            )
 
         return await self._job_run_repository.create(
-            job_run_id=job_run_id,
+            job_run_num=job_run_num,
             job_def_id=job_def_id,
-            route_id=route_id,
-            status=status,
+            route_id=route_id
         )
 
     async def set_status(
         self,
-        job_run_id: UUID,
+        job_run_num: int,
+        job_def_id: int,
+        route_id: str,
         status: JobStatus,
     ) -> JobRun:
-        job_run = await self._job_run_repository.get_by_id(job_run_id)
+        job_run = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num, 
+            job_def_id=job_def_id,
+            route_id=route_id
+        )
         if job_run is None:
-            raise JobRunNotFoundError(job_run_id)
+            raise JobRunNotFoundError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id
+            )
         # When the status of a job run is updated,
         #  we also want to update
         job_run.status = status
@@ -61,31 +81,64 @@ class JobRunService:
 
     async def set_error(
         self,
-        job_run_id: UUID,
+        job_run_num: int,
+        job_def_id: int,
+        route_id: str,
         error: str | None, #error is a string that describes the error that may have during job exec.
     ) -> JobRun:
-        job_run = await self._job_run_repository.get_by_id(job_run_id)
+        job_run = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id
+        )
         if job_run is None:
-            raise JobRunNotFoundError(job_run_id)
+            raise JobRunNotFoundError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id
+            )
 
         job_run.error = error
         return await self._job_run_repository.save(job_run)
 
     async def set_stats(
         self,
-        job_run_id: UUID,
+        job_run_num: int,
+        job_def_id: int,
+        route_id: str,
         stats: dict | None,
     ) -> JobRun:
-        job_run = await self._job_run_repository.get_by_id(job_run_id)
+        job_run = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id
+        )
         if job_run is None:
-            raise JobRunNotFoundError(job_run_id)
+            raise JobRunNotFoundError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id
+            )
 
         job_run.stats = stats
         return await self._job_run_repository.save(job_run)
 
-    async def delete_job_run(self, job_run_id: UUID) -> None:
-        job_run = await self._job_run_repository.get_by_id(job_run_id)
+    async def delete_job_run(
+        self, 
+        job_run_num: int,
+        job_def_id: int,
+        route_id: str
+    ) -> None:
+        job_run = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id
+        )
         if job_run is None:
-            raise JobRunNotFoundError(job_run_id)
+            raise JobRunNotFoundError(
+                job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id
+            )
 
         await self._job_run_repository.delete(job_run)
