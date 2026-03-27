@@ -71,6 +71,20 @@ job_status_enum = Enum(
     validate_strings=True
 )
 
+class JobSegmentRunStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+job_segment_run_enum = Enum(
+    JobStatus,
+    name="job_segment_run_enum",
+    native_enum=True,
+    validate_strings=True
+)
+
 class RouteStatus(StrEnum):
     DOWNLOAD_QUEUE = "download queue"
     DOWNLOADING = "downloading"
