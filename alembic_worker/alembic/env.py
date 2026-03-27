@@ -20,7 +20,7 @@ postgres_user = os.environ["POSTGRES_USER"]
 postgres_password = os.environ["POSTGRES_PASSWORD"]
 postgres_db = os.environ["POSTGRES_DB"]
 postgres_host = os.environ.get("POSTGRES_HOST", "postgres")
-postgres_port = os.environ.get("POSTGRES_PORT", "5433")
+postgres_port = os.environ.get("POSTGRES_PORT", "5432")
 
 database_url = (
     f"postgresql+psycopg://{postgres_user}:{postgres_password}"
