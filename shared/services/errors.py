@@ -72,3 +72,11 @@ class JobFrameArtifactAlreadyExistsError(ValueError):
 class JobFrameArtifactNotFoundError(ValueError):
     def __init__(self, job_run_num: int, job_def_id:int, route_id:str, frame_pk: int, role: ArtifactRole) -> None:
         super().__init__(f"Job frame artifact with role {role} for frame {frame_pk} and job run {(job_run_num, job_def_id, route_id)} not found")
+
+class JobSegmentRunAlreadyExistsError(ValueError):
+    def __init__(self, job_run_num: int, job_def_id: int, route_id: str, segment_id: int) -> None:
+        super().__init__(f"Job segment run {(job_run_num, job_def_id, route_id, segment_id)} already exists")
+
+class JobSegmentRunNotFoundError(ValueError):
+    def __init__(self, job_run_num: int, job_def_id: int, route_id: str, segment_id: int) -> None:
+        super().__init__(f"Job segment run {(job_run_num, job_def_id, route_id, segment_id)} not found")
