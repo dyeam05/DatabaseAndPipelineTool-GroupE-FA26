@@ -4,11 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, Response, status, APIRouter
 
 from api.dependencies import get_session, get_transactional_session
-from db.enums import SegmentStatus
 from db.models.segment import Segment
-from schemas.segment import CreateSegmentRequest, SegmentResponse
+from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
-from services.segment_service import SegmentService
 from utilities.service_builder_utilities import build_segment_service
 
 logging.basicConfig(
@@ -42,22 +40,6 @@ async def get_segment(
     if segment is None:
         raise SegmentNotFoundError(route_id=route_id, segment_id=segment_id)
     return segment
-
-
-@segments_router.post("/", response_model=SegmentResponse, status_code=status.HTTP_201_CREATED)
-async def create_segment(
-    payload: CreateSegmentRequest,
-    session: AsyncSession = Depends(get_transactional_session),
-) -> Segment:
-    logging.info("create segment")
-    segment_service: SegmentService = build_segment_service(session=session)
-    return await segment_service.create_segment(
-        route_id=payload.route_id,
-        segment_id=payload.segment_id,
-        start_time=payload.start_time,
-        end_time=payload.end_time,
-        status=SegmentStatus.DOWNLOAD_QUEUE
-    )
 
 @segments_router.delete("/{route_id}/{segment_id}")
 async def delete_segment(
