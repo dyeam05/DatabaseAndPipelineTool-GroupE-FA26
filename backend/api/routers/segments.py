@@ -3,7 +3,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, Response, status, APIRouter
 
-from api.dependencies import get_session, get_transactional_session
+from api.dependencies import get_session
 from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
