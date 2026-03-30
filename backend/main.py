@@ -5,10 +5,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
+from backend.api.routers import segments
 from db.url import build_database_url
 from services.errors import RouteAlreadyExistsError, RouteNotFoundError
 
 from api.routers.routes import routes_router
+from api.routers.segments import segments_router
 
 
 @asynccontextmanager
@@ -55,3 +57,4 @@ async def handle_route_not_found_error(
 
 
 app.include_router(router=routes_router)
+app.include_router(router=segments_router)
