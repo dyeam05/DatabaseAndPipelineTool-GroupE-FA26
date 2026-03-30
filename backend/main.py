@@ -5,7 +5,6 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
-from backend.api.routers import segments
 from db.url import build_database_url
 from services.errors import RouteAlreadyExistsError, RouteNotFoundError
 
