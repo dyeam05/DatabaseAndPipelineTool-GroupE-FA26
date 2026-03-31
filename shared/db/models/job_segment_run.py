@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.base import Base
 from db.enums import JobSegmentRunStatus, job_segment_run_enum
 
+
 class JobSegmentRun(Base):
     __tablename__ = "job_segment_run"
 
@@ -17,7 +18,7 @@ class JobSegmentRun(Base):
         ),
     )
 
-    #primary keys
+    # primary keys
     job_run_num: Mapped[int] = mapped_column(
         primary_key=True,
         autoincrement=True,
@@ -34,14 +35,16 @@ class JobSegmentRun(Base):
     segment_id: Mapped[int] = mapped_column(
         primary_key=True,
     )
-    
+
     # segment info
     status: Mapped[JobSegmentRunStatus] = mapped_column(
         job_segment_run_enum,
         nullable=False,
     )
-    
+
     artifact_id: Mapped[UUID] | None = mapped_column(
-        ForeignKey("artifacts.artifact_id"),
-        nullable=True
+        ForeignKey("artifacts.artifact_id"), nullable=True
     )
+
+    def __repr__(self):
+        return f"JobSegmentRun({self.job_run_num=}, {self.route_id=}, {self.job_def_id=}, {self.segment_id=}, {self.status=})"

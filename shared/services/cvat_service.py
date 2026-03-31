@@ -1,237 +1,51 @@
-import os
-import logging
-import zipfile
+from pathlib import Path
 import time
 
-import torch
-from PIL import Image as PIL
-from transformers import AutoImageProcessor, AutoModelForObjectDetection
-
-from cvat_sdk.core.proxies.tasks import ResourceType
 from cvat_sdk.models import TaskWriteRequest
-import cvat_sdk.models as models
-import cvat_sdk.auto_annotation as cvataa
 
-from models.cvat_models import PipelineResult, SegmentJob, TaskResult
-from utilities.cvat_utilities import (
-    CVAT_SHARE_ROOT,
-    create_cvat_client,
-    ensure_segment_exists,
-    labels_to_patched_requests,
-    wait_for_cvat,
-)
+from db.models.job_segment_run import JobSegmentRun
+from db.models.segment import Segment
+from utilities.cvat_utilities import create_cvat_client
+from utilities.file_utilities import does_dir_exist, get_pngs_in_directory
 
 
-logger = logging.getLogger(__name__)
+class CVAT_Service:
+    def __init__(self):
+        self.cvat_client = create_cvat_client()
 
-MODEL = "PekingU/rtdetr_v2_r50vd" # keeping this for now since we don't have anymore models loaded
-
-# AV_LABELS = {
-#     0: 'person',
-#     1: 'bicycle',
-#     2: 'car',
-#     3: 'motorbike',
-#     5: 'bus',
-#     6: 'train',
-#     7: 'truck',
-#     9: 'traffic light',
-#     11: 'stop sign',
-# }
-
-
-
-class AVDetectionFunction:
-    def __init__(self, model_name: str, labels: dict[int, str]):
-        self.labels = labels
-        self.processor = AutoImageProcessor.from_pretrained(model_name)
-        self.model = AutoModelForObjectDetection.from_pretrained(model_name)
-        self.model.eval()
-
-    @property
-    def spec(self) -> cvataa.DetectionFunctionSpec:
-        return cvataa.DetectionFunctionSpec(
-            labels=[
-                cvataa.label_spec(name, id=idx)
-                for idx, name in self.labels.items()
-            ]
-        )
-
-    def detect(self, context: cvataa.DetectionFunctionContext, image: PIL.Image) -> list[models.LabeledShapeRequest]:
-        conf_threshold = context.conf_threshold or 0.5
-
-        with torch.no_grad():
-            inputs = self.processor(images=[image], return_tensors='pt')
-            outputs = self.model(**inputs)
-            target_sizes = torch.tensor([[image.size[1], image.size[0]]])
-            results = self.processor.post_process_object_detection(
-                outputs=outputs,
-                threshold=conf_threshold,
-                target_sizes=target_sizes,
-            )[0]
-
-        return [
-            cvataa.rectangle(label.item(), [
-                box[0].item(),
-                box[1].item(),
-                box[2].item(),
-                box[3].item(),
-            ])
-            for box, label, score in zip(results["boxes"], results["labels"], results["scores"])
-            if score >= conf_threshold and label.item() in self.labels
-        ]
-
-
-
-
-class CvatService:
-
-
-
-    
-    def create_task_from_folder(
-        self,
-        task_name: str,
-        share_dir: str,
-        labels: dict[int, str] | None = None,
-        resource_type: ResourceType = ResourceType.SHARE,
-    ) -> int:
-
-        # handle path for segment and extracting annotations.json
-        png_files = sorted(f for f in os.listdir(share_dir) if f.lower().endswith(".png"))
-        if not png_files:
-            raise ValueError(f"No PNG files found in {share_dir}")
-
-        json_files = [f for f in os.listdir(share_dir) if f.lower().endswith(".json")]
-        annotations_path = os.path.join(share_dir, json_files[0]) if json_files else None
-
-        if resource_type == ResourceType.LOCAL:
-            file_paths = [os.path.join(share_dir, f) for f in png_files]
-        else:
-            rel_dir = os.path.relpath(share_dir, CVAT_SHARE_ROOT).replace("\\", "/")
-            file_paths = [f"{rel_dir}/{f}" for f in png_files]
-
-
-        with create_cvat_client() as client:
-            task_spec = TaskWriteRequest(
-                name=task_name,
-                labels=labels_to_patched_requests(labels) if labels else [],
-            )
-            logger.info("Creating task '%s' with %d images from %s", task_name, len(file_paths), share_dir)
-            task = client.tasks.create_from_data(
-                spec=task_spec,
-                resource_type=resource_type,
-                resources=file_paths,
-            )
-            logger.info("Task created: %s", task.id)
-
-            if annotations_path:
-                logger.info("Importing annotations from %s into task %s", annotations_path, task.id)
-                task.import_annotations(format_name="COCO 1.0", filename=annotations_path)
-                logger.info("Annotations imported into task %s", task.id)
-
-        return task.id
-
-    def create_segment_task(self, segment: SegmentJob) -> int:
-        logger.info("Creating CVAT task for segment %s", segment.segment_id)
-
-        resource_type = (
-            ResourceType.SHARE
-            if segment.resource_type.upper() == "SHARE"
-            else ResourceType.LOCAL
-        )
-        task_name = f"{segment.task_title_prefix}_{segment.segment_id}"
-        task_id = self.create_task_from_folder(
-            task_name=task_name,
-            share_dir=segment.share_dir,
-            resource_type=resource_type,
-        )
-
-        logger.info("Created task for segment %s: %s", segment.segment_id, task_id)
-        return task_id
-
-
-
-
-
-
-
-
-
-
-
-
-    def annotate_task(self, task_id: int, model_name: str, labels: dict[int, str]) -> None:
-        with create_cvat_client() as client:
-            func = AVDetectionFunction(model_name=model_name, labels=labels)
-            cvataa.annotate_task(client, task_id, func)
-
-    def export_task_coco(self, task_id: int, output_dir: str = ANNOTATION_OUTPUT_DIR) -> str:
-        os.makedirs(output_dir, exist_ok=True)
-        zip_path = os.path.join(output_dir, f"task_{task_id}.zip")
-        out_path = os.path.join(output_dir, f"task_{task_id}.json")
-
-        with create_cvat_client() as client:
-            task = client.tasks.retrieve(task_id)
-            task.export_dataset(
-                format_name=COCO_FORMAT,
-                filename=zip_path,
-                include_images=False,
-            )
-
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            coco_files = [f for f in zf.namelist() if f.endswith(".json")]
-            if not coco_files:
-                raise FileNotFoundError(f"No JSON found in export zip for task {task_id}")
-            with zf.open(coco_files[0]) as src, open(out_path, "wb") as dst:
-                dst.write(src.read())
-
-        os.remove(zip_path)
-        logger.info("Saved COCO annotations to %s", out_path)
-        return out_path
-
-
-
-
-
-
-
-
-
-
-
-    def run_pipeline_for_segment(self, segment: SegmentJob) -> PipelineResult:
-        started_at = time.time()
-        task_result = TaskResult(task_id=-1)
-
+    def check_cvat_connection(self):
         try:
-            ensure_segment_exists(segment)
-            wait_for_cvat()
-
-            task_id = self.create_segment_task(segment)
-            task_result = TaskResult(task_id=task_id, status="created")
-
-            export_path = self.export_task_coco(task_id, output_dir=ANNOTATION_OUTPUT_DIR)
-            task_result.export_path = export_path
-            task_result.status = "exported"
-
-            finished_at = time.time()
-            return PipelineResult(
-                segment_id=segment.segment_id,
-                success=True,
-                task_results=[task_result],
-                message="Pipeline completed successfully",
-                started_at=started_at,
-                finished_at=finished_at,
-            )
-
+            self.cvat_client.tasks.list(return_json=False)
         except Exception as e:
-            logger.exception("Pipeline failed for segment %s", segment.segment_id)
-            finished_at = time.time()
-            return PipelineResult(
-                segment_id=segment.segment_id,
-                success=False,
-                task_results=[task_result],
-                message=str(e),
-                started_at=started_at,
-                finished_at=finished_at,
-            )
+            raise RuntimeError(f"Failed to connect/authenticate to CVAT: {e}") from e
+
+    def wait_for_cvat(self, max_wait_seconds: int = 60, poll_interval: int = 3) -> None:
+        deadline = time.time() + max_wait_seconds
+        last_error = None
+        while time.time() < deadline:
+            try:
+                self.check_cvat_connection()
+                return
+            except Exception as e:
+                last_error = e
+                time.sleep(poll_interval)
+
+        raise RuntimeError(f"CVAT did not become ready within {max_wait_seconds}s: {last_error}")
+
+    def create_segment_task(self, job_segment_run: JobSegmentRun, segment_dir: Path):
+        images = get_pngs_in_directory(dir=segment_dir)
+        labels = ?? #TODO
+        task_spec = TaskWriteRequest(
+
+        )
+
+
+
+    def get_detections_for_segment(self, job_segment_run: JobSegmentRun, segment_dir: Path) -> Any:
+        #TODO
+        if not does_dir_exist(dir=segment_dir):
+            raise RuntimeError(f"Directory {segment_dir} does not exist.")
+
+        self.wait_for_cvat()
+
+        pass

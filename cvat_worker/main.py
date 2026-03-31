@@ -2,21 +2,31 @@ import asyncio
 import logging
 import signal
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from uuid import uuid4
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.engine import create
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from db.enums import JobSegmentRunStatus, JobStatus
+from db.models.job_run import JobRun
+from db.models.job_segment_run import JobSegmentRun
 from db.url import build_database_url
 from repositories.job_run_repository import JobRunRepository
 from repositories.job_segment_run_repository import JobSegmentRunRepository
 from repositories.job_definition_repository import JobDefinitionRepository
+from repositories.segment_repository import SegmentRepository
+from services.cvat_service import CVATService
+from services.errors import SegmentNotFoundError
 from services.job_run_service import JobRunService
 from services.job_definition_service import JobDefinitionService
 from services.job_segment_run_service import JobSegmentRunService
-
+from services.segment_artifact_download_service import SegmentArtifactDownloadService
+from services.segment_service import SegmentService
 
 
 POLL_INTERVAL_SECONDS = 1.0
+DATA_DIR = Path("/app/cvat_share")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,20 +36,22 @@ logger = logging.getLogger(__name__)
 
 
 # Helpers
-async def _mark_stale_running_jobs_as_failed(job_run_service:JobRunService, job_segment_run_service:JobSegmentRunService):
+async def _mark_stale_running_jobs_as_failed(
+    job_run_service: JobRunService, job_segment_run_service: JobSegmentRunService
+):
     stale_jobs = await job_run_service.get_job_runs_by_status(status=JobStatus.RUNNING)
     if not stale_jobs:
         return
-    
+
     # for all of the stale jobs mark both the job_run and job_segment_run as failed
     for job in stale_jobs:
         await job_run_service.set_status(
-            job_run_num=job.job_run_num, 
-            job_def_id=job.job_def_id, 
-            route_id=job.route_id, 
-            status=JobStatus.FAILED
+            job_run_num=job.job_run_num,
+            job_def_id=job.job_def_id,
+            route_id=job.route_id,
+            status=JobStatus.FAILED,
         )
-        
+
         segments = await job_segment_run_service.get_segments_by_job_run(
             job_run_num=job.job_run_num,
             job_def_id=job.job_def_id,
@@ -47,7 +59,10 @@ async def _mark_stale_running_jobs_as_failed(job_run_service:JobRunService, job_
         )
         for segment in segments:
             # only stale if it was actively queued or running, if a segment was completed don't set it to failed
-            if segment.status in (JobSegmentRunStatus.RUNNING, JobSegmentRunStatus.QUEUED):
+            if segment.status in (
+                JobSegmentRunStatus.RUNNING,
+                JobSegmentRunStatus.QUEUED,
+            ):
                 await job_segment_run_service.set_status(
                     job_run_num=segment.job_run_num,
                     job_def_id=segment.job_def_id,
@@ -57,17 +72,148 @@ async def _mark_stale_running_jobs_as_failed(job_run_service:JobRunService, job_
                 )
 
 
+async def create_job_segment_runs_for_job_run(
+    job_run: JobRun,
+    job_segment_run_service: JobSegmentRunService,
+    segment_service: SegmentService,
+) -> list[JobSegmentRun]:
+    segments = await segment_service.get_segments_by_route(route_id=job_run.route_id)
+
+    job_segment_runs: list[JobSegmentRun] = []
+    for segment in segments:
+        job_segment_run = await job_segment_run_service.create_job_segment_run(
+            job_run_num=job_run.job_run_num,
+            job_def_id=job_run.job_def_id,
+            route_id=job_run.route_id,
+            segment_id=segment.segment_id,
+        )
+
+        job_segment_runs.append(job_segment_run)
+
+    return job_segment_runs
+
+
+async def process_job_segment_run(
+    job_segment_run: JobSegmentRun,
+    job_segment_run_service: JobSegmentRunService,
+    segment_artifact_download_service: SegmentArtifactDownloadService,
+    segment_service: SegmentService,
+    cvat_service: CVATService,
+    session: AsyncSession,
+):
+    logging.info(f"Processing job segment run {job_segment_run}")
+
+    try:
+        await job_segment_run_service.set_status(
+            job_run_num=job_segment_run.job_run_num,
+            job_def_id=job_segment_run.job_def_id,
+            route_id=job_segment_run.route_id,
+            segment_id=job_segment_run.segment_id,
+            status=JobSegmentRunStatus.RUNNING,
+        )
+        await session.commit()
+
+        segment = await segment_service.get_segment(
+            route_id=job_segment_run.route_id, segment_id=job_segment_run.segment_id
+        )
+
+        if not segment:
+            raise SegmentNotFoundError(
+                route_id=job_segment_run.route_id, segment_id=job_segment_run.segment_id
+            )
+
+        unique_id = str(uuid4())
+        segment_dir = DATA_DIR / unique_id
+        await segment_artifact_download_service.download_segment_frames(
+            segment=segment, dest_path=segment_dir
+        )
+
+        segment_detection = cvat_service.get_detections_for_segment(segment=segment)
+
+        await job_segment_run_service.set_status(
+            job_run_num=job_segment_run.job_run_num,
+            job_def_id=job_segment_run.job_def_id,
+            route_id=job_segment_run.route_id,
+            segment_id=job_segment_run.segment_id,
+            status=JobSegmentRunStatus.SUCCEEDED,
+        )
+        await session.commit()
+
+    except Exception as e:
+        logging.error(f"Failed to process job segment run {job_segment_run}", e)
+        await job_segment_run_service.set_status(
+            job_run_num=job_segment_run.job_run_num,
+            job_def_id=job_segment_run.job_def_id,
+            route_id=job_segment_run.route_id,
+            segment_id=job_segment_run.segment_id,
+            status=JobSegmentRunStatus.FAILED,
+        )
+        await session.commit()
+
+
+async def _process_job_run(
+    job_run: JobRun,
+    job_run_service: JobRunService,
+    job_def_service: JobDefinitionService,
+    segment_service: SegmentService,
+    job_segment_run_service: JobSegmentRunService,
+    session: AsyncSession,
+):
+    logging.info(f"Processing job {job_run}")
+    await job_run_service.set_status(
+        job_run_num=job_run.job_run_num,
+        job_def_id=job_run.job_def_id,
+        route_id=job_run.route_id,
+        status=JobStatus.RUNNING,
+    )
+    await session.commit()
+
+    try:
+        # Create job_segment_runs for each segment
+        # for each segment in segments, process segment
+        job_segment_runs = await create_job_segment_runs_for_job_run(
+            job_run=job_run,
+            job_segment_run_service=job_segment_run_service,
+            segment_service=segment_service,
+        )
+        await session.commit()
+
+        for job_segment_run in job_segment_runs:
+            await process_job_segment_run(
+                job_segment_run=job_segment_run,
+                job_segment_run_service=job_segment_run_service,
+                session=session,
+            )
+
+        logging.info(f"Processing job suceeded: {job_run}")
+        await job_run_service.set_status(
+            job_run_num=job_run.job_run_num,
+            job_def_id=job_run.job_def_id,
+            route_id=job_run.route_id,
+            status=JobStatus.SUCCEEDED,
+        )
+        await session.commit()
+
+    except Exception as e:
+        logging.error(f"Job Processing Failed: {job_run}", e)
+        await job_run_service.set_status(
+            job_run_num=job_run.job_run_num,
+            job_def_id=job_run.job_def_id,
+            route_id=job_run.route_id,
+            status=JobStatus.FAILED,
+        )
+        await session.commit()
 
 
 async def main():
     # create session to access database
     engine = create_async_engine(build_database_url(), pool_pre_ping=True)
     SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
-    
+
     stop_event = asyncio.Event()
     executor = ThreadPoolExecutor(max_workers=1)
     loop = asyncio.get_running_loop()
-    
+
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop_event.set)
 
@@ -76,11 +222,19 @@ async def main():
             job_run_repository = JobRunRepository(session=session)
             job_run_service = JobRunService(job_run_repository=job_run_repository)
             job_def_repository = JobDefinitionRepository(session=session)
-            job_def_service = JobDefinitionService(job_definition_repository=job_def_repository)
+            job_def_service = JobDefinitionService(
+                job_definition_repository=job_def_repository
+            )
             job_segment_run_repository = JobSegmentRunRepository(session=session)
-            job_segment_run_service = JobSegmentRunService(job_segment_run_repository=job_segment_run_repository)
+            job_segment_run_service = JobSegmentRunService(
+                job_segment_run_repository=job_segment_run_repository
+            )
+            segment_repository = SegmentRepository(session=session)
+            segment_service = SegmentService(segment_repository=segment_repository)
 
-            await _mark_stale_running_jobs_as_failed(job_run_service, job_segment_run_service)
+            await _mark_stale_running_jobs_as_failed(
+                job_run_service, job_segment_run_service
+            )
             await session.commit()
 
             while not stop_event.is_set():
@@ -93,7 +247,12 @@ async def main():
                     continue
 
                 await _process_job_run(
-                    job_run, job_run_service, job_def_service, session, executor
+                    job_run=job_run,
+                    job_run_service=job_run_service,
+                    job_def_service=job_def_service,
+                    segment_service=segment_service,
+                    job_segment_run_service=job_segment_run_service,
+                    session=session,
                 )
 
             logger.info("Stop event received, shutting down worker")
