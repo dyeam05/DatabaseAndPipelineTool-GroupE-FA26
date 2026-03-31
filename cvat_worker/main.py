@@ -5,18 +5,28 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
 
-from sqlalchemy.engine import create
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from cvat_annotation_functions.cvat_detr_detection import CVATDetrDetection
 from db.enums import JobSegmentRunStatus, JobStatus
 from db.models.job_run import JobRun
 from db.models.job_segment_run import JobSegmentRun
 from db.url import build_database_url
+from repositories.artifact_repository import ArtifactRepository
+from repositories.frame_artifact_repository import FrameArtifactRepository
 from repositories.job_run_repository import JobRunRepository
 from repositories.job_segment_run_repository import JobSegmentRunRepository
 from repositories.job_definition_repository import JobDefinitionRepository
+from repositories.frame_repository import FrameRepository
 from repositories.segment_repository import SegmentRepository
+from services import segment_artifact_download_service
+from services import cvat_service
+from services.artifact_service import ArtifactService
 from services.cvat_service import CVATService
+from services.frame_artifact_downloader_service import FrameArtifactDownloaderService
+from services.frame_artifact_service import FrameArtifactService
+from services.frame_service import FrameService
+from services.minio_service import MinioService
 from services.errors import SegmentNotFoundError
 from services.job_run_service import JobRunService
 from services.job_definition_service import JobDefinitionService
@@ -99,6 +109,7 @@ async def process_job_segment_run(
     segment_artifact_download_service: SegmentArtifactDownloadService,
     segment_service: SegmentService,
     cvat_service: CVATService,
+    minio_service: MinioService,
     session: AsyncSession,
 ):
     logging.info(f"Processing job segment run {job_segment_run}")
@@ -128,7 +139,16 @@ async def process_job_segment_run(
             segment=segment, dest_path=segment_dir
         )
 
-        segment_detection = cvat_service.get_detections_for_segment(segment=segment)
+        segment_detection_file_path = cvat_service.get_detections_for_segment(
+            segment_dir=segment_dir,
+            cvat_function=CVATDetrDetection(),
+            output_dir=Path(segment_dir)
+        )
+        minio_service.put_job_segment_run_data(
+            job_segment_run=job_segment_run,
+            file_path=segment_detection_file_path
+        )
+
 
         await job_segment_run_service.set_status(
             job_run_num=job_segment_run.job_run_num,
@@ -157,6 +177,9 @@ async def _process_job_run(
     job_def_service: JobDefinitionService,
     segment_service: SegmentService,
     job_segment_run_service: JobSegmentRunService,
+    segment_artifact_download_service: SegmentArtifactDownloadService,
+    cvat_service: CVATService,
+    minio_service: MinioService,
     session: AsyncSession,
 ):
     logging.info(f"Processing job {job_run}")
@@ -182,6 +205,10 @@ async def _process_job_run(
             await process_job_segment_run(
                 job_segment_run=job_segment_run,
                 job_segment_run_service=job_segment_run_service,
+                segment_service=segment_service,
+                segment_artifact_download_service=segment_artifact_download_service,
+                cvat_service=cvat_service,
+                minio_service=minio_service,
                 session=session,
             )
 
@@ -229,8 +256,26 @@ async def main():
             job_segment_run_service = JobSegmentRunService(
                 job_segment_run_repository=job_segment_run_repository
             )
+            frame_repository = FrameRepository(session=session)
+            frame_service = FrameService(frame_repository=frame_repository)
+            frame_artifact_repository = FrameArtifactRepository(session=session)
+            frame_artifact_service = FrameArtifactService(frame_artifact_repository=frame_artifact_repository)
+            artifact_repository = ArtifactRepository(session=session)
+            artifact_service = ArtifactService(artifact_repository=artifact_repository)
             segment_repository = SegmentRepository(session=session)
             segment_service = SegmentService(segment_repository=segment_repository)
+            minio_service = MinioService()
+            cvat_service = CVATService()
+            frame_artifact_downloader_service = FrameArtifactDownloaderService(
+                frame_service=frame_service,
+                frame_artifact_service=frame_artifact_service,
+                artifact_service=artifact_service,
+                minio_service=minio_service
+            )
+            segment_artifact_download_service = SegmentArtifactDownloadService(
+                frame_service=frame_service,
+                frame_artifact_downloader_service=frame_artifact_downloader_service
+            )
 
             await _mark_stale_running_jobs_as_failed(
                 job_run_service, job_segment_run_service
@@ -252,6 +297,9 @@ async def main():
                     job_def_service=job_def_service,
                     segment_service=segment_service,
                     job_segment_run_service=job_segment_run_service,
+                    segment_artifact_download_service=segment_artifact_download_service,
+                    cvat_service=cvat_service,
+                    minio_service=minio_service,
                     session=session,
                 )
 

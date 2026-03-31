@@ -24,20 +24,6 @@ from utilities.cvat_utilities import (
 
 logger = logging.getLogger(__name__)
 
-MODEL = "PekingU/rtdetr_v2_r50vd"  # keeping this for now since we don't have anymore models loaded
-
-# AV_LABELS = {
-#     0: 'person',
-#     1: 'bicycle',
-#     2: 'car',
-#     3: 'motorbike',
-#     5: 'bus',
-#     6: 'train',
-#     7: 'truck',
-#     9: 'traffic light',
-#     11: 'stop sign',
-# }
-
 
 class CVATService:
     def create_task_from_folder(
