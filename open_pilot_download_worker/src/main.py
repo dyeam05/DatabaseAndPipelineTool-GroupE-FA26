@@ -14,7 +14,6 @@ from db.models.segment import Segment
 from db.url import build_database_url
 from repositories.route_repository import RouteRepository
 from repositories.segment_repository import SegmentRepository
-from services.errors import RouteNotFoundError
 from services.open_pilot_route_service import OpenPilotRouteService
 from services.route_service import RouteService, RouteStatus
 from services.segment_service import SegmentService
@@ -313,7 +312,7 @@ async def process_route(route_to_process: Route, route_service: RouteService, se
                 )
                 await session.commit()
                 logging.info(f"Successfully uploaded segment {segment}")
-            except Exception as e:
+            except Exception:
                 logging.error(f"Failed to download segment {segment}... skipping")
                 await segment_service.set_status(
                     route_id=segment.route_id,

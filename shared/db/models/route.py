@@ -1,7 +1,6 @@
-from enum import StrEnum
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, Enum, String, DateTime, func, Integer, JSON
+from sqlalchemy import CheckConstraint, String, DateTime, func, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base

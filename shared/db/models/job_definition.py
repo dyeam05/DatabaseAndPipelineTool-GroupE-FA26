@@ -1,7 +1,6 @@
 from datetime import datetime
-from enum import StrEnum
 
-from sqlalchemy import Enum, String, DateTime, func, JSON, BigInteger
+from sqlalchemy import String, DateTime, func, JSON, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
