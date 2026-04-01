@@ -19,8 +19,6 @@ from repositories.job_segment_run_repository import JobSegmentRunRepository
 from repositories.job_definition_repository import JobDefinitionRepository
 from repositories.frame_repository import FrameRepository
 from repositories.segment_repository import SegmentRepository
-from services import segment_artifact_download_service
-from services import cvat_service
 from services.artifact_service import ArtifactService
 from services.cvat_service import CVATService
 from services.frame_artifact_downloader_service import FrameArtifactDownloaderService
@@ -174,7 +172,6 @@ async def process_job_segment_run(
 async def _process_job_run(
     job_run: JobRun,
     job_run_service: JobRunService,
-    job_def_service: JobDefinitionService,
     segment_service: SegmentService,
     job_segment_run_service: JobSegmentRunService,
     segment_artifact_download_service: SegmentArtifactDownloadService,
@@ -294,7 +291,6 @@ async def main():
                 await _process_job_run(
                     job_run=job_run,
                     job_run_service=job_run_service,
-                    job_def_service=job_def_service,
                     segment_service=segment_service,
                     job_segment_run_service=job_segment_run_service,
                     segment_artifact_download_service=segment_artifact_download_service,

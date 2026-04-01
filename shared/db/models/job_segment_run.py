@@ -42,8 +42,9 @@ class JobSegmentRun(Base):
         nullable=False,
     )
 
-    artifact_id: Mapped[UUID] | None = mapped_column(
-        ForeignKey("artifacts.artifact_id"), nullable=True
+    artifact_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("artifacts.artifact_id"), 
+        nullable=True
     )
 
     def __repr__(self):
