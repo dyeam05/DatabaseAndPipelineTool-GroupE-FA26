@@ -10,7 +10,7 @@ from services.errors import RouteAlreadyExistsError, RouteNotFoundError
 
 from api.routers.routes import routes_router
 from api.routers.segments import segments_router
-
+from api.routers.job_runs import job_runs_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,3 +57,4 @@ async def handle_route_not_found_error(
 
 app.include_router(router=routes_router)
 app.include_router(router=segments_router)
+app.include_router(router=job_runs_router)
