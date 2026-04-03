@@ -20,8 +20,8 @@ class JobRunResponse(BaseModel):
     job_def_id: int
     route_id: str
     status: JobStatus
-    queued_at: datetime
-    started_at: datetime
-    finished_at: datetime
+    queued_at: datetime | None
+    started_at: datetime | None
+    finished_at: datetime | None
     error: str | None
     stats: dict | None
