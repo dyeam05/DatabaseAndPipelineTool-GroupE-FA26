@@ -11,7 +11,7 @@ import cvat_sdk.auto_annotation as cvataa
 from cvat_annotation_functions.i_cvat_detection import ICVATDetection
 from db.models.job_segment_run import JobSegmentRun
 from db.models.segment import Segment
-from utilities.cvat_utilities import create_cvat_client
+from utilities.cvat_utilities import create_cvat_client, labels_to_patched_requests
 from utilities.file_utilities import does_dir_exist, get_pngs_in_directory
 
 logger = logging.getLogger(__name__)
@@ -45,10 +45,10 @@ class CVATService:
         """
         images = get_pngs_in_directory(dir=segment_dir)
         labels = cvat_function.labels
-
+        patched_labels = labels_to_patched_requests(labels=labels)
         task_spec = TaskWriteRequest(
             name=str(segment_dir),
-            labels=labels
+            labels=patched_labels
         )
         logger.info(f"Creating cvat task with name {str(segment_dir)}")
 
