@@ -2,7 +2,7 @@
 
 ## End-To-End Tests
 
-### Route Downloading
+### Route Downloading/Uploading to MinIO
 
 Ensure that **ONLY** the following containers are running:
 
