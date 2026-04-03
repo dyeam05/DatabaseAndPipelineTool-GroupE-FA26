@@ -1,9 +1,8 @@
-from uuid import UUID
+from uuid import uuid4, UUID
 from datetime import datetime, timezone
 from db.models.job_run import JobRun, JobStatus
 from repositories.job_run_repository import JobRunRepository
-from services.errors import JobRunAlreadyExistsError, JobRunNotFoundError
-datetime.now(timezone.utc)
+from services.errors import JobRunNotFoundError
 # This service is responsible for managing job runs.
 class JobRunService:
     def __init__(self, job_run_repository: JobRunRepository) -> None:
@@ -23,14 +22,11 @@ class JobRunService:
 
     async def create_job_run(
         self,
-        job_run_id: UUID,
         job_def_id: int,
         route_id: str,
-        status: JobStatus = JobStatus.QUEUED, # Default status is QUEUED when a job run is created
+        status: JobStatus = JobStatus.QUEUED,
     ) -> JobRun:
-        existing = await self._job_run_repository.get_by_id(job_run_id)
-        if existing is not None:
-            raise JobRunAlreadyExistsError(job_run_id)
+        job_run_id = uuid4()
 
         return await self._job_run_repository.create(
             job_run_id=job_run_id,

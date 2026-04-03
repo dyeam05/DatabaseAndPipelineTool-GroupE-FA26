@@ -7,7 +7,6 @@ from db.enums import JobStatus
 
 
 class CreateJobRunRequest(BaseModel):
-    job_run_id: UUID
     job_def_id: int
     route_id: str
     status: JobStatus = JobStatus.QUEUED
