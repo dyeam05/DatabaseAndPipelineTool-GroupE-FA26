@@ -9,8 +9,6 @@ from db.enums import JobStatus
 class CreateJobRunRequest(BaseModel):
     job_def_id: int
     route_id: str
-    status: JobStatus = JobStatus.QUEUED
-
 
 class JobRunResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
