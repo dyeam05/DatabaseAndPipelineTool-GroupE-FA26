@@ -126,6 +126,13 @@ services:
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       COMMA_JWT: ${COMMA_JWT}
       PYTHONPATH: /app/shared:/app/backend
+      CVAT_HOST: http://cvat-server:8080
+      CVAT_EMAIL: ${CVAT_EMAIL}
+      CVAT_PASSWORD: ${CVAT_PASSWORD}
+      CVAT_SHARE_ROOT: /app/cvat_share
+    networks:
+      - default
+      - cvat_network
 
   alembic_worker:
     build:

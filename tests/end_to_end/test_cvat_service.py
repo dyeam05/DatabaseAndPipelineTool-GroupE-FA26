@@ -233,3 +233,195 @@ def test_get_detections_for_segment_raises_if_dir_missing(
         )
 
     service.wait_for_cvat.assert_not_called()
+
+
+# ============================================================
+# Edge Case Tests
+# ============================================================
+
+# Verifies wait_for_cvat succeeds on first attempt without sleeping
+# Makes sure no unnecessary delay when CVAT is immediately available
+def test_wait_for_cvat_succeeds_immediately(
+    service: CVATService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service.check_cvat_connection = Mock()  # type: ignore[assignment]
+    sleep_mock = Mock()
+    monkeypatch.setattr(cvat_service_module.time, "sleep", sleep_mock)
+
+    service.wait_for_cvat(max_wait_seconds=10, poll_interval=5)
+
+    service.check_cvat_connection.assert_called_once()
+    sleep_mock.assert_not_called()
+
+
+# Verifies check_cvat_connection wraps any Exception subclass as RuntimeError
+# Not just standard exceptions - SDK-specific errors should be wrapped too
+def test_check_cvat_connection_wraps_any_exception_type(service: CVATService) -> None:
+    class SomeSDKError(Exception):
+        pass
+
+    tasks = SimpleNamespace(list=Mock(side_effect=SomeSDKError("sdk failure")))
+    service.cvat_client = SimpleNamespace(tasks=tasks)
+
+    with pytest.raises(RuntimeError, match="Failed to connect/authenticate to CVAT"):
+        service.check_cvat_connection()
+
+
+# Verifies create_new_task_for_img_dir passes an empty resources list when no PNGs found
+# Documents behavior when segment directory has no images
+def test_create_new_task_empty_image_dir(
+    service: CVATService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cvat_service_module, "get_pngs_in_directory", lambda dir: [])
+
+    class FakeTaskWriteRequest:
+        def __init__(self, **_):
+            pass
+
+    create_from_data = Mock(return_value=SimpleNamespace(id=42))
+    service.cvat_client = SimpleNamespace(tasks=SimpleNamespace(create_from_data=create_from_data))
+    monkeypatch.setattr(cvat_service_module, "TaskWriteRequest", FakeTaskWriteRequest)
+
+    task_id = service.create_new_task_for_img_dir(Path("/tmp/empty"), SimpleNamespace(labels=[]))  # type: ignore[arg-type]
+
+    assert task_id == 42
+    assert create_from_data.call_args.kwargs["resources"] == []
+
+
+# Verifies create_new_task_for_img_dir propagates SDK exceptions without swallowing them
+# Makes sure CVAT API failures bubble up to the caller
+def test_create_new_task_sdk_exception_propagates(
+    service: CVATService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cvat_service_module, "get_pngs_in_directory", lambda dir: ["img1.png"])
+
+    class FakeTaskWriteRequest:
+        def __init__(self, **_):
+            pass
+
+    monkeypatch.setattr(cvat_service_module, "TaskWriteRequest", FakeTaskWriteRequest)
+    service.cvat_client = SimpleNamespace(
+        tasks=SimpleNamespace(create_from_data=Mock(side_effect=Exception("CVAT API error")))
+    )
+
+    with pytest.raises(Exception, match="CVAT API error"):
+        service.create_new_task_for_img_dir(Path("/tmp/segment"), SimpleNamespace(labels=[]))  # type: ignore[arg-type]
+
+
+# Verifies annotate_task propagates SDK exceptions without swallowing them
+def test_annotate_task_sdk_exception_propagates(service: CVATService) -> None:
+    service.cvat_client = object()
+    annotate_mock = Mock(side_effect=Exception("annotation failed"))
+    original_annotate = cvat_service_module.cvataa.annotate_task
+    cvat_service_module.cvataa.annotate_task = annotate_mock
+    try:
+        with pytest.raises(Exception, match="annotation failed"):
+            service.annotate_task(task_id=5, cvat_function=SimpleNamespace())  # type: ignore[arg-type]
+    finally:
+        cvat_service_module.cvataa.annotate_task = original_annotate
+
+
+# Verifies that when a zip contains multiple JSON files, only the first is extracted
+# Documents current behavior: first match wins - order depends on zip internals
+def test_export_task_coco_uses_first_json_when_multiple(
+    service: CVATService,
+    tmp_path: Path,
+) -> None:
+    task_id = 11
+
+    def fake_export_dataset(format_name: str, filename: Path, include_images: bool) -> None:
+        with zipfile.ZipFile(filename, "w") as zf:
+            zf.writestr("annotations/first.json", '{"first": true}')
+            zf.writestr("annotations/second.json", '{"second": true}')
+
+    fake_task = SimpleNamespace(export_dataset=fake_export_dataset)
+    service.cvat_client = SimpleNamespace(tasks=SimpleNamespace(retrieve=Mock(return_value=fake_task)))
+
+    out_path = service.export_task_coco(task_id=task_id, output_dir=tmp_path)
+
+    assert out_path.read_text() == '{"first": true}'
+    assert not (tmp_path / f"task_{task_id}.zip").exists()
+
+
+# Verifies the zip file is NOT cleaned up when FileNotFoundError is raised during export
+# Documents a known weak point: stale zips accumulate on export failure
+def test_export_task_coco_zip_not_cleaned_up_on_error(
+    service: CVATService,
+    tmp_path: Path,
+) -> None:
+    task_id = 13
+    zip_path = tmp_path / f"task_{task_id}.zip"
+
+    def fake_export_dataset(format_name: str, filename: Path, include_images: bool) -> None:
+        with zipfile.ZipFile(filename, "w") as zf:
+            zf.writestr("images/nothing.txt", "no json here")
+
+    fake_task = SimpleNamespace(export_dataset=fake_export_dataset)
+    service.cvat_client = SimpleNamespace(tasks=SimpleNamespace(retrieve=Mock(return_value=fake_task)))
+
+    with pytest.raises(FileNotFoundError):
+        service.export_task_coco(task_id=task_id, output_dir=tmp_path)
+
+    # zip is left behind because os.remove() is never reached - documents current (undesired) behavior
+    assert zip_path.exists()
+
+
+# Verifies get_detections_for_segment propagates create_new_task_for_img_dir exceptions
+def test_get_detections_propagates_task_creation_failure(
+    service: CVATService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cvat_service_module, "does_dir_exist", lambda dir: True)
+    service.wait_for_cvat = Mock()  # type: ignore[assignment]
+    service.create_new_task_for_img_dir = Mock(side_effect=Exception("task creation failed"))  # type: ignore[assignment]
+
+    with pytest.raises(Exception, match="task creation failed"):
+        service.get_detections_for_segment(
+            segment_dir=Path("/tmp/segment"),
+            cvat_function=SimpleNamespace(),  # type: ignore[arg-type]
+            output_dir=Path("/tmp/out"),
+        )
+
+
+# Verifies get_detections_for_segment propagates annotate_task exceptions
+# Also confirms export_task_coco is NOT called after annotate_task fails
+def test_get_detections_propagates_annotation_failure(
+    service: CVATService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cvat_service_module, "does_dir_exist", lambda dir: True)
+    service.wait_for_cvat = Mock()  # type: ignore[assignment]
+    service.create_new_task_for_img_dir = Mock(return_value=7)  # type: ignore[assignment]
+    service.annotate_task = Mock(side_effect=Exception("annotation failed"))  # type: ignore[assignment]
+    service.export_task_coco = Mock()  # type: ignore[assignment]
+
+    with pytest.raises(Exception, match="annotation failed"):
+        service.get_detections_for_segment(
+            segment_dir=Path("/tmp/segment"),
+            cvat_function=SimpleNamespace(),  # type: ignore[arg-type]
+            output_dir=Path("/tmp/out"),
+        )
+
+    service.export_task_coco.assert_not_called()
+
+
+# Verifies get_detections_for_segment propagates export failures
+def test_get_detections_propagates_export_failure(
+    service: CVATService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cvat_service_module, "does_dir_exist", lambda dir: True)
+    service.wait_for_cvat = Mock()  # type: ignore[assignment]
+    service.create_new_task_for_img_dir = Mock(return_value=3)  # type: ignore[assignment]
+    service.annotate_task = Mock()  # type: ignore[assignment]
+    service.export_task_coco = Mock(side_effect=FileNotFoundError("no coco file"))  # type: ignore[assignment]
+
+    with pytest.raises(FileNotFoundError, match="no coco file"):
+        service.get_detections_for_segment(
+            segment_dir=Path("/tmp/segment"),
+            cvat_function=SimpleNamespace(),  # type: ignore[arg-type]
+            output_dir=Path("/tmp/out"),
+        )
