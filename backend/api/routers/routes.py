@@ -56,7 +56,7 @@ async def create_route(
 @routes_router.delete("/{route_id:path}")
 async def delete_route(
     route_id: str,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("deletee route")
     route_service = build_route_service(session=session)
