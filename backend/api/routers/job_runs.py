@@ -62,7 +62,7 @@ async def create_job_run(
 @job_runs_router.delete("/{job_run_id}")
 async def delete_job_run(
     job_run_id: UUID,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("delete job run")
     job_run_service = build_job_run_service(session=session)

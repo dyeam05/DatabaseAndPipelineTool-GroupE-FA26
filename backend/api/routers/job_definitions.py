@@ -57,7 +57,7 @@ async def create_job_definition(
 @job_definitions_router.delete("/{job_def_id}")
 async def delete_job_definition(
     job_def_id: int,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("delete job definition")
     job_definition_service = build_job_definition_service(session=session)
