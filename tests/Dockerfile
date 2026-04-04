@@ -17,6 +17,10 @@ RUN pip install --no-cache-dir --upgrade pip
 COPY shared/requirements.txt /app/shared_requirements.txt
 RUN pip install --no-cache-dir -r /app/shared_requirements.txt
 
+# cvat_worker packages
+COPY cvat_worker/requirements.txt /app/cvat_worker_requirements.txt
+RUN pip install --no-cache-dir -r /app/cvat_worker_requirements.txt
+
 # python packages
 COPY tests/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt

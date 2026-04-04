@@ -162,11 +162,14 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       CVAT_HOST: http://cvat-server:8080
       CVAT_EMAIL: ${CVAT_EMAIL}
       CVAT_PASSWORD: ${CVAT_PASSWORD}
       CVAT_SHARE_ROOT: /app/cvat_share
-      ANNOTATION_OUTPUT_DIR: /app/annotations
     volumes:
       - ./cvat_share:/app/cvat_share
       - ./annotations:/app/annotations
