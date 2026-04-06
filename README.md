@@ -85,3 +85,8 @@ Check out the [course Kanban board](https://cscapstone.cs.ou.edu/pages/account/)
 ## Important link
 
 - [Comma Connect](https://connect.comma.ai/)
+
+## Comma Routes
+
+- 16 Segments: db478799b6f9f210/00000098--ce43889a70
+- 4 Segments: db478799b6f9f210/0000000e--9ecd39f6bc

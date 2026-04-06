@@ -4,6 +4,3 @@ psycopg[binary]
 alembic
 httpx
 pydantic
-cvat-sdk
-torch
-transformers
