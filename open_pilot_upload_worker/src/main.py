@@ -159,6 +159,7 @@ async def _process_segment(segment: Segment, route_service: RouteService, segmen
         if (await are_all_segments_for_route_processed(route=route, segment_service=segment_service)):
             logging.info(f"All segments for {route} processed. Marking segment as uploaded")
             await route_service.set_status(route_id=route.route_id, status=RouteStatus.UPLOADED)
+            await session.commit()
         else:
             logging.info(f"All segments for {route} are not processed. Leaving status as 'uploading'")
 
