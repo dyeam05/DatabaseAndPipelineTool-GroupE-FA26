@@ -13,7 +13,7 @@ class CreateJobRunRequest(BaseModel):
 class JobRunResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    job_run_id: UUID
+    job_run_num: int
     job_def_id: int
     route_id: str
     status: JobStatus

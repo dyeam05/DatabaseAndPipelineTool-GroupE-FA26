@@ -44,6 +44,8 @@ class CVATService:
         Returns the task id of the created task
         """
         images = get_pngs_in_directory(dir=segment_dir)
+        # logging.info(f"Creating new task with dir {segment_dir}")
+        # logging.info(f"Create new task with images: {images}")
         labels = cvat_function.labels
         patched_labels = labels_to_patched_requests(labels=labels)
         task_spec = TaskWriteRequest(

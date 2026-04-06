@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import signal
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -136,6 +137,8 @@ async def process_job_segment_run(
         await segment_artifact_download_service.download_segment_frames(
             segment=segment, dest_path=segment_dir
         )
+
+        # logging.info(os.listdir(segment_dir))
 
         segment_detection_file_path = cvat_service.get_detections_for_segment(
             segment_dir=segment_dir,

@@ -6,7 +6,7 @@ def get_pngs_in_directory(dir: Path):
     if not dir.is_dir():
         raise ValueError(f"{dir} is not a directory")
 
-    return list(dir.glob("*.png"))
+    return [p for p in dir.iterdir() if p.suffix.lower() == ".png"]
 
 
 def does_dir_exist(dir: Path) -> bool:

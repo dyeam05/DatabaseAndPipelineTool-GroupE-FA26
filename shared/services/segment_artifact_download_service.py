@@ -24,5 +24,5 @@ class SegmentArtifactDownloadService:
         for frame in frames:
             await self.frame_artifact_downloader_service.download_frame(
                 frame=frame, 
-                dest_path=dest_path / str(frame.frame_id)
+                dest_path=dest_path / f"{str(frame.frame_id)}.png"
             )
