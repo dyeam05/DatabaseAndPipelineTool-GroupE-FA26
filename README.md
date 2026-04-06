@@ -6,6 +6,7 @@
 - Trevor Bean
 - Vinh Khang Huynh
 - Thomas Petersen
+- Roman Beames
 
 ## Background
 

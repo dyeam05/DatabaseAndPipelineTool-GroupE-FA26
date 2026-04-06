@@ -1,0 +1,4 @@
+cvat-sdk
+torch
+transformers
+torchvision
