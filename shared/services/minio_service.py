@@ -5,8 +5,10 @@ import time
 from minio.datatypes import Bucket
 from minio.helpers import ObjectWriteResult
 
+from db.models.artifact import Artifact
+from db.models.job_segment_run import JobSegmentRun
 from db.models.segment import Segment
-from utilities.minio_utilities import get_minio_client, get_segment_image_object_name, get_segment_log_object_name, is_bucket_in_list_of_buckets
+from utilities.minio_utilities import get_job_segment_run_object_name, get_minio_client, get_segment_image_object_name, get_segment_log_object_name, is_bucket_in_list_of_buckets
 
 class MinioService:
     def __init__(self):
@@ -33,6 +35,15 @@ class MinioService:
             file_path=str(log_path)
         )
 
+    def put_job_segment_run_data(self, job_segment_run: JobSegmentRun, file_path: Path) -> ObjectWriteResult:
+        return self.minio_client.fput_object(
+            bucket_name=self.bucket_name,
+            object_name=get_job_segment_run_object_name(job_segment_run),
+            content_type="application/json",
+            file_path=str(file_path)
+        )
+
+
     def wait_for_minio(self, timeout: int = 30) -> None:
         start = time.time()
         while True:
@@ -57,4 +68,10 @@ class MinioService:
         self.minio_client.make_bucket(
             bucket_name=bucket_name,
         )
-    
+
+    def download_artifact(self, artifact:Artifact,  dest_path:Path):
+        self.minio_client.fget_object(
+            bucket_name=artifact.bucket, 
+            object_name=artifact.object_key, 
+            file_path=str(dest_path)
+        )

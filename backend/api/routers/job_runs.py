@@ -31,16 +31,26 @@ async def list_job_runs(
     return await job_run_service.list_job_runs()
 
 
-@job_runs_router.get("/{job_run_id}", response_model=JobRunResponse)
+@job_runs_router.get("/", response_model=JobRunResponse)
 async def get_job_run(
-    job_run_id: UUID,
+    job_def_id: int,
+    job_run_num: int,
+    route_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> JobRun:
-    logging.info(f"Getting job run {job_run_id}")
+    logging.info(f"Getting job run ({job_def_id=}, {job_run_num=}, {route_id=})")
     job_run_service = build_job_run_service(session=session)
-    job_run = await job_run_service.get_job_run(job_run_id=job_run_id)
+    job_run = await job_run_service.get_job_run(
+        job_def_id=job_def_id,
+        job_run_num=job_run_num,
+        route_id=route_id
+    )
     if job_run is None:
-        raise JobRunNotFoundError(job_run_id)
+        raise JobRunNotFoundError(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id
+        )
     return job_run
 
 
@@ -52,19 +62,23 @@ async def create_job_run(
     logging.info("create job run")
     job_run_service: JobRunService = build_job_run_service(session=session)
     return await job_run_service.create_job_run(
-        job_run_id=payload.job_run_id,
         job_def_id=payload.job_def_id,
         route_id=payload.route_id,
-        status=JobStatus.QUEUED,
     )
 
 
-@job_runs_router.delete("/{job_run_id}")
+@job_runs_router.delete("/")
 async def delete_job_run(
-    job_run_id: UUID,
+    job_def_id: int,
+    job_run_num: int,
+    route_id: str,
     session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("delete job run")
     job_run_service = build_job_run_service(session=session)
-    await job_run_service.delete_job_run(job_run_id=job_run_id)
+    await job_run_service.delete_job_run(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

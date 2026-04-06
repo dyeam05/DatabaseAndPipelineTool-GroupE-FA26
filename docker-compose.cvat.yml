@@ -1,0 +1,43 @@
+services:
+  # Expose cvat_server on the shared network so cvat_worker can reach it by name
+  cvat_server:
+    networks:
+      default:
+      cvat_network:
+        aliases:
+          - cvat-server
+    volumes:
+      - cvat_share:/home/django/share:ro
+
+  # The remaining CVAT workers only need the share volume, not the external network
+  cvat_worker_import:
+    volumes:
+      - cvat_share:/home/django/share:ro
+
+  cvat_worker_export:
+    volumes:
+      - cvat_share:/home/django/share:ro
+
+  cvat_worker_annotation:
+    volumes:
+      - cvat_share:/home/django/share:ro
+
+  cvat_worker_chunks:
+    volumes:
+      - cvat_share:/home/django/share:ro
+
+
+# Since cvat/ has its own docker compose, need to override it and mount
+# the cvat_share volume to it from the root dir. 
+# setup_cvat.sh sets ${PWD} before it runs the docker compose
+volumes:
+  cvat_share:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/cvat_share
+      o: bind
+
+networks:
+  cvat_network:
+    external: true

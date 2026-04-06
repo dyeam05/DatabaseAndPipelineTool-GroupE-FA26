@@ -1,10 +1,11 @@
 FROM python:3.12-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/shared
 
 WORKDIR /app
 
-# system packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -17,18 +18,11 @@ RUN pip install --no-cache-dir --upgrade pip
 COPY shared/requirements.txt /app/shared_requirements.txt
 RUN pip install --no-cache-dir -r /app/shared_requirements.txt
 
-# cvat_worker packages
-COPY cvat_worker/requirements.txt /app/cvat_worker_requirements.txt
-RUN pip install --no-cache-dir -r /app/cvat_worker_requirements.txt
-
-# python packages
-COPY tests/requirements.txt /app/requirements.txt
+# Copy worke specific packages
+COPY cvat_worker/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copy application code
 COPY shared /app/shared
-COPY tests /app
+COPY cvat_worker/main.py /app/main.py
 
-WORKDIR /app
-
-CMD ["pytest", "."]
+CMD ["python", "main.py"]

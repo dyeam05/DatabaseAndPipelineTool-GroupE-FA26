@@ -94,6 +94,7 @@ async def _stream_process_output(
     process: asyncio.subprocess.Process,
     process_name: str,
     route_id: str,
+    log: bool = True
 ) -> None:
     if process.stdout is None:
         return
@@ -111,19 +112,22 @@ async def _stream_process_output(
 
         while "\n" in buffer:
             line, buffer = buffer.split("\n", 1)
-            logger.info("[%s] route=%s %s", process_name, route_id, line.rstrip("\r"))
+            if log:
+                logger.info("[%s] route=%s %s", process_name, route_id, line.rstrip("\r"))
 
         if len(buffer) > max_partial_line:
-            logger.info(
-                "[%s] route=%s %s ... [long line truncated]",
-                process_name,
-                route_id,
-                buffer[:1024].rstrip("\r"),
-            )
-            buffer = ""
+            if log:
+                logger.info(
+                    "[%s] route=%s %s ... [long line truncated]",
+                    process_name,
+                    route_id,
+                    buffer[:1024].rstrip("\r"),
+                )
+                buffer = ""
 
     if buffer:
-        logger.info("[%s] route=%s %s", process_name, route_id, buffer.rstrip("\r"))
+        if log:
+            logger.info("[%s] route=%s %s", process_name, route_id, buffer.rstrip("\r"))
 
 
 async def _force_stop_process(process: asyncio.subprocess.Process | None) -> None:
@@ -186,7 +190,7 @@ async def _extract_single_segment(segment_path: str, output_dir: Path) -> None:
             replay_process.pid,
         )
         replay_stream_task = asyncio.create_task(
-            _stream_process_output(replay_process, "replay", segment_path)
+            _stream_process_output(replay_process, "replay", segment_path, log=False)
         )
 
         extraction_wait_task = asyncio.create_task(extraction_process.wait())
@@ -358,6 +362,7 @@ async def main():
             await session.commit()
 
             while not stop_event.is_set():
+                logger.info("Checking for new segment")
                 route_to_process = await route_service.get_next_route_by_status(
                     status=RouteStatus.DOWNLOAD_QUEUE
                 )
