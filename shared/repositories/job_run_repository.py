@@ -41,12 +41,10 @@ class JobRunRepository:
 
     async def create(
         self,
-        job_run_num:int,
         job_def_id: int,
         route_id: str,
     ) -> JobRun:
         job_run = JobRun(
-            job_run_id=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
             status=JobStatus.QUEUED,

@@ -3,7 +3,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, Response, status, APIRouter
 
-from api.dependencies import get_session
+from api.dependencies import get_session, get_transactional_session
 from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
@@ -45,7 +45,7 @@ async def get_segment(
 async def delete_segment(
     route_id: str,
     segment_id: int,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("delete segment")
     segment_service = build_segment_service(session=session)
