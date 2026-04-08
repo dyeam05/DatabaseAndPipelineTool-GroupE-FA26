@@ -9,8 +9,6 @@ from cvat_sdk.models import TaskWriteRequest
 import cvat_sdk.auto_annotation as cvataa
 
 from cvat_annotation_functions.i_cvat_detection import ICVATDetection
-from db.models.job_segment_run import JobSegmentRun
-from db.models.segment import Segment
 from utilities.cvat_utilities import create_cvat_client, labels_to_patched_requests
 from utilities.file_utilities import does_dir_exist, get_pngs_in_directory
 
@@ -57,13 +55,14 @@ class CVATService:
         task = self.cvat_client.tasks.create_from_data(
             spec=task_spec, # type: ignore
             resource_type=ResourceType.LOCAL,
-            resources=images
+            resources=images,
         )
 
         logger.info(f"Tak created with id {task.id}")
         return task.id
-    
+
     def annotate_task(self, task_id: int, cvat_function: ICVATDetection) -> None:
+        logging.info(f"Annotating CVAT Task: {task_id}")
         cvataa.annotate_task(
             self.cvat_client,
             task_id,
@@ -118,10 +117,14 @@ class CVATService:
             task_id=task_id,
             cvat_function=cvat_function
         )
-        
+
         output_file = self.export_task_coco(
             task_id=task_id,
             output_dir=output_dir
         )
+
+
+        logging.info(f"Removing CVAT Task: {task_id}")
+        self.cvat_client.tasks.remove_by_ids([task_id])
 
         return output_file
