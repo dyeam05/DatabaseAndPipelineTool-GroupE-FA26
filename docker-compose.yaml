@@ -177,7 +177,18 @@ services:
       - default
       - cvat_network
     depends_on:
-      - postgres
+      - postgres 
+
+  frontend:
+    build:
+      context: ./frontui/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://backend:8000
+    depends_on:
+      - backend
 
 networks:
   cvat_network:

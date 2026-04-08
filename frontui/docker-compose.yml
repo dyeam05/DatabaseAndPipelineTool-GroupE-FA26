@@ -1,0 +1,22 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        - action: sync
+          path: ./frontend/public
+          target: /app/public
+        - action: sync+restart
+          path: ./frontend/index.html
+          target: /app/index.html
+        - action: sync
+          path: ./frontend/mock_images
+          target: /app/public/mock_images
+        - action: rebuild
+          path: ./frontend/package.json

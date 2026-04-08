@@ -1,0 +1,162 @@
+/* ============================================================
+   FONTS
+   Space Mono  — monospaced, for IDs / data / display
+   General Sans — geometric sans, for headings and body
+   ============================================================ */
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap");
+@import url("https://api.fontshare.com/v2/css?f[]=general-sans@400,600&display=swap");
+
+/* ============================================================
+   DESIGN TOKENS
+   Edit these to change the look of the entire app.
+   ============================================================ */
+:root {
+
+  /* --- Backgrounds --- */
+  --bg-primary:   #FFFFFF;  /* App background, deepest layer          */
+  --bg-surface:   #F7F7F8;  /* Cards, panels, modals                  */
+  --bg-elevated:  #EEEFF1;  /* Hover states, table zebra rows         */
+  --bg-inverse:   #111111;  /* Top bar, selected tabs (dark sections) */
+
+  /* --- Borders --- */
+  --border-subtle: #E0E0E3; /* Card borders, dividers                 */
+  --border-strong: #C0C0C5; /* Focus rings, active borders            */
+  --border-black:  #111111; /* High-contrast borders on key elements  */
+
+  /* --- Text --- */
+  --text-primary:    #111111; /* Headings, primary content            */
+  --text-secondary:  #555555; /* Labels, metadata, timestamps         */
+  --text-muted:      #999999; /* Placeholders, disabled text          */
+  --text-on-inverse: #FFFFFF; /* Text on dark backgrounds             */
+
+  /* --- Status / Accent --- */
+  --accent-go:      #18A861; /* Success, annotated, approved          */
+  --accent-caution: #D97706; /* Warnings, annotating / in-progress    */
+  --accent-alert:   #DC2626; /* Errors, failed segments               */
+  --accent-cvat:    #6D28D9; /* CVAT-related actions                  */
+  --accent-postgres: #336791; /* PostgreSQL brand color               */
+  --accent-link:    #111111; /* Interactive text (underlined)         */
+
+  /* --- Status Badge Tints --- */
+  --status-recorded-text:  #888888;
+  --status-caution-text:   #92400E; /* Dark amber — annotating text   */
+  --status-go-text:        #14532D; /* Dark green — annotated text    */
+  --status-alert-text:     #7F1D1D; /* Dark red — failed text         */
+  --status-recorded-bg:    rgba(238,239,241,0.92);
+  --status-caution-bg:     rgba(255,251,235,0.95);
+  --status-go-bg:          rgba(240,253,244,0.95);
+  --status-alert-bg:       rgba(254,242,242,0.95);
+
+  /* --- Annotation Class Colors --- */
+  --class-vehicle:       #2563EB;
+  --class-pedestrian:    #D97706;
+  --class-cyclist:       #0D9488;
+  --class-motorbike:     #8B5CF6;
+  --class-bus:           #0369A1;
+  --class-train:         #374151;
+  --class-truck:         #1D4ED8;
+  --class-lane-line:     #16A34A;
+  --class-road-sign:     #EA580C;
+  --class-traffic-light: #DC2626;
+  --class-road-edge:     #7C3AED;
+  --class-other:         #6B7280;
+
+  /* --- Hover states --- */
+  --bg-inverse-hover: #2a2a2a; /* Slightly lifted dark surface       */
+
+  /* --- Typography --- */
+  --font-sans:  "General Sans", system-ui, sans-serif;
+  --font-mono:  "Space Mono", "Courier New", monospace;
+
+  /* --- Font Sizes (t-shirt scale) --- */
+  --text-xs:   0.75rem;   /*  12px */
+  --text-sm:   0.875rem;  /*  14px */
+  --text-base: 1rem;      /*  16px */
+  --text-lg:   1.125rem;  /*  18px */
+  --text-xl:   1.25rem;   /*  20px */
+  --text-2xl:  1.5rem;    /*  24px */
+  --text-3xl:  1.875rem;  /*  30px */
+
+  /* --- Spacing (base-8 scale) --- */
+  --space-1:  0.25rem;  /*  4px */
+  --space-2:  0.5rem;   /*  8px */
+  --space-3:  0.75rem;  /* 12px */
+  --space-4:  1rem;     /* 16px */
+  --space-5:  1.25rem;  /* 20px */
+  --space-6:  1.5rem;   /* 24px */
+  --space-8:  2rem;     /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+
+  /* --- Border Radius --- */
+  --radius-sm: 0.25rem;  /* 4px  — small tags, badges */
+  --radius-md: 0.5rem;   /* 8px  — cards, inputs      */
+  --radius-lg: 0.75rem;  /* 12px — modals, panels     */
+
+  /* --- Shadows --- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.10);
+
+  /* --- Transitions --- */
+  --transition-fast: 100ms ease;
+  --transition-base: 200ms ease;
+
+  /* --- Layout --- */
+  --topbar-height:  48px;
+  --sidebar-width:  220px;
+  --content-max-w:  1400px;
+
+}
+
+/* ============================================================
+   BASE STYLES
+   Minimal resets on top of Tailwind's preflight.
+   ============================================================ */
+html {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Monospaced elements (IDs, timestamps, code) */
+code,
+kbd,
+pre,
+samp,
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Links */
+a {
+  color: var(--accent-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  opacity: 0.7;
+}
+
+/* ============================================================
+   RACING ACCENT — 3px start/finish stripe at top of viewport
+   ============================================================ */
+body::before {
+  content: "";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: var(--bg-inverse);
+  z-index: 9999;
+}
