@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import signal
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -17,7 +16,6 @@ from repositories.artifact_repository import ArtifactRepository
 from repositories.frame_artifact_repository import FrameArtifactRepository
 from repositories.job_run_repository import JobRunRepository
 from repositories.job_segment_run_repository import JobSegmentRunRepository
-from repositories.job_definition_repository import JobDefinitionRepository
 from repositories.frame_repository import FrameRepository
 from repositories.segment_repository import SegmentRepository
 from services.artifact_service import ArtifactService
@@ -28,7 +26,6 @@ from services.frame_service import FrameService
 from services.minio_service import MinioService
 from services.errors import SegmentNotFoundError
 from services.job_run_service import JobRunService
-from services.job_definition_service import JobDefinitionService
 from services.job_segment_run_service import JobSegmentRunService
 from services.segment_artifact_download_service import SegmentArtifactDownloadService
 from services.segment_service import SegmentService
@@ -248,10 +245,6 @@ async def main():
         async with SessionLocal() as session:
             job_run_repository = JobRunRepository(session=session)
             job_run_service = JobRunService(job_run_repository=job_run_repository)
-            job_def_repository = JobDefinitionRepository(session=session)
-            job_def_service = JobDefinitionService(
-                job_definition_repository=job_def_repository
-            )
             job_segment_run_repository = JobSegmentRunRepository(session=session)
             job_segment_run_service = JobSegmentRunService(
                 job_segment_run_repository=job_segment_run_repository
