@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install pip
 RUN pip install --no-cache-dir --upgrade pip
+# Install MinIO client
+RUN pip install minio
 
 # Shared Python Packages
 COPY shared/requirements.txt /app/shared_requirements.txt
