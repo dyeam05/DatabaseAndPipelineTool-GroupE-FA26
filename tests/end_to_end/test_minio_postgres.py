@@ -24,12 +24,15 @@ BASE_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
 ROUTES_URL = f"{BASE_URL}/routes/" 
 SEGMENTS_URL = f"{BASE_URL}/segments/"
 
+JOB_DEFS_URL = f"{BASE_URL}/job-definitions/"
+JOB_RUNS_URL = f"{BASE_URL}/job-runs/"
+
 MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT", "minio:9000")
 MINIO_ACCESS_KEY = os.environ.get("MINIO_ROOT_USER", "minioadmin")
 MINIO_SECRET_KEY = os.environ.get("MINIO_ROOT_PASSWORD", "minioadmin")
 MINIO_BUCKET = os.environ.get("MINIO_BUCKET_NAME", "data") # Updated to match .env [cite: 2]
 
-TARGET_ROUTE_ID = "db478799b6f9f210|00000086--803d0a7844" # Your fresh route ID
+TARGET_ROUTE_ID = "db478799b6f9f210|00000081--23c1159034" # Your fresh route ID
 
 POLL_INTERVAL_SECONDS = 5
 DOWNLOAD_TIMEOUT_SECONDS = 10 * 60 
@@ -196,3 +199,73 @@ class TestOpenPilotPipeline:
         # Double check cleanup
         remaining = list(minio.list_objects(MINIO_BUCKET, prefix=route_path, recursive=True))
         assert len(remaining) == 0, "MinIO cleanup failed: some objects still remain."
+    def test_06_create_and_get_job_definition(self):
+        """Test creating a new job definition with the 'object_detection' enum."""
+        payload = {
+            "type": "object_detection", # This matches your API requirement
+            "name": "Integration Test Detector",
+            "config": {"model": "yolov8", "threshold": 0.5},
+            "description": "Integration test for object detection"
+        }
+        resp = requests.post(JOB_DEFS_URL, json=payload, timeout=10)
+        
+        assert resp.status_code == 201, f"Expected 201, got {resp.status_code}. API said: {resp.text}"
+        data = resp.json()
+        
+        pytest.shared_job_def_id = data["job_def_id"]
+        assert data["type"] == "object_detection"
+
+    def test_07_create_and_list_job_run(self):
+        """Test creating a job run and finding it in the list."""
+        job_def_id = getattr(pytest, "shared_job_def_id", None)
+        assert job_def_id is not None, "Skipping: job_def_id not found from previous test."
+
+        payload = {
+            "job_def_id": job_def_id,
+            "route_id": TARGET_ROUTE_ID
+        }
+        
+        # 1. Create the Job Run
+        resp = requests.post(JOB_RUNS_URL, json=payload, timeout=10)
+        assert resp.status_code == 201, f"Failed to create Job Run: {resp.text}"
+        run_data = resp.json()
+        
+        assert run_data["route_id"] == TARGET_ROUTE_ID
+        assert run_data["job_def_id"] == job_def_id
+        assert "job_run_num" in run_data
+        
+        pytest.shared_job_run_num = run_data["job_run_num"]
+
+        # 2. Retrieve the Job Run
+        # Because GET / defaults to the list endpoint in the router, we fetch the list 
+        # and ensure our newly created run is inside it.
+        list_resp = requests.get(JOB_RUNS_URL, timeout=10)
+        assert list_resp.status_code == 200
+        
+        runs = list_resp.json()
+        found_run = next(
+            (r for r in runs if r["job_run_num"] == pytest.shared_job_run_num and r["job_def_id"] == job_def_id), 
+            None
+        )
+        assert found_run is not None, "Newly created job run was not found in the GET / list"
+
+    def test_08_cleanup_job_data(self):
+        """Clean up the job runs and definitions to ensure a pristine DB state."""
+        job_def_id = getattr(pytest, "shared_job_def_id", None)
+        job_run_num = getattr(pytest, "shared_job_run_num", None)
+
+        # 1. Delete Job Run (Using query params to hit the collision endpoint)
+        if job_run_num is not None and job_def_id is not None:
+            params = {
+                "job_def_id": job_def_id,
+                "job_run_num": job_run_num,
+                "route_id": TARGET_ROUTE_ID
+            }
+            resp_run = requests.delete(JOB_RUNS_URL, params=params, timeout=10)
+            # Accept 204 or 404 (if it already deleted somehow)
+            assert resp_run.status_code in (204, 404), f"Failed to delete Job Run: {resp_run.text}"
+
+        # 2. Delete Job Definition
+        if job_def_id is not None:
+            resp_def = requests.delete(f"{JOB_DEFS_URL}{job_def_id}", timeout=10)
+            assert resp_def.status_code in (204, 404), f"Failed to delete Job Def: {resp_def.text}"
