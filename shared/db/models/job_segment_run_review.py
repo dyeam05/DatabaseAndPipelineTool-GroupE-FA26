@@ -43,6 +43,10 @@ class JobSegmentRunReview(Base):
         nullable=False
     )
 
+    task_id: Mapped[int] = mapped_column(
+        nullable=True
+    )
+
     def __repr__(self):
-        return f"JobSegmentRunReview({self.job_run_num=}, {self.route_id=}, {self.job_def_id=}, {self.segment_id=}, {self.status=})"
+        return f"JobSegmentRunReview({self.job_run_num=}, {self.route_id=}, {self.job_def_id=}, {self.segment_id=}, {self.status=}, {self.task_id=})"
 

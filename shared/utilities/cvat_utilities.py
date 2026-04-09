@@ -1,5 +1,6 @@
+import json
 import os
-import time
+from pathlib import Path
 import logging
 
 from cvat_sdk import make_client
@@ -16,7 +17,7 @@ CVAT_SHARE_ROOT = os.environ["CVAT_SHARE_ROOT"]
 
 
 def labels_to_patched_requests(labels: dict[int, str]) -> list[PatchedLabelRequest]:
-    return [PatchedLabelRequest(name=name) for name in labels.values()]
+    return [PatchedLabelRequest(name=name) for name in labels.values()] # type: ignore
 
 
 def create_cvat_client():
@@ -33,3 +34,21 @@ def ensure_segment_exists(segment: SegmentJob) -> None:
         raise FileNotFoundError(
             f"No .png files found in segment directory: {segment.share_dir}"
         )
+
+def extract_ids_to_labels_for_coco_annotation_file(annotation_file: Path) -> dict[int, str]:
+    """
+    Returns the dictionary mapping integer IDs to string labels for a CVAT annotation file (in COCO format)
+    """
+    with annotation_file.open("r") as f:
+        data = json.load(f)
+
+    try:
+        ids_to_labels: dict[int, str] = {}
+        for category in data['categories']:
+            ids_to_labels[category['id']] = category['name']
+    except KeyError as e:
+        raise ValueError(f"JSON schema not in expcted format. File: {annotation_file}. {e}")
+    
+    return ids_to_labels
+
+
