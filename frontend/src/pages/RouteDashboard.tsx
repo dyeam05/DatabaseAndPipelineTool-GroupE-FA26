@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { listRoutes } from "../api/routes";
 import { getThumbnailUrl } from "../api/routes";
 import type { Route, AnnotationStatus } from "../api/types";
-
+import { listSegments } from "../api/segments";
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
@@ -306,14 +306,39 @@ export default function RouteDashboard() {
   const [sortBy, setSortBy] = useState<SortKey>("date");
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    listRoutes()
-      .then((data) => { if (!cancelled) { setRoutes(data); setLoading(false); } })
-      .catch((err) => { if (!cancelled) { setError(err.message ?? "Failed to load routes"); setLoading(false); } });
-    return () => { cancelled = true; };
-  }, []);
+  let cancelled = false;
+  setLoading(true);
+  setError(null);
+
+  Promise.all([listRoutes(), listSegments()])
+    .then(([routesData, segmentsData]) => {
+      if (cancelled) return;
+
+      const counts: Record<string, number> = {};
+
+      for (const s of segmentsData) {
+        counts[s.routeId] = (counts[s.routeId] || 0) + 1;
+      }
+
+      const enriched = routesData.map((r) => ({
+        ...r,
+        segmentCount: counts[r.id] || 0,
+      }));
+
+      setRoutes(enriched);
+      setLoading(false);
+    })
+    .catch((err) => {
+      if (!cancelled) {
+        setError(err.message ?? "Failed to load routes");
+        setLoading(false);
+      }
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   const stats = useMemo(() => {
     const totalSegments = routes.reduce((s, r) => s + r.segmentCount, 0);
