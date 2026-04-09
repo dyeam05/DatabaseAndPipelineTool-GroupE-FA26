@@ -1,10 +1,11 @@
 import logging
-
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends, Response, status, APIRouter
 import os
+
+from fastapi import Depends, Response, status, APIRouter
+from fastapi.responses import StreamingResponse
 from minio import Minio
-from fastapi.responses import RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from api.dependencies import get_session, get_transactional_session
 from db.models.segment import Segment
 from schemas.segment import SegmentResponse
@@ -18,6 +19,7 @@ minio_client = Minio(
     secure=False,
 )
 MINIO_BUCKET = os.getenv("MINIO_BUCKET_NAME")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s"
@@ -36,6 +38,15 @@ async def list_segments(
     segment_service = build_segment_service(session=session)
     return await segment_service.list_segments()
 
+@segments_router.get("/{route_id}/{segment_id}/thumbnail")
+async def get_segment_thumbnail(route_id: str, segment_id: int):
+    prefix = f"v1/routes/{route_id}/segment/{segment_id}/front_wide/frames/"
+    objects = sorted(
+        minio_client.list_objects(MINIO_BUCKET, prefix=prefix, recursive=True),
+        key=lambda o: o.object_name,)
+    obj = objects[len(objects) // 2]
+    minio_response = minio_client.get_object(MINIO_BUCKET, obj.object_name)
+    return StreamingResponse(minio_response, media_type="image/png")
 
 @segments_router.get("/{route_id}/{segment_id}", response_model=SegmentResponse)
 async def get_segment(
@@ -60,36 +71,3 @@ async def delete_segment(
     segment_service = build_segment_service(session=session)
     await segment_service.delete_segment(route_id=route_id, segment_id=segment_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-@segments_router.get("/{route_id}/{segment_id}/thumbnail")
-async def get_segment_thumbnail(route_id: str, segment_id: int):
-
-    # ✅ extract last part after "--"
-    try:
-        route_suffix = route_id.split("--")[-1]
-    except Exception:
-        return Response(status_code=400)
-
-    # ✅ correct MinIO path
-    prefix = f"{route_suffix}/segment/{segment_id}/front_regular/frames/"
-
-    objects = list(
-        minio_client.list_objects(
-            MINIO_BUCKET,
-            prefix=prefix,
-            recursive=True,
-        )
-    )
-
-    if not objects:
-        return Response(status_code=404)
-
-    # pick a frame (middle frame looks nicer than first)
-    obj = sorted(objects, key=lambda o: o.object_name)[len(objects)//2]
-
-    url = minio_client.presigned_get_object(
-        MINIO_BUCKET,
-        obj.object_name,
-    )
-
-    return RedirectResponse(url)

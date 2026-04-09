@@ -1,6 +1,6 @@
 import { apiFetch, API_BASE } from "./client";
 import { mapRoute } from "./types";
-import type { RouteResponse, Route } from "./types";
+import type { Route, RouteResponse } from "./types";
 
 export async function listRoutes(): Promise<Route[]> {
   const data = await apiFetch<RouteResponse[]>("/routes/");
