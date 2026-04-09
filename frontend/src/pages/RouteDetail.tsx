@@ -280,16 +280,19 @@ export default function RouteDetail() {
     setError(null);
 
     Promise.all([
-      getRoute(decodedRouteId),
-      listSegmentsForRoute(decodedRouteId),
-    ])
+  getRoute(decodedRouteId),
+  listSegmentsForRoute(decodedRouteId),
+])
       .then(([r, segs]) => {
-        if (!cancelled) {
-          setRoute(r);
-          setAllSegments(segs);
-          setLoading(false);
-        }
-      })
+  if (!cancelled) {
+    setRoute({
+      ...r,
+      segmentCount: segs.length,
+    });
+    setAllSegments(segs);
+    setLoading(false);
+  }
+})
       .catch((err) => {
         if (!cancelled) {
           setError(err.message ?? "Failed to load route");
