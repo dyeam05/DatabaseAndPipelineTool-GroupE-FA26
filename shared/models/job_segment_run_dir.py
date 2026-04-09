@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 @dataclass(frozen=True)
-class SegmentDir:
-    path: Path
-    segment_num: int
+class JobSegmentRunDir:
+    image_paths: list[Path]
+    annotation_path: Path
 
 
