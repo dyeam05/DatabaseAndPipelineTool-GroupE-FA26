@@ -60,6 +60,7 @@ class JobSegmentArtifactDownloaderService:
         """
         Download the images and annotations for a job segment run and store them in a folder.
         """
+        logging.info(f"Downloading jobb segment run artifacts for {job_segment_run}")
         if not job_segment_run.status == JobSegmentRunStatus.SUCCEEDED:
             raise ValueError(f"Can not download job segment run artifacts for {job_segment_run} because status is not SUCCEEDED")
 

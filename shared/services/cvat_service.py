@@ -71,7 +71,7 @@ class CVATService:
         Returns the task id of the created task
         """
 
-        logging.info(f"Creating cvat task from directory with namee {task_name}")
+        logging.info(f"Creating cvat task from directory with name {task_name}")
         labels = extract_ids_to_labels_for_coco_annotation_file(
             annotation_file=job_segment_run_dir.annotation_path
         )

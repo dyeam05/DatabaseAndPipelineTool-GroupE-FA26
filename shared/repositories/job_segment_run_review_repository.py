@@ -83,4 +83,14 @@ class JobSegmentRunReviewRepository:
         result = await self._session.scalars(stmt)
         return result.first()
 
+    async def get_next_by_statuses(self, statuses: list[JobSegmentRunReviewStatus]) -> JobSegmentRunReview | None:
+        stmt = (
+            select(JobSegmentRunReview)
+            .where(JobSegmentRunReview.status.in_(statuses))
+            .order_by(JobSegmentRunReview.created_at.asc())
+            .limit(1)
+        )
+        result = await self._session.scalars(stmt)
+        return result.first()
+
 

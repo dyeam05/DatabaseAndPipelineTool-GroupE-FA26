@@ -90,7 +90,9 @@ class JobSegmentRunReviewStatus(StrEnum):
     LOADING = "loading"
     LOADED = "loaded"
     QUEUED_FOR_REMOVAL = "queued_for_removal"
+    REMOVING = "removing"
     REMOVED = "removed"
+    FAILED = "failed"
 
 job_segment_run_review_status_enum = Enum(
     JobSegmentRunReviewStatus,

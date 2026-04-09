@@ -43,7 +43,7 @@ class JobSegmentRunReview(Base):
         nullable=False
     )
 
-    task_id: Mapped[int] = mapped_column(
+    task_id: Mapped[int | None] = mapped_column(
         nullable=True
     )
 
