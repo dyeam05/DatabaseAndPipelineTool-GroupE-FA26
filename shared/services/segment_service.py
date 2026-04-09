@@ -3,6 +3,7 @@ from datetime import datetime
 from db.models.segment import Segment, SegmentStatus
 from repositories.segment_repository import SegmentRepository
 from services.errors import SegmentAlreadyExistsError, SegmentNotFoundError
+from services.minio_service import MinioService
 
 
 # Service layer for managing segments
@@ -82,3 +83,22 @@ class SegmentService:
             raise SegmentNotFoundError(route_id, segment_id)
 
         await self._segment_repository.delete(segment)
+
+    async def get_segment_thumbnail_stream(self, route_id: str, segment_id: int):
+
+        minio_service = MinioService()
+
+        prefix = f"v1/routes/{route_id}/segment/{segment_id}/front_wide/frames/"
+
+        objects = sorted(
+            minio_service.minio_client.list_objects(
+                minio_service.bucket_name,
+                prefix=prefix,
+                recursive=True,
+            ),
+            key=lambda o: o.object_name,)
+        obj = objects[len(objects) // 2]
+        return minio_service.minio_client.get_object(
+            minio_service.bucket_name,
+            obj.object_name,
+        )
