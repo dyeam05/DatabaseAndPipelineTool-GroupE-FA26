@@ -7,7 +7,7 @@ from services.errors import ArtifactNotFoundError, FrameArtifactNotFoundError
 from services.frame_artifact_service import FrameArtifactService
 from services.frame_service import FrameService
 from services.minio_service import MinioService
-
+from urllib3.response import BaseHTTPResponse
 
 class FrameArtifactDownloaderService:
     """
@@ -30,3 +30,16 @@ class FrameArtifactDownloaderService:
         if artifact is None:
             raise ArtifactNotFoundError(artifact_id=frame_artifact.artifact_id)
         self.minio_service.download_artifact(artifact=artifact, dest_path=dest_path)
+
+    async def dowload_frame_to_stream(self, frame: Frame) -> BaseHTTPResponse:
+        frame_artifact = await self.frame_artifact_service.get_frame_artifact( 
+            frame_pk=frame.frame_pk,
+            role=ArtifactRole.FRAME_IMAGE
+        )
+        if frame_artifact is None:
+            raise FrameArtifactNotFoundError(frame_pk=frame.frame_pk, role=ArtifactRole.FRAME_IMAGE)
+        artifact = await self.artifact_service.get_artifact(frame_artifact.artifact_id)
+        if artifact is None:
+            raise ArtifactNotFoundError(artifact_id=frame_artifact.artifact_id)
+        
+        return self.minio_service.download_artifact_to_stream(artifact=artifact)
