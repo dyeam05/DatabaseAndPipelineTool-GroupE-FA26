@@ -39,19 +39,11 @@ export interface SegmentResponse {
   route_id: string;
   segment_id: number;
   status: SegmentStatus;
-  start_seconds?: number;
-  duration_seconds?: number;
+
+  start_time: string;
+  end_time: string;
+
   frame_count?: number;
-  // Annotation counts — present when status is annotated/reviewed
-  annotation_person?: number;
-  annotation_bicycle?: number;
-  annotation_car?: number;
-  annotation_motorbike?: number;
-  annotation_bus?: number;
-  annotation_train?: number;
-  annotation_truck?: number;
-  annotation_traffic_light?: number;
-  annotation_stop_sign?: number;
 }
 
 // ─── Normalised frontend types ────────────────────────────────────────────────
@@ -118,23 +110,35 @@ export function mapRoute(r: RouteResponse): Route {
 }
 
 export function mapSegment(s: SegmentResponse): Segment {
+  const start = new Date(s.start_time);
+  const end = new Date(s.end_time);
+
+  const durationSeconds = Math.max(
+    0,
+    (end.getTime() - start.getTime()) / 1000
+  );
+
   return {
     index: s.segment_id,
     routeId: s.route_id,
-    startSeconds: s.start_seconds ?? 0,
-    durationSeconds: s.duration_seconds ?? 0,
+
+    // TEMP: will fix startSeconds next step
+    startSeconds: 0,
+
+    durationSeconds,
     frameCount: s.frame_count ?? 0,
     status: s.status,
+
     annotations: {
-      person:       s.annotation_person       ?? 0,
-      bicycle:      s.annotation_bicycle      ?? 0,
-      car:          s.annotation_car          ?? 0,
-      motorbike:    s.annotation_motorbike    ?? 0,
-      bus:          s.annotation_bus          ?? 0,
-      train:        s.annotation_train        ?? 0,
-      truck:        s.annotation_truck        ?? 0,
-      trafficLight: s.annotation_traffic_light ?? 0,
-      stopSign:     s.annotation_stop_sign    ?? 0,
+      person: 0,
+      bicycle: 0,
+      car: 0,
+      motorbike: 0,
+      bus: 0,
+      train: 0,
+      truck: 0,
+      trafficLight: 0,
+      stopSign: 0,
     },
   };
 }
