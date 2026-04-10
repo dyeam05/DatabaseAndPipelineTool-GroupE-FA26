@@ -29,7 +29,7 @@ async def list_job_runs(
     return await job_run_service.list_job_runs()
 
 
-@job_runs_router.get("/", response_model=JobRunResponse)
+@job_runs_router.get("/{route_id:path}/{job_def_id}/{job_run_num}", response_model=JobRunResponse)
 async def get_job_run(
     job_def_id: int,
     job_run_num: int,
