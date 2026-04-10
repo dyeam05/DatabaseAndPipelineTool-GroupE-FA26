@@ -1,11 +1,9 @@
 import logging
-from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, Response, status, APIRouter
 
 from api.dependencies import get_session, get_transactional_session
-from db.enums import JobStatus
 from db.models.job_run import JobRun
 from schemas.job_run import CreateJobRunRequest, JobRunResponse
 from services.errors import JobRunNotFoundError

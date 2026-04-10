@@ -77,7 +77,7 @@ async def _process_loading_job(
 ):
     logging.info(f"Processing loading job {job_segment_run_review}")
     await job_segment_run_review_service.set_status(
-        job_run_num=job_segment_run_review.job_def_id,
+        job_run_num=job_segment_run_review.job_run_num,
         job_def_id=job_segment_run_review.job_def_id,
         route_id=job_segment_run_review.route_id,
         segment_id=job_segment_run_review.segment_id,
@@ -89,14 +89,14 @@ async def _process_loading_job(
     try:
         # Download job run info from minio
         job_segment_run = await job_segment_run_service.get_job_segment_run(
-            job_run_num=job_segment_run_review.job_def_id,
+            job_run_num=job_segment_run_review.job_run_num,
             job_def_id=job_segment_run_review.job_def_id,
             route_id=job_segment_run_review.route_id,
             segment_id=job_segment_run_review.segment_id,
         )
         if not job_segment_run:
             raise JobSegmentRunNotFoundError(
-                job_run_num=job_segment_run_review.job_def_id,
+                job_run_num=job_segment_run_review.job_run_num,
                 job_def_id=job_segment_run_review.job_def_id,
                 route_id=job_segment_run_review.route_id,
                 segment_id=job_segment_run_review.segment_id,
@@ -124,7 +124,7 @@ async def _process_loading_job(
 
 
         await job_segment_run_review_service.set_status(
-            job_run_num=job_segment_run_review.job_def_id,
+            job_run_num=job_segment_run_review.job_run_num,
             job_def_id=job_segment_run_review.job_def_id,
             route_id=job_segment_run_review.route_id,
             segment_id=job_segment_run_review.segment_id,
@@ -134,7 +134,7 @@ async def _process_loading_job(
     except Exception as e:
         logging.error(f"Job loading failed: {job_segment_run_review}", e)
         await job_segment_run_review_service.set_status(
-            job_run_num=job_segment_run_review.job_def_id,
+            job_run_num=job_segment_run_review.job_run_num,
             job_def_id=job_segment_run_review.job_def_id,
             route_id=job_segment_run_review.route_id,
             segment_id=job_segment_run_review.segment_id,
@@ -150,7 +150,7 @@ async def _process_removal_job(
 ):
     logging.info(f"Processing loading job {job_segment_run_review}")
     await job_segment_run_review_service.set_status(
-        job_run_num=job_segment_run_review.job_def_id,
+        job_run_num=job_segment_run_review.job_run_num,
         job_def_id=job_segment_run_review.job_def_id,
         route_id=job_segment_run_review.route_id,
         segment_id=job_segment_run_review.segment_id,
@@ -169,7 +169,7 @@ async def _process_removal_job(
         )
 
         await job_segment_run_review_service.set_status(
-            job_run_num=job_segment_run_review.job_def_id,
+            job_run_num=job_segment_run_review.job_run_num,
             job_def_id=job_segment_run_review.job_def_id,
             route_id=job_segment_run_review.route_id,
             segment_id=job_segment_run_review.segment_id,
@@ -179,7 +179,7 @@ async def _process_removal_job(
     except Exception as e:
         logging.error(f"Job loading failed: {job_segment_run_review}", e)
         await job_segment_run_review_service.set_status(
-            job_run_num=job_segment_run_review.job_def_id,
+            job_run_num=job_segment_run_review.job_run_num,
             job_def_id=job_segment_run_review.job_def_id,
             route_id=job_segment_run_review.route_id,
             segment_id=job_segment_run_review.segment_id,

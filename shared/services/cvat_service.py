@@ -80,6 +80,7 @@ class CVATService:
             name=task_name,
             labels=patched_labels
         )
+        logging.info(job_segment_run_dir)
         task = self.cvat_client.tasks.create_from_data(
             spec=task_spec, # type: ignore
             resources=job_segment_run_dir.image_paths,

@@ -29,6 +29,7 @@ class SegmentArtifactDownloadService:
         image_paths: list[Path] = []
         for frame in frames:
             img_path = dest_path / f"{str(frame.frame_id)}.png"
+            image_paths.append(img_path)
 
             await self.frame_artifact_downloader_service.download_frame(
                 frame=frame, 

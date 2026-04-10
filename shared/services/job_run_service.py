@@ -1,4 +1,3 @@
-from uuid import uuid4, UUID
 from datetime import datetime, timezone
 from db.models.job_run import JobRun, JobStatus
 from repositories.job_run_repository import JobRunRepository

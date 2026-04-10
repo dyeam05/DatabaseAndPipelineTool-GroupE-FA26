@@ -9,8 +9,8 @@ class JobSegmentRunReview(Base):
     __tablename__ = "job_segment_run_review"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["job_run_num", "route_id", "job_def_id"],
-            ["job_segment_run.job_run_num", "job_segment_run.route_id", "job_segment_run.job_def_id"],
+            ["job_run_num", "route_id", "job_def_id", "segment_id"],
+            ["job_segment_run.job_run_num", "job_segment_run.route_id", "job_segment_run.job_def_id", "job_segment_run.segment_id"],
             ondelete="CASCADE",
         ),
     )

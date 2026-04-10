@@ -1,1 +1,1 @@
-from repositories.route_repository import RouteRepository
+from repositories.route_repository import RouteRepository as RouteRepository

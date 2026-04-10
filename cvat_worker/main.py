@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from cvat_annotation_functions.cvat_detr_detection import CVATDetrDetection
-from db.enums import JobSegmentRunStatus, JobStatus
+from db.enums import ArtifactKind, JobSegmentRunStatus, JobStatus
 from db.models.job_run import JobRun
 from db.models.job_segment_run import JobSegmentRun
 from db.url import build_database_url
@@ -104,6 +104,7 @@ async def process_job_segment_run(
     job_segment_run_service: JobSegmentRunService,
     segment_artifact_download_service: SegmentArtifactDownloadService,
     segment_service: SegmentService,
+    artifact_service: ArtifactService,
     cvat_service: CVATService,
     minio_service: MinioService,
     session: AsyncSession,
@@ -142,11 +143,20 @@ async def process_job_segment_run(
             cvat_function=CVATDetrDetection(),
             output_dir=Path(segment_dir)
         )
-        minio_service.put_job_segment_run_data(
+        object_write_result = minio_service.put_job_segment_run_data(
             job_segment_run=job_segment_run,
             file_path=segment_detection_file_path
         )
 
+        artifact = await artifact_service.create_artifact(
+            bucket=minio_service.bucket_name,
+            object_key=object_write_result.object_name,
+            kind=ArtifactKind.JSON
+        )
+
+
+
+        job_segment_run.artifact_id = artifact.artifact_id
 
         await job_segment_run_service.set_status(
             job_run_num=job_segment_run.job_run_num,
@@ -177,6 +187,7 @@ async def _process_job_run(
     segment_artifact_download_service: SegmentArtifactDownloadService,
     cvat_service: CVATService,
     minio_service: MinioService,
+    artifact_service: ArtifactService,
     session: AsyncSession,
 ):
     logging.info(f"Processing job {job_run}")
@@ -206,6 +217,7 @@ async def _process_job_run(
                 segment_artifact_download_service=segment_artifact_download_service,
                 cvat_service=cvat_service,
                 minio_service=minio_service,
+                artifact_service=artifact_service,
                 session=session,
             )
 
@@ -292,6 +304,7 @@ async def main():
                     segment_artifact_download_service=segment_artifact_download_service,
                     cvat_service=cvat_service,
                     minio_service=minio_service,
+                    artifact_service=artifact_service,
                     session=session,
                 )
 
