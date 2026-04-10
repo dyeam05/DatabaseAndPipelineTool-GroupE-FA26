@@ -75,6 +75,12 @@ This is where the majority of code lives, in the `/shared/` directory. This code
 
 Do not put any code here. This folder `/data/` is used as a shared volume between workers.
 
+### Ruff
+
+Before commiting any code, run the `ruff` linter and fix any issues found.
+
+`ruff check .`
+
 ## Testing
 
 Testing code is inside the `./tests/` folder. See `./tests/README.md` for more information.
