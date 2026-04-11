@@ -7,4 +7,4 @@ from db.models.job_segment_run import JobSegmentRun as JobSegmentRun
 from db.models.route import Route as Route
 from db.models.segment import Segment as Segment
 from db.models.segment_artifact import SegmentArtifact as SegmentArtifact
-from db.models.job_segment_run_review import JobSegmentRunReview as JobSegmentRunReview
+from db.models.job_segment_run_import import JobSegmentRunImport as JobSegmentRunImport

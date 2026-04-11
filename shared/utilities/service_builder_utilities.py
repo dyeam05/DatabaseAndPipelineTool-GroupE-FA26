@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from repositories.job_segment_run_review_repository import JobSegmentRunReviewRepository
+from repositories.job_segment_run_import_repository import JobSegmentRunImportRepository
 from repositories.route_repository import RouteRepository
-from services.job_segment_run_review_service import JobSegmentRunReviewService
+from services.job_segment_run_import_service import JobSegmentRunImportService
 from services.route_service import RouteService
 from repositories.segment_repository import SegmentRepository
 from services.segment_service import SegmentService
@@ -28,6 +28,6 @@ def build_job_definition_service(session: AsyncSession) -> JobDefinitionService:
     repository = JobDefinitionRepository(session=session)
     return JobDefinitionService(job_definition_repository=repository)
 
-def build_job_segment_run_review_service(session: AsyncSession) -> JobSegmentRunReviewService:
-    job_segment_run_review_repository = JobSegmentRunReviewRepository(session=session)
-    return JobSegmentRunReviewService(job_segment_run_review_repository=job_segment_run_review_repository)
+def build_job_segment_run_import_service(session: AsyncSession) -> JobSegmentRunImportService:
+    job_segment_run_import_repository = JobSegmentRunImportRepository(session=session)
+    return JobSegmentRunImportService(job_segment_run_import_repository=job_segment_run_import_repository)

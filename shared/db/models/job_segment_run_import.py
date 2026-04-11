@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKeyConstraint, func
+from sqlalchemy import DateTime, ForeignKeyConstraint, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 from db.base import Base
-from db.enums import JobSegmentRunReviewStatus
+from db.enums import JobSegmentRunImportStatus
 
-class JobSegmentRunReview(Base):
+class JobSegmentRunImport(Base):
     __tablename__ = "job_segment_run_review"
     __table_args__ = (
         ForeignKeyConstraint(
@@ -33,7 +33,7 @@ class JobSegmentRunReview(Base):
         primary_key=True,
     )
 
-    status: Mapped[JobSegmentRunReviewStatus] = mapped_column(
+    status: Mapped[JobSegmentRunImportStatus] = mapped_column(
         nullable=False
     )
 
@@ -44,6 +44,10 @@ class JobSegmentRunReview(Base):
     )
 
     task_id: Mapped[int | None] = mapped_column(
+        nullable=True
+    )
+
+    error_message: Mapped[String | None] = mapped_column(
         nullable=True
     )
 

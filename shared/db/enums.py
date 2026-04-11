@@ -85,7 +85,7 @@ job_segment_run_enum = Enum(
     validate_strings=True
 )
 
-class JobSegmentRunReviewStatus(StrEnum):
+class JobSegmentRunImportStatus(StrEnum):
     QUEUED_FOR_LOADING = "queued_for_loading"
     LOADING = "loading"
     LOADED = "loaded"
@@ -94,8 +94,8 @@ class JobSegmentRunReviewStatus(StrEnum):
     REMOVED = "removed"
     FAILED = "failed"
 
-job_segment_run_review_status_enum = Enum(
-    JobSegmentRunReviewStatus,
+job_segment_run_import_status_enum = Enum(
+    JobSegmentRunImportStatus,
     name="job_segment_run_review_status_enum",
     native_enum=True,
     validate_strings=True

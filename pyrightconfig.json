@@ -8,6 +8,7 @@
 	"exclude": [
 		"**/__pycache__",
 		"./cvat/",
-		"./open_pilot_download_worker/files/"
+		"./open_pilot_download_worker/files/",
+		"./tests/"
 	]
 }

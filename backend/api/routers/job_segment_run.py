@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_transactional_session
-from db.enums import JobSegmentRunReviewStatus
-from utilities.service_builder_utilities import build_job_segment_run_review_service
+from db.enums import JobSegmentRunImportStatus
+from utilities.service_builder_utilities import build_job_segment_run_import_service
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ async def export_job_segment_run_to_cvat(
     session: AsyncSession = Depends(get_transactional_session)
 ):
     logging.info("Exporting job segment run to cvat")
-    job_segment_run_review_service = build_job_segment_run_review_service(session=session)
+    job_segment_run_review_service = build_job_segment_run_import_service(session=session)
     job_segment_run_review = await job_segment_run_review_service.create(
         job_run_num=job_run_num,
         job_def_id=job_def_id,
@@ -41,13 +41,13 @@ async def delete_job_segment_run_in_cvat(
     session: AsyncSession = Depends(get_transactional_session)
 ):
     logging.info("Removing job segment run from cvat")
-    job_segment_run_review_service = build_job_segment_run_review_service(session=session)
+    job_segment_run_review_service = build_job_segment_run_import_service(session=session)
     await job_segment_run_review_service.set_status(
         job_run_num=job_run_num,
         job_def_id=job_def_id,
         route_id=route_id,
         segment_id=segment_id,
-        status=JobSegmentRunReviewStatus.QUEUED_FOR_REMOVAL
+        status=JobSegmentRunImportStatus.QUEUED_FOR_REMOVAL
     )
 
 

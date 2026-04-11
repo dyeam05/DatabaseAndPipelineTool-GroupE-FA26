@@ -8,14 +8,14 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from db.enums import JobSegmentRunReviewStatus
-from db.models.job_segment_run_review import JobSegmentRunReview
+from db.enums import JobSegmentRunImportStatus
+from db.models.job_segment_run_import import JobSegmentRunImport
 from db.url import build_database_url
 from repositories.artifact_repository import ArtifactRepository
 from repositories.frame_artifact_repository import FrameArtifactRepository
 from repositories.frame_repository import FrameRepository
 from repositories.job_segment_run_repository import JobSegmentRunRepository
-from repositories.job_segment_run_review_repository import JobSegmentRunReviewRepository
+from repositories.job_segment_run_import_repository import JobSegmentRunImportRepository
 from repositories.segment_repository import SegmentRepository
 from services.artifact_service import ArtifactService
 from services.cvat_service import CVATService
@@ -24,7 +24,7 @@ from services.frame_artifact_downloader_service import FrameArtifactDownloaderSe
 from services.frame_artifact_service import FrameArtifactService
 from services.frame_service import FrameService
 from services.job_segment_artifiact_downloader_service import JobSegmentArtifactDownloaderService
-from services.job_segment_run_review_service import JobSegmentRunReviewService
+from services.job_segment_run_import_service import JobSegmentRunImportService
 from services.job_segment_run_service import JobSegmentRunService
 from services.minio_service import MinioService
 from services.segment_artifact_download_service import SegmentArtifactDownloadService
@@ -40,48 +40,48 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def _mark_stale_running_jobs_as_failed(job_segment_run_review_service: JobSegmentRunReviewService):
+async def _mark_stale_running_jobs_as_failed(job_segment_run_import_service: JobSegmentRunImportService):
     logging.info("Marking stale running jobs as failed")
-    stale_jobs = await job_segment_run_review_service.get_by_status(status=JobSegmentRunReviewStatus.LOADING)
+    stale_jobs = await job_segment_run_import_service.get_by_status(status=JobSegmentRunImportStatus.LOADING)
     for job in stale_jobs:
         logger.warning(f"Stale job: {job} marked as FAILED")
-        await job_segment_run_review_service.set_status(
+        await job_segment_run_import_service.set_status(
             job_def_id=job.job_def_id,
             job_run_num=job.job_run_num,
             route_id=job.route_id,
             segment_id=job.segment_id,
-            status=JobSegmentRunReviewStatus.FAILED
+            status=JobSegmentRunImportStatus.FAILED
         )
 
-    stale_jobs = await job_segment_run_review_service.get_by_status(status=JobSegmentRunReviewStatus.REMOVING)
+    stale_jobs = await job_segment_run_import_service.get_by_status(status=JobSegmentRunImportStatus.REMOVING)
     for job in stale_jobs:
         logger.warning(f"Stale job: {job} marked as FAILED")
-        await job_segment_run_review_service.set_status(
+        await job_segment_run_import_service.set_status(
             job_def_id=job.job_def_id,
             job_run_num=job.job_run_num,
             route_id=job.route_id,
             segment_id=job.segment_id,
-            status=JobSegmentRunReviewStatus.FAILED
+            status=JobSegmentRunImportStatus.FAILED
         )
 
     logger.info("Completed marking stale running jobs as failed.")
 
 
 async def _process_loading_job(
-    job_segment_run_review:JobSegmentRunReview,
-    job_segment_run_review_service:JobSegmentRunReviewService,
+    job_segment_run_import:JobSegmentRunImport,
+    job_segment_run_import_service:JobSegmentRunImportService,
     cvat_service:CVATService,
     job_segment_run_service: JobSegmentRunService,
     job_segment_artifact_downloader_service: JobSegmentArtifactDownloaderService,
     session: AsyncSession
 ):
-    logging.info(f"Processing loading job {job_segment_run_review}")
-    await job_segment_run_review_service.set_status(
-        job_run_num=job_segment_run_review.job_run_num,
-        job_def_id=job_segment_run_review.job_def_id,
-        route_id=job_segment_run_review.route_id,
-        segment_id=job_segment_run_review.segment_id,
-        status=JobSegmentRunReviewStatus.LOADING
+    logging.info(f"Processing loading job {job_segment_run_import}")
+    await job_segment_run_import_service.set_status(
+        job_run_num=job_segment_run_import.job_run_num,
+        job_def_id=job_segment_run_import.job_def_id,
+        route_id=job_segment_run_import.route_id,
+        segment_id=job_segment_run_import.segment_id,
+        status=JobSegmentRunImportStatus.LOADING
     )
     await session.commit()
 
@@ -89,17 +89,17 @@ async def _process_loading_job(
     try:
         # Download job run info from minio
         job_segment_run = await job_segment_run_service.get_job_segment_run(
-            job_run_num=job_segment_run_review.job_run_num,
-            job_def_id=job_segment_run_review.job_def_id,
-            route_id=job_segment_run_review.route_id,
-            segment_id=job_segment_run_review.segment_id,
+            job_run_num=job_segment_run_import.job_run_num,
+            job_def_id=job_segment_run_import.job_def_id,
+            route_id=job_segment_run_import.route_id,
+            segment_id=job_segment_run_import.segment_id,
         )
         if not job_segment_run:
             raise JobSegmentRunNotFoundError(
-                job_run_num=job_segment_run_review.job_run_num,
-                job_def_id=job_segment_run_review.job_def_id,
-                route_id=job_segment_run_review.route_id,
-                segment_id=job_segment_run_review.segment_id,
+                job_run_num=job_segment_run_import.job_run_num,
+                job_def_id=job_segment_run_import.job_def_id,
+                route_id=job_segment_run_import.route_id,
+                segment_id=job_segment_run_import.segment_id,
             )
 
         unique_folder_name = str(uuid4())
@@ -110,110 +110,110 @@ async def _process_loading_job(
         )
 
         # Create task in cvat
-        task_name = f"{job_segment_run_review.route_id}-{job_segment_run_review.segment_id}-{job_segment_run_review.job_def_id}-{job_segment_run_review.job_run_num}-export"
+        task_name = f"{job_segment_run_import.route_id}-{job_segment_run_import.segment_id}-{job_segment_run_import.job_def_id}-{job_segment_run_import.job_run_num}-export"
         task_id = cvat_service.create_new_annotated_task_for_job_segment_run_dir(
             job_segment_run_dir=job_segment_run_dir,
             task_name=task_name
         )
 
-        job_segment_run_review.task_id = task_id
+        job_segment_run_import.task_id = task_id
 
 
         # Remove files
         shutil.rmtree(dest_path)
 
 
-        await job_segment_run_review_service.set_status(
-            job_run_num=job_segment_run_review.job_run_num,
-            job_def_id=job_segment_run_review.job_def_id,
-            route_id=job_segment_run_review.route_id,
-            segment_id=job_segment_run_review.segment_id,
-            status=JobSegmentRunReviewStatus.LOADED
+        await job_segment_run_import_service.set_status(
+            job_run_num=job_segment_run_import.job_run_num,
+            job_def_id=job_segment_run_import.job_def_id,
+            route_id=job_segment_run_import.route_id,
+            segment_id=job_segment_run_import.segment_id,
+            status=JobSegmentRunImportStatus.LOADED
         )
         await session.commit()
     except Exception as e:
-        logging.error(f"Job loading failed: {job_segment_run_review}", e)
-        await job_segment_run_review_service.set_status(
-            job_run_num=job_segment_run_review.job_run_num,
-            job_def_id=job_segment_run_review.job_def_id,
-            route_id=job_segment_run_review.route_id,
-            segment_id=job_segment_run_review.segment_id,
-            status=JobSegmentRunReviewStatus.FAILED
+        logging.error(f"Job loading failed: {job_segment_run_import}", e)
+        await job_segment_run_import_service.set_status(
+            job_run_num=job_segment_run_import.job_run_num,
+            job_def_id=job_segment_run_import.job_def_id,
+            route_id=job_segment_run_import.route_id,
+            segment_id=job_segment_run_import.segment_id,
+            status=JobSegmentRunImportStatus.FAILED
         )
         await session.commit()
 
 async def _process_removal_job(
-    job_segment_run_review:JobSegmentRunReview,
-    job_segment_run_review_service:JobSegmentRunReviewService,
+    job_segment_run_import:JobSegmentRunImport,
+    job_segment_run_import_service:JobSegmentRunImportService,
     cvat_service:CVATService,
     session: AsyncSession
 ):
-    logging.info(f"Processing loading job {job_segment_run_review}")
-    await job_segment_run_review_service.set_status(
-        job_run_num=job_segment_run_review.job_run_num,
-        job_def_id=job_segment_run_review.job_def_id,
-        route_id=job_segment_run_review.route_id,
-        segment_id=job_segment_run_review.segment_id,
-        status=JobSegmentRunReviewStatus.REMOVING
+    logging.info(f"Processing loading job {job_segment_run_import}")
+    await job_segment_run_import_service.set_status(
+        job_run_num=job_segment_run_import.job_run_num,
+        job_def_id=job_segment_run_import.job_def_id,
+        route_id=job_segment_run_import.route_id,
+        segment_id=job_segment_run_import.segment_id,
+        status=JobSegmentRunImportStatus.REMOVING
     )
     await session.commit()
 
 
     try:
         # Try to remove job from CVAT
-        if not job_segment_run_review.task_id:
-            raise ValueError(f"Job segment run review does not have a task id: {job_segment_run_review}")
+        if not job_segment_run_import.task_id:
+            raise ValueError(f"Job segment run import does not have a task id: {job_segment_run_import}")
 
         cvat_service.delete_task(
-            task_id=job_segment_run_review.task_id
+            task_id=job_segment_run_import.task_id
         )
 
-        await job_segment_run_review_service.set_status(
-            job_run_num=job_segment_run_review.job_run_num,
-            job_def_id=job_segment_run_review.job_def_id,
-            route_id=job_segment_run_review.route_id,
-            segment_id=job_segment_run_review.segment_id,
-            status=JobSegmentRunReviewStatus.REMOVED
+        await job_segment_run_import_service.set_status(
+            job_run_num=job_segment_run_import.job_run_num,
+            job_def_id=job_segment_run_import.job_def_id,
+            route_id=job_segment_run_import.route_id,
+            segment_id=job_segment_run_import.segment_id,
+            status=JobSegmentRunImportStatus.REMOVED
         )
         await session.commit()
     except Exception as e:
-        logging.error(f"Job loading failed: {job_segment_run_review}", e)
-        await job_segment_run_review_service.set_status(
-            job_run_num=job_segment_run_review.job_run_num,
-            job_def_id=job_segment_run_review.job_def_id,
-            route_id=job_segment_run_review.route_id,
-            segment_id=job_segment_run_review.segment_id,
-            status=JobSegmentRunReviewStatus.FAILED
+        logging.error(f"Job loading failed: {job_segment_run_import}", e)
+        await job_segment_run_import_service.set_status(
+            job_run_num=job_segment_run_import.job_run_num,
+            job_def_id=job_segment_run_import.job_def_id,
+            route_id=job_segment_run_import.route_id,
+            segment_id=job_segment_run_import.segment_id,
+            status=JobSegmentRunImportStatus.FAILED
         )
         await session.commit()
 
 async def _process_job(
-    job_segment_run_review:JobSegmentRunReview,
-    job_segment_run_review_service:JobSegmentRunReviewService,
+    job_segment_run_import:JobSegmentRunImport,
+    job_segment_run_import_service:JobSegmentRunImportService,
     job_segment_run_service:JobSegmentRunService,
     job_segment_artifact_downloader_service: JobSegmentArtifactDownloaderService,
     cvat_service:CVATService,
     session: AsyncSession
 ):
-    logging.info(f"Processing {job_segment_run_review}")
-    if job_segment_run_review.status == JobSegmentRunReviewStatus.QUEUED_FOR_LOADING:
+    logging.info(f"Processing {job_segment_run_import}")
+    if job_segment_run_import.status == JobSegmentRunImportStatus.QUEUED_FOR_LOADING:
         await _process_loading_job(
-            job_segment_run_review=job_segment_run_review,
-            job_segment_run_review_service=job_segment_run_review_service,
+            job_segment_run_import=job_segment_run_import,
+            job_segment_run_import_service=job_segment_run_import_service,
             job_segment_run_service=job_segment_run_service,
             job_segment_artifact_downloader_service=job_segment_artifact_downloader_service,
             cvat_service=cvat_service,
             session=session
         )
-    elif job_segment_run_review.status == JobSegmentRunReviewStatus.QUEUED_FOR_REMOVAL:
+    elif job_segment_run_import.status == JobSegmentRunImportStatus.QUEUED_FOR_REMOVAL:
         await _process_removal_job(
-            job_segment_run_review=job_segment_run_review,
-            job_segment_run_review_service=job_segment_run_review_service,
+            job_segment_run_import=job_segment_run_import,
+            job_segment_run_import_service=job_segment_run_import_service,
             cvat_service=cvat_service,
             session=session
         )
     else:
-        raise ValueError(f"Invalid status on {job_segment_run_review}")
+        raise ValueError(f"Invalid status on {job_segment_run_import}")
 
 async def main():
     logger.info("Starting worker")
@@ -233,8 +233,8 @@ async def main():
 
     try:
         async with SessionLocal() as session:
-            job_segment_run_review_repository = JobSegmentRunReviewRepository(session=session)
-            job_segment_run_review_service = JobSegmentRunReviewService(job_segment_run_review_repository)
+            job_segment_run_import_repository = JobSegmentRunImportRepository(session=session)
+            job_segment_run_import_service = JobSegmentRunImportService(job_segment_run_import_repository)
             frame_repository = FrameRepository(session=session)
             frame_service = FrameService(frame_repository)
             artifact_repository = ArtifactRepository(session=session)
@@ -268,22 +268,22 @@ async def main():
 
 
             await _mark_stale_running_jobs_as_failed(
-                job_segment_run_review_service=job_segment_run_review_service
+                job_segment_run_import_service=job_segment_run_import_service
             )
             await session.commit()
 
             while not stop_event.is_set():
-                logging.info("Checking for queues job segment run reviews")
-                job_segment_run_review = await job_segment_run_review_service.get_next_by_statuses(statuses=[JobSegmentRunReviewStatus.QUEUED_FOR_LOADING, JobSegmentRunReviewStatus.QUEUED_FOR_REMOVAL])
+                logging.info("Checking for queues job segment run imports")
+                job_segment_run_import = await job_segment_run_import_service.get_next_by_statuses(statuses=[JobSegmentRunImportStatus.QUEUED_FOR_LOADING, JobSegmentRunImportStatus.QUEUED_FOR_REMOVAL])
 
-                if job_segment_run_review is None:
+                if job_segment_run_import is None:
                     await session.rollback()
                     await asyncio.sleep(POLL_INTERVAL_SECONDS)
                     continue
 
                 await _process_job(
-                    job_segment_run_review=job_segment_run_review,
-                    job_segment_run_review_service=job_segment_run_review_service,
+                    job_segment_run_import=job_segment_run_import,
+                    job_segment_run_import_service=job_segment_run_import_service,
                     job_segment_run_service=job_segment_run_service,
                     job_segment_artifact_downloader_service=job_segment_artifact_downloader_service,
                     cvat_service=cvat_service,
