@@ -14,8 +14,9 @@ class FrameService:
         self,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
     ) -> list[Frame]:
-        return await self._frame_repository.get_by_route_segment(route_id, segment_id)
+        return await self._frame_repository.get_by_route_segment(route_id, segment_id, camera)
 
     async def get_frame(self, frame_pk: int) -> Frame | None:
         return await self._frame_repository.get_by_id(frame_pk)

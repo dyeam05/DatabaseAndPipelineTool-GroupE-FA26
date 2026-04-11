@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from db.enums import CameraType
 from db.models.segment import Segment
 from services.frame_artifact_downloader_service import FrameArtifactDownloaderService
 from services.frame_service import FrameService
@@ -14,7 +15,7 @@ class SegmentArtifactDownloadService:
         self.frame_artifact_downloader_service = frame_artifact_downloader_service
         self.frame_service = frame_service
 
-    async def download_segment_frames(self, segment: Segment, dest_path: Path) -> list[Path]:
+    async def download_segment_frames(self, segment: Segment, dest_path: Path, camera: CameraType) -> list[Path]:
         """
         dest_path is a relative folder path for the segment
 
@@ -23,7 +24,7 @@ class SegmentArtifactDownloadService:
             
         """
         frames = await self.frame_service.get_frames_by_route_segment(
-            route_id=segment.route_id, segment_id=segment.segment_id
+            route_id=segment.route_id, segment_id=segment.segment_id, camera=camera
         )
 
         image_paths: list[Path] = []

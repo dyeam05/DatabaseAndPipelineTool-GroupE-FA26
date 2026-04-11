@@ -137,7 +137,7 @@ async def process_job_segment_run(
         unique_id = str(uuid4())
         segment_dir = DATA_DIR / unique_id
         await segment_artifact_download_service.download_segment_frames(
-            segment=segment, dest_path=segment_dir
+            segment=segment, dest_path=segment_dir, camera=job_segment_run.camera
         )
 
         # logging.info(os.listdir(segment_dir))

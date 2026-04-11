@@ -77,7 +77,8 @@ class JobSegmentArtifactDownloaderService:
 
         image_paths = await self._segment_artifact_download_service.download_segment_frames(
             segment=segment,
-            dest_path=dest_path
+            dest_path=dest_path,
+            camera=job_segment_run.camera,
         )
 
         annotations_path = dest_path / "annotations.json"
