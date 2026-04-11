@@ -81,6 +81,12 @@ Before commiting any code, run the `ruff` linter and fix any issues found.
 
 `ruff check .`
 
+### Pyright
+
+Before commiting any code, run the `pyright` static type checker and fix any issues found.
+
+`pyright`
+
 ## Testing
 
 Testing code is inside the `./tests/` folder. See `./tests/README.md` for more information.
