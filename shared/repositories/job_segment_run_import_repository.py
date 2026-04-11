@@ -62,6 +62,12 @@ class JobSegmentRunImportRepository:
         self._session.add(job_segment_run_review)
         await self._session.flush()
         return job_segment_run_review
+    
+    async def set_error(self, job_segment_run_import: JobSegmentRunImport, error_message: str) -> JobSegmentRunImport:
+        job_segment_run_import.status = JobSegmentRunImportStatus.FAILED
+        job_segment_run_import.error_message = error_message
+        await self._session.flush()
+        return job_segment_run_import
 
     async def save(self, job_segment_run_review: JobSegmentRunImport) -> JobSegmentRunImport:
         self._session.add(job_segment_run_review)

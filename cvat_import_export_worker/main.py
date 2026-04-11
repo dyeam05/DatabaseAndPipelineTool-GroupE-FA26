@@ -45,23 +45,13 @@ async def _mark_stale_running_jobs_as_failed(job_segment_run_import_service: Job
     stale_jobs = await job_segment_run_import_service.get_by_status(status=JobSegmentRunImportStatus.LOADING)
     for job in stale_jobs:
         logger.warning(f"Stale job: {job} marked as FAILED")
-        await job_segment_run_import_service.set_status(
-            job_def_id=job.job_def_id,
-            job_run_num=job.job_run_num,
-            route_id=job.route_id,
-            segment_id=job.segment_id,
-            status=JobSegmentRunImportStatus.FAILED
-        )
 
     stale_jobs = await job_segment_run_import_service.get_by_status(status=JobSegmentRunImportStatus.REMOVING)
     for job in stale_jobs:
         logger.warning(f"Stale job: {job} marked as FAILED")
-        await job_segment_run_import_service.set_status(
-            job_def_id=job.job_def_id,
-            job_run_num=job.job_run_num,
-            route_id=job.route_id,
-            segment_id=job.segment_id,
-            status=JobSegmentRunImportStatus.FAILED
+        await job_segment_run_import_service.set_error(
+            job_segment_run_import=job,
+            error_message="Import job has status 'RUNNING' after worker restart. Marking as stale"
         )
 
     logger.info("Completed marking stale running jobs as failed.")
@@ -133,12 +123,9 @@ async def _process_loading_job(
         await session.commit()
     except Exception as e:
         logging.error(f"Job loading failed: {job_segment_run_import}", e)
-        await job_segment_run_import_service.set_status(
-            job_run_num=job_segment_run_import.job_run_num,
-            job_def_id=job_segment_run_import.job_def_id,
-            route_id=job_segment_run_import.route_id,
-            segment_id=job_segment_run_import.segment_id,
-            status=JobSegmentRunImportStatus.FAILED
+        await job_segment_run_import_service.set_error(
+            job_segment_run_import=job_segment_run_import,
+            error_message=f"Failed while loading into cvat: {type(e)}, {e}"
         )
         await session.commit()
 
@@ -178,12 +165,9 @@ async def _process_removal_job(
         await session.commit()
     except Exception as e:
         logging.error(f"Job loading failed: {job_segment_run_import}", e)
-        await job_segment_run_import_service.set_status(
-            job_run_num=job_segment_run_import.job_run_num,
-            job_def_id=job_segment_run_import.job_def_id,
-            route_id=job_segment_run_import.route_id,
-            segment_id=job_segment_run_import.segment_id,
-            status=JobSegmentRunImportStatus.FAILED
+        await job_segment_run_import_service.set_error(
+            job_segment_run_import=job_segment_run_import,
+            error_message=f"Failed while removing from cvat: {type(e)}, {e}"
         )
         await session.commit()
 

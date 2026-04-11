@@ -47,7 +47,8 @@ class JobSegmentRunImport(Base):
         nullable=True
     )
 
-    error_message: Mapped[String | None] = mapped_column(
+    error_message: Mapped[str | None] = mapped_column(
+        String,
         nullable=True
     )
 

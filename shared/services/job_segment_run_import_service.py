@@ -71,6 +71,9 @@ class JobSegmentRunImportService:
         job_segment_run_import.status = status
         return await self._job_segment_run_import_repository.save(job_segment_run_import)
 
+    async def set_error(self, job_segment_run_import: JobSegmentRunImport, error_message: str) -> JobSegmentRunImport:
+        return await self._job_segment_run_import_repository.set_error(job_segment_run_import=job_segment_run_import, error_message=error_message)
+
     async def get_next_by_status(
         self,
         status: JobSegmentRunImportStatus
