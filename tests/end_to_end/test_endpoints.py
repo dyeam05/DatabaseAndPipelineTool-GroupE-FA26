@@ -1,0 +1,271 @@
+import os
+import time
+import warnings
+import pytest
+import requests
+import subprocess
+import psycopg2
+import shlex
+from minio import Minio
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+# Postgres connection info (from your environment or defaults)
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "postgres")  # 'postgres' if running inside docker network
+POSTGRES_PORT = int(os.environ.get("POSTGRES_PORT", 5432))
+POSTGRES_DB = os.environ.get("POSTGRES_DB", "db")
+POSTGRES_USER = os.environ.get("POSTGRES_USER", "adp_user")
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "adp_password")
+
+BASE_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
+# Updated to ensure trailing slash matches FastAPI expectations
+ROUTES_URL = f"{BASE_URL}/routes/" 
+SEGMENTS_URL = f"{BASE_URL}/segments/"
+
+JOB_DEFS_URL = f"{BASE_URL}/job-definitions/"
+JOB_RUNS_URL = f"{BASE_URL}/job-runs/"
+
+MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT", "minio:9000")
+MINIO_ACCESS_KEY = os.environ.get("MINIO_ROOT_USER", "minioadmin")
+MINIO_SECRET_KEY = os.environ.get("MINIO_ROOT_PASSWORD", "minioadmin")
+MINIO_BUCKET = os.environ.get("MINIO_BUCKET_NAME", "data") # Updated to match .env [cite: 2]
+
+TARGET_ROUTE_ID = "db478799b6f9f210|00000081--23c1159034" # Your fresh route ID
+
+POLL_INTERVAL_SECONDS = 5
+DOWNLOAD_TIMEOUT_SECONDS = 10 * 60 
+UPLOAD_TIMEOUT_SECONDS = 10 * 60 
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _get(url: str) -> requests.Response:
+    resp = requests.get(url, headers={"accept": "application/json"}, timeout=30)
+    resp.raise_for_status()
+    return resp
+
+def _get_route(route_id: str) -> dict | None:
+    routes = _get(ROUTES_URL).json()
+    return next((r for r in routes if r["route_id"] == route_id), None)
+
+def _get_segments_for_route(route_id: str) -> list[dict]:
+    segments = _get(SEGMENTS_URL).json()
+    return [s for s in segments if s["route_id"] == route_id]
+
+def _poll_until(condition_fn, timeout: float, description: str = "condition"):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        result = condition_fn()
+        if result: return result
+        time.sleep(POLL_INTERVAL_SECONDS)
+    pytest.fail(f"Timed out after {timeout}s waiting for: {description}")
+
+
+
+def _delete_route(route_id: str) -> None:
+    """
+    Delete a specific route and its related segments from the DB.
+    Only affects the route/segments for this test; does NOT truncate other data.
+    """
+    if not route_id:
+        warnings.warn("No route_id provided. _delete_route skipped.")
+        return
+
+    try:
+        # Connect to Postgres
+        conn = psycopg2.connect(
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT,
+            dbname=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+        )
+        conn.autocommit = True  # Ensure DELETE commits immediately
+        cur = conn.cursor()
+
+        # Delete segments for this route
+        cur.execute("DELETE FROM segments WHERE route_id = %s;", (route_id,))
+        # Delete the route itself
+        cur.execute("DELETE FROM routes WHERE route_id = %s;", (route_id,))
+
+        print(f"Deleted route '{route_id}' and its segments from DB.")
+
+        cur.close()
+        conn.close()
+
+    except Exception as e:
+        warnings.warn(f"Failed to delete route '{route_id}': {e}")
+
+def wait_for_route(route_id: str, timeout: float = 5.0) -> dict:
+    """
+    Polls FastAPI until the route exists or timeout is reached.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        route = _get_route(route_id)
+        if route:
+            return route
+        time.sleep(0.2)  # small sleep to prevent hammering
+    pytest.fail(f"Route '{route_id}' not found after {timeout}s")
+
+def _minio_client() -> Minio:
+    return Minio(MINIO_ENDPOINT, access_key=MINIO_ACCESS_KEY, secret_key=MINIO_SECRET_KEY, secure=False)
+
+
+# ---------------------------------------------------------------------------
+# Atomic Tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.integration
+class TestOpenPilotPipeline:
+
+    def test_01_cleanup_and_creation(self):
+        """Clean old data via API and verify route creation."""
+        # 1. Attempt standard API cleanup
+        _delete_route(TARGET_ROUTE_ID)
+        time.sleep(2) # Give the DB a moment to settle
+        
+        # 2. Attempt creation
+        resp = requests.post(
+            ROUTES_URL,
+            headers={"accept": "application/json", "Content-Type": "application/json"},
+            json={"route_id": TARGET_ROUTE_ID, "status": "download queue"},
+            timeout=30,
+        )
+        # Allow 200 (OK), 201 (Created), or 409 (Conflict/Already Exists)
+        # This ensures the test doesn't stop just because the cleanup failed.
+        assert resp.status_code in {200, 201}, f"POST failed: {resp.text}"
+        
+        # 3. Verify it exists and is in a valid starting state
+        route = wait_for_route(TARGET_ROUTE_ID)
+        
+        # Allow 'downloading' or 'uploading' in case the worker picked it up instantly
+        valid_statuses = {"download queue", "downloading", "uploading"}
+        assert route["status"] in valid_statuses, f"Unexpected status: {route['status']}"
+
+    def test_02_download_completion(self):
+        """Wait for download worker to finish (status moving past downloading)."""
+        def route_finished_downloading():
+            route = _get_route(TARGET_ROUTE_ID)
+            if not route: return None
+            if route["status"] == "failed":
+                pytest.fail(f"Route FAILED: {route}")
+            # Fix: Accept 'uploading' if the upload worker already started
+            return route if route["status"] in ["upload queue", "uploading", "uploaded"] else None
+
+        route = _poll_until(route_finished_downloading, DOWNLOAD_TIMEOUT_SECONDS, "download completion")
+        assert route["file_path"] is not None
+
+    def test_03_segment_status(self):
+        """Verify segments exist and are ready for upload."""
+        segments = _get_segments_for_route(TARGET_ROUTE_ID)
+        assert len(segments) > 0
+        for seg in segments:
+            assert seg["status"] in ["download queue", "downloading", "upload queue", "uploading", "uploaded"]
+
+    def test_04_upload_completion(self):
+        """Wait for all segments to be marked uploaded."""
+        def all_segments_uploaded():
+            segs = _get_segments_for_route(TARGET_ROUTE_ID)
+            return all(s["status"] == "uploaded" for s in segs) if segs else False
+
+        _poll_until(all_segments_uploaded, UPLOAD_TIMEOUT_SECONDS, "all segments uploaded")
+
+    def test_05_minio_and_cleanup(self):
+        """Verify files in MinIO using the v1 API path and then delete them."""
+        minio = _minio_client()
+        
+        # Adjust the prefix to match your bucket structure: v1/routes/ID
+        # Note: We keep the pipe '|' because your pathing shows it's preserved
+        route_path = f"v1/routes/{TARGET_ROUTE_ID}"
+        
+        # List objects in the 'data' bucket under that specific path
+        objects = list(minio.list_objects(
+            MINIO_BUCKET, 
+            prefix=route_path, 
+            recursive=True
+        ))
+        
+        assert len(objects) > 0, f"No files found in MinIO under path: {route_path}"
+        print(f"Found {len(objects)} segments in MinIO. Starting cleanup...")
+
+        # Cleanup MinIO to keep the test environment pristine
+        for obj in objects:
+            minio.remove_object(MINIO_BUCKET, obj.object_name)
+            
+        # Double check cleanup
+        remaining = list(minio.list_objects(MINIO_BUCKET, prefix=route_path, recursive=True))
+        assert len(remaining) == 0, "MinIO cleanup failed: some objects still remain."
+    def test_06_create_and_get_job_definition(self):
+        """Test creating a new job definition with the 'object_detection' enum."""
+        payload = {
+            "type": "object_detection", # This matches your API requirement
+            "name": "Integration Test Detector",
+            "config": {"model": "yolov8", "threshold": 0.5},
+            "description": "Integration test for object detection"
+        }
+        resp = requests.post(JOB_DEFS_URL, json=payload, timeout=10)
+        
+        assert resp.status_code == 201, f"Expected 201, got {resp.status_code}. API said: {resp.text}"
+        data = resp.json()
+        
+        pytest.shared_job_def_id = data["job_def_id"]
+        assert data["type"] == "object_detection"
+
+    def test_07_create_and_list_job_run(self):
+        """Test creating a job run and finding it in the list."""
+        job_def_id = getattr(pytest, "shared_job_def_id", None)
+        assert job_def_id is not None, "Skipping: job_def_id not found from previous test."
+
+        payload = {
+            "job_def_id": job_def_id,
+            "route_id": TARGET_ROUTE_ID
+        }
+        
+        # 1. Create the Job Run
+        resp = requests.post(JOB_RUNS_URL, json=payload, timeout=10)
+        assert resp.status_code == 201, f"Failed to create Job Run: {resp.text}"
+        run_data = resp.json()
+        
+        assert run_data["route_id"] == TARGET_ROUTE_ID
+        assert run_data["job_def_id"] == job_def_id
+        assert "job_run_num" in run_data
+        
+        pytest.shared_job_run_num = run_data["job_run_num"]
+
+        # 2. Retrieve the Job Run
+        # Because GET / defaults to the list endpoint in the router, we fetch the list 
+        # and ensure our newly created run is inside it.
+        list_resp = requests.get(JOB_RUNS_URL, timeout=10)
+        assert list_resp.status_code == 200
+        
+        runs = list_resp.json()
+        found_run = next(
+            (r for r in runs if r["job_run_num"] == pytest.shared_job_run_num and r["job_def_id"] == job_def_id), 
+            None
+        )
+        assert found_run is not None, "Newly created job run was not found in the GET / list"
+
+    def test_08_cleanup_job_data(self):
+        """Clean up the job runs and definitions to ensure a pristine DB state."""
+        job_def_id = getattr(pytest, "shared_job_def_id", None)
+        job_run_num = getattr(pytest, "shared_job_run_num", None)
+
+        # 1. Delete Job Run (Using query params to hit the collision endpoint)
+        if job_run_num is not None and job_def_id is not None:
+            params = {
+                "job_def_id": job_def_id,
+                "job_run_num": job_run_num,
+                "route_id": TARGET_ROUTE_ID
+            }
+            resp_run = requests.delete(JOB_RUNS_URL, params=params, timeout=10)
+            # Accept 204 or 404 (if it already deleted somehow)
+            assert resp_run.status_code in (204, 404), f"Failed to delete Job Run: {resp_run.text}"
+
+        # 2. Delete Job Definition
+        if job_def_id is not None:
+            resp_def = requests.delete(f"{JOB_DEFS_URL}{job_def_id}", timeout=10)
+            assert resp_def.status_code in (204, 404), f"Failed to delete Job Def: {resp_def.text}"
