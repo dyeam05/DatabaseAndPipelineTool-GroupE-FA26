@@ -29,6 +29,7 @@ from services.job_segment_run_service import JobSegmentRunService
 from services.minio_service import MinioService
 from services.segment_artifact_download_service import SegmentArtifactDownloadService
 from services.segment_service import SegmentService
+from utilities.cvat_utilities import get_task_url
 
 
 POLL_INTERVAL_SECONDS = 1.0
@@ -106,6 +107,7 @@ async def _process_loading_job(
             task_name=task_name
         )
 
+        job_segment_run_import.task_url = get_task_url(task_id=task_id)
         job_segment_run_import.task_id = task_id
 
 

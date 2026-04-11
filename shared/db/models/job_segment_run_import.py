@@ -47,6 +47,11 @@ class JobSegmentRunImport(Base):
         nullable=True
     )
 
+    task_url: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True
+    )
+
     error_message: Mapped[str | None] = mapped_column(
         String,
         nullable=True

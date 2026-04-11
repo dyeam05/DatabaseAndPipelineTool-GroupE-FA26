@@ -1,10 +1,12 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_transactional_session
 from db.enums import JobSegmentRunImportStatus
+from db.models.job_segment_run_import import JobSegmentRunImport
+from schemas.segment import SegmentJobImportResponse
 from utilities.service_builder_utilities import build_job_segment_run_import_service
 
 logger = logging.getLogger(__name__)
@@ -13,14 +15,14 @@ job_segment_run_router = APIRouter(
     prefix="/job_segment_run",
 )
 
-@job_segment_run_router.post("/export_to_cvat")
+@job_segment_run_router.post("/export_to_cvat", response_model=SegmentJobImportResponse)
 async def export_job_segment_run_to_cvat(
     route_id: str,
     job_def_id: int,
     job_run_num: int,
     segment_id: int,
     session: AsyncSession = Depends(get_transactional_session)
-):
+) -> JobSegmentRunImport:
     logging.info("Exporting job segment run to cvat")
     job_segment_run_review_service = build_job_segment_run_import_service(session=session)
     job_segment_run_review = await job_segment_run_review_service.create(
@@ -49,6 +51,7 @@ async def delete_job_segment_run_in_cvat(
         segment_id=segment_id,
         status=JobSegmentRunImportStatus.QUEUED_FOR_REMOVAL
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 

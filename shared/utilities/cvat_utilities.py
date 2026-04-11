@@ -14,6 +14,7 @@ CVAT_EMAIL = os.environ["CVAT_EMAIL"]
 CVAT_PASSWORD = os.environ["CVAT_PASSWORD"]
 CVAT_HOST = os.environ["CVAT_HOST"]
 CVAT_SHARE_ROOT = os.environ["CVAT_SHARE_ROOT"]
+CVAT_PUBLIC_URL = os.environ["CVAT_PUBLIC_URL"]
 
 
 def labels_to_patched_requests(labels: dict[int, str]) -> list[PatchedLabelRequest]:
@@ -51,4 +52,5 @@ def extract_ids_to_labels_for_coco_annotation_file(annotation_file: Path) -> dic
     
     return ids_to_labels
 
-
+def get_task_url(task_id: int) -> str:
+    return f"{CVAT_PUBLIC_URL}/tasks/{task_id}"
