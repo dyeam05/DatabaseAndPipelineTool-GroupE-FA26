@@ -3,7 +3,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.enums import JobSegmentRunImportStatus
+from db.enums import CameraType, JobSegmentRunImportStatus
 from db.models.job_segment_run_import import JobSegmentRunImport
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ class JobSegmentRunImportRepository:
         job_def_id: int,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
     ) -> JobSegmentRunImport | None:
 
         return await self._session.get(
@@ -26,7 +27,8 @@ class JobSegmentRunImportRepository:
                 "job_run_num":job_run_num, 
                 "job_def_id": job_def_id, 
                 "route_id": route_id,
-                "segment_id": segment_id
+                "segment_id": segment_id,
+                "camera": camera
             }
         )
 
@@ -49,6 +51,7 @@ class JobSegmentRunImportRepository:
         job_run_num: int,
         job_def_id: int,
         route_id: str,
+        camera: CameraType,
         segment_id: int
     ) -> JobSegmentRunImport:
         job_segment_run_review = JobSegmentRunImport(
@@ -56,6 +59,7 @@ class JobSegmentRunImportRepository:
             job_def_id=job_def_id,
             route_id=route_id,
             segment_id=segment_id,
+            camera=camera,
             status=JobSegmentRunImportStatus.QUEUED_FOR_LOADING
         )
 

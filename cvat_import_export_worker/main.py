@@ -72,6 +72,7 @@ async def _process_loading_job(
         job_def_id=job_segment_run_import.job_def_id,
         route_id=job_segment_run_import.route_id,
         segment_id=job_segment_run_import.segment_id,
+        camera=job_segment_run_import.camera,
         status=JobSegmentRunImportStatus.LOADING
     )
     await session.commit()
@@ -84,6 +85,7 @@ async def _process_loading_job(
             job_def_id=job_segment_run_import.job_def_id,
             route_id=job_segment_run_import.route_id,
             segment_id=job_segment_run_import.segment_id,
+            camera=job_segment_run_import.camera,
         )
         if not job_segment_run:
             raise JobSegmentRunNotFoundError(
@@ -120,6 +122,7 @@ async def _process_loading_job(
             job_def_id=job_segment_run_import.job_def_id,
             route_id=job_segment_run_import.route_id,
             segment_id=job_segment_run_import.segment_id,
+            camera=job_segment_run_import.camera,
             status=JobSegmentRunImportStatus.LOADED
         )
         await session.commit()
@@ -143,6 +146,7 @@ async def _process_removal_job(
         job_def_id=job_segment_run_import.job_def_id,
         route_id=job_segment_run_import.route_id,
         segment_id=job_segment_run_import.segment_id,
+        camera=job_segment_run_import.camera,
         status=JobSegmentRunImportStatus.REMOVING
     )
     await session.commit()
@@ -162,6 +166,7 @@ async def _process_removal_job(
             job_def_id=job_segment_run_import.job_def_id,
             route_id=job_segment_run_import.route_id,
             segment_id=job_segment_run_import.segment_id,
+            camera=job_segment_run_import.camera,
             status=JobSegmentRunImportStatus.REMOVED
         )
         await session.commit()

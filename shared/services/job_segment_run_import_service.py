@@ -1,6 +1,6 @@
 import logging
 
-from db.enums import JobSegmentRunImportStatus
+from db.enums import CameraType, JobSegmentRunImportStatus
 from db.models.job_segment_run_import import JobSegmentRunImport
 from repositories.job_segment_run_import_repository import JobSegmentRunImportRepository
 from services.errors import JobSegmentRunNotFoundError
@@ -17,12 +17,14 @@ class JobSegmentRunImportService:
         job_def_id: int,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
     ) -> JobSegmentRunImport | None:
         return await self._job_segment_run_import_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
-            segment_id=segment_id
+            segment_id=segment_id,
+            camera=camera
         )
 
     async def list_all(self) -> list[JobSegmentRunImport]:
@@ -36,13 +38,15 @@ class JobSegmentRunImportService:
         job_run_num: int,
         job_def_id: int,
         route_id: str,
-        segment_id: int
+        segment_id: int,
+        camera: CameraType
     ) -> JobSegmentRunImport:
         return await self._job_segment_run_import_repository.create(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
-            segment_id=segment_id
+            segment_id=segment_id,
+            camera=camera,
         )
 
     async def set_status(
@@ -51,13 +55,15 @@ class JobSegmentRunImportService:
         job_def_id: int,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
         status: JobSegmentRunImportStatus
     ) -> JobSegmentRunImport:
         job_segment_run_import = await self._job_segment_run_import_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
-            segment_id=segment_id
+            segment_id=segment_id,
+            camera=camera,
         )
 
         if not job_segment_run_import:

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_transactional_session
-from db.enums import JobSegmentRunImportStatus
+from db.enums import CameraType, JobSegmentRunImportStatus
 from db.models.job_segment_run_import import JobSegmentRunImport
 from schemas.segment import SegmentJobImportResponse
 from utilities.service_builder_utilities import build_job_segment_run_import_service
@@ -21,6 +21,7 @@ async def export_job_segment_run_to_cvat(
     job_def_id: int,
     job_run_num: int,
     segment_id: int,
+    camera: CameraType,
     session: AsyncSession = Depends(get_transactional_session)
 ) -> JobSegmentRunImport:
     logging.info("Exporting job segment run to cvat")
@@ -29,7 +30,8 @@ async def export_job_segment_run_to_cvat(
         job_run_num=job_run_num,
         job_def_id=job_def_id,
         route_id=route_id,
-        segment_id=segment_id
+        segment_id=segment_id,
+        camera=camera,
     )
 
     return job_segment_run_review
@@ -40,6 +42,7 @@ async def delete_job_segment_run_in_cvat(
     job_def_id: int,
     job_run_num: int,
     segment_id: int,
+    camera: CameraType,
     session: AsyncSession = Depends(get_transactional_session)
 ):
     logging.info("Removing job segment run from cvat")
@@ -49,6 +52,7 @@ async def delete_job_segment_run_in_cvat(
         job_def_id=job_def_id,
         route_id=route_id,
         segment_id=segment_id,
+        camera=camera,
         status=JobSegmentRunImportStatus.QUEUED_FOR_REMOVAL
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

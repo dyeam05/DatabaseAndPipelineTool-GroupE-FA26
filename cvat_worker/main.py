@@ -51,11 +51,12 @@ async def _mark_stale_running_jobs_as_failed(
 
     # for all of the stale jobs mark both the job_run and job_segment_run as failed
     for job in stale_jobs:
-        await job_run_service.set_status(
+        await job_run_service.set_error(
             job_run_num=job.job_run_num,
             job_def_id=job.job_def_id,
             route_id=job.route_id,
-            status=JobStatus.FAILED,
+            camera=job.camera,
+            error="Job marked as stale"
         )
 
         segments = await job_segment_run_service.get_segments_by_job_run(
@@ -74,6 +75,7 @@ async def _mark_stale_running_jobs_as_failed(
                     job_def_id=segment.job_def_id,
                     route_id=segment.route_id,
                     segment_id=segment.segment_id,
+                    camera=job.camera,
                     status=JobSegmentRunStatus.FAILED,
                 )
 
@@ -91,6 +93,7 @@ async def create_job_segment_runs_for_job_run(
             job_run_num=job_run.job_run_num,
             job_def_id=job_run.job_def_id,
             route_id=job_run.route_id,
+            camera=job_run.camera,
             segment_id=segment.segment_id,
         )
 
@@ -117,6 +120,7 @@ async def process_job_segment_run(
             job_def_id=job_segment_run.job_def_id,
             route_id=job_segment_run.route_id,
             segment_id=job_segment_run.segment_id,
+            camera=job_segment_run.camera,
             status=JobSegmentRunStatus.RUNNING,
         )
         await session.commit()
@@ -163,6 +167,7 @@ async def process_job_segment_run(
             job_def_id=job_segment_run.job_def_id,
             route_id=job_segment_run.route_id,
             segment_id=job_segment_run.segment_id,
+            camera=job_segment_run.camera,
             status=JobSegmentRunStatus.SUCCEEDED,
         )
         await session.commit()
@@ -174,6 +179,7 @@ async def process_job_segment_run(
             job_def_id=job_segment_run.job_def_id,
             route_id=job_segment_run.route_id,
             segment_id=job_segment_run.segment_id,
+            camera=job_segment_run.camera,
             status=JobSegmentRunStatus.FAILED,
         )
         await session.commit()
@@ -195,6 +201,7 @@ async def _process_job_run(
         job_run_num=job_run.job_run_num,
         job_def_id=job_run.job_def_id,
         route_id=job_run.route_id,
+        camera=job_run.camera,
         status=JobStatus.RUNNING,
     )
     await session.commit()
@@ -226,6 +233,7 @@ async def _process_job_run(
             job_run_num=job_run.job_run_num,
             job_def_id=job_run.job_def_id,
             route_id=job_run.route_id,
+            camera=job_run.camera,
             status=JobStatus.SUCCEEDED,
         )
         await session.commit()
@@ -236,6 +244,7 @@ async def _process_job_run(
             job_run_num=job_run.job_run_num,
             job_def_id=job_run.job_def_id,
             route_id=job_run.route_id,
+            camera=job_run.camera,
             status=JobStatus.FAILED,
         )
         await session.commit()

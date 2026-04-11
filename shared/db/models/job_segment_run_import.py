@@ -3,14 +3,14 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKeyConstraint, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 from db.base import Base
-from db.enums import JobSegmentRunImportStatus
+from db.enums import CameraType, JobSegmentRunImportStatus, camera_type_enum, job_segment_run_import_status_enum
 
 class JobSegmentRunImport(Base):
     __tablename__ = "job_segment_run_review"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["job_run_num", "route_id", "job_def_id", "segment_id"],
-            ["job_segment_run.job_run_num", "job_segment_run.route_id", "job_segment_run.job_def_id", "job_segment_run.segment_id"],
+            ["job_run_num", "route_id", "job_def_id", "segment_id", "camera"],
+            ["job_segment_run.job_run_num", "job_segment_run.route_id", "job_segment_run.job_def_id", "job_segment_run.segment_id", "job_segment_run.camera"],
             ondelete="CASCADE",
         ),
     )
@@ -33,7 +33,13 @@ class JobSegmentRunImport(Base):
         primary_key=True,
     )
 
+    camera: Mapped[CameraType] = mapped_column(
+        camera_type_enum,
+        primary_key=True
+    )
+
     status: Mapped[JobSegmentRunImportStatus] = mapped_column(
+        job_segment_run_import_status_enum,
         nullable=False
     )
 

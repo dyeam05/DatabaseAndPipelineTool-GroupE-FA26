@@ -2,12 +2,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from db.enums import JobStatus
+from db.enums import CameraType, JobStatus
 
 
 class CreateJobRunRequest(BaseModel):
     job_def_id: int
     route_id: str
+    camera: CameraType
 
 class JobRunResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

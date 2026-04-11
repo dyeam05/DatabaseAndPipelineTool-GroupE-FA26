@@ -4,7 +4,7 @@ from sqlalchemy import String, DateTime, func, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
-from db.enums import JobStatus, job_status_enum
+from db.enums import CameraType, JobStatus, job_status_enum, camera_type_enum
 
 # this tell job status, like queued, running, succeeded, failed or cancelled
 
@@ -24,6 +24,11 @@ class JobRun(Base):
     route_id: Mapped[str] = mapped_column(
         ForeignKey("routes.route_id"),
         primary_key=True,
+    )
+
+    camera: Mapped[CameraType] = mapped_column(
+        camera_type_enum,
+        primary_key=True
     )
     status: Mapped[JobStatus] = mapped_column(
         job_status_enum,
