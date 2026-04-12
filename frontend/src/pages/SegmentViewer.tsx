@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getRoute, getThumbnailUrl } from "../api/routes";
+import { useQuery } from "@tanstack/react-query";
+import { getThumbnailUrl } from "../api/routes";
 import { listSegmentsForRoute } from "../api/segments";
-import type { Route, Segment, SegmentStatus } from "../api/types";
+import type { Segment, SegmentStatus } from "../api/types";
+import { SEGMENT_TERMINAL_STATUSES } from "../api/types";
+import { useRouteStatus } from "../hooks/useRouteStatus";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -10,12 +13,15 @@ const SEG_STATUS_CONFIG: Record<
   SegmentStatus,
   { label: string; color: string; textColor: string; bg: string }
 > = {
-  recorded:   { label: "Recorded",   color: "var(--border-strong)",  textColor: "var(--status-recorded-text)", bg: "var(--status-recorded-bg)" },
-  annotating: { label: "Annotating", color: "var(--accent-caution)", textColor: "var(--status-caution-text)",  bg: "var(--status-caution-bg)"  },
-  annotated:  { label: "Annotated",  color: "var(--accent-go)",      textColor: "var(--status-go-text)",       bg: "var(--status-go-bg)"       },
-  reviewed:   { label: "Reviewed",   color: "var(--accent-go)",      textColor: "var(--status-go-text)",       bg: "var(--status-go-bg)"       },
-  failed:     { label: "Failed",     color: "var(--accent-alert)",   textColor: "var(--status-alert-text)",    bg: "var(--status-alert-bg)"    },
+  "download queue": { label: "Queued",       color: "var(--border-strong)",  textColor: "var(--status-recorded-text)", bg: "var(--status-recorded-bg)" },
+  downloading:      { label: "Downloading",  color: "var(--accent-caution)", textColor: "var(--status-caution-text)",  bg: "var(--status-caution-bg)"  },
+  "upload queue":   { label: "Upload Queue", color: "var(--border-strong)",  textColor: "var(--status-recorded-text)", bg: "var(--status-recorded-bg)" },
+  uploading:        { label: "Uploading",    color: "var(--accent-caution)", textColor: "var(--status-caution-text)",  bg: "var(--status-caution-bg)"  },
+  uploaded:         { label: "Uploaded",     color: "var(--accent-go)",      textColor: "var(--status-go-text)",       bg: "var(--status-go-bg)"       },
+  failed:           { label: "Failed",       color: "var(--accent-alert)",   textColor: "var(--status-alert-text)",    bg: "var(--status-alert-bg)"    },
 };
+
+const DEFAULT_SEG_CFG = SEG_STATUS_CONFIG["download queue"];
 
 // ─── CVAT base URL — update to match your deployment ─────────────────────────
 const CVAT_BASE_URL = "https://cvat.example.com";
@@ -36,6 +42,11 @@ function formatOffset(s: number): string {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+function formatDate(iso: string): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 // ─── SegmentViewer ────────────────────────────────────────────────────────────
 
 export default function SegmentViewer() {
@@ -44,32 +55,23 @@ export default function SegmentViewer() {
   const decodedRouteId = routeId ? decodeURIComponent(routeId) : "";
   const segIdx = segmentId !== undefined ? parseInt(segmentId, 10) : NaN;
 
-  const [route, setRoute] = useState<Route | null>(null);
-  const [segments, setSegments] = useState<Segment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [imgErrored, setImgErrored] = useState(false);
 
-  useEffect(() => {
-    if (!decodedRouteId) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setImgErrored(false);
+  // ── Live polling queries ──────────────────────────────────────────────────
+  const { data: route, isLoading: routeLoading, error: routeError } = useRouteStatus(decodedRouteId || undefined);
 
-    Promise.all([
-      getRoute(decodedRouteId),
-      listSegmentsForRoute(decodedRouteId),
-    ])
-      .then(([r, segs]) => {
-        if (!cancelled) { setRoute(r); setSegments(segs); setLoading(false); }
-      })
-      .catch((err) => {
-        if (!cancelled) { setError(err.message ?? "Failed to load segment"); setLoading(false); }
-      });
+  const { data: segments = [], isLoading: segsLoading } = useQuery({
+    queryKey: ["segments", decodedRouteId],
+    queryFn: () => listSegmentsForRoute(decodedRouteId),
+    enabled: !!decodedRouteId,
+    refetchInterval: (query) => {
+      const segs = query.state.data ?? [];
+      return segs.some((s) => !SEGMENT_TERMINAL_STATUSES.includes(s.status)) ? 3000 : false;
+    },
+  });
 
-    return () => { cancelled = true; };
-  }, [decodedRouteId]);
+  const loading = routeLoading || segsLoading;
+  const error = routeError ? (routeError as Error).message ?? "Failed to load segment" : null;
 
   // Reset image error state when navigating between segments
   useEffect(() => { setImgErrored(false); }, [segIdx]);
@@ -106,15 +108,13 @@ export default function SegmentViewer() {
     );
   }
 
-  const cfg = SEG_STATUS_CONFIG[segment.status] ?? SEG_STATUS_CONFIG.recorded;
-  const isAnnotated = segment.status === "annotated" || segment.status === "reviewed";
+  const cfg = SEG_STATUS_CONFIG[segment.status] ?? DEFAULT_SEG_CFG;
+  const isUploaded = segment.status === "uploaded";
   const totalAnnotations = Object.values(segment.annotations).reduce((a, b) => a + b, 0);
   const prevSeg = segIdx > 0 ? segments[segIdx - 1] : null;
   const nextSeg = segIdx < segments.length - 1 ? segments[segIdx + 1] : null;
   const cvatUrl = `${CVAT_BASE_URL}/tasks?search=${encodeURIComponent(route.id)}&segment=${segIdx}`;
   const thumbnailSrc = getThumbnailUrl(route.id, segment.index);
-
-  type AnnotationKey = keyof Segment["annotations"];
 
   const annotationClasses: {
     label: string; count: number; color: string; shape: (c: string) => React.ReactNode;
@@ -158,8 +158,8 @@ export default function SegmentViewer() {
           </div>
 
           <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px var(--space-3)", border: `1px solid ${cfg.color}` }}>
-            {(segment.status === "reviewed" || segment.status === "annotated") && <span style={{ color: cfg.color, fontSize: "9px", fontWeight: 800 }}>✓</span>}
-            {segment.status === "failed" && <span style={{ color: cfg.color, fontSize: "9px", fontWeight: 800 }}>✕</span>}
+            {segment.status === "uploaded" && <span style={{ color: cfg.color, fontSize: "9px", fontWeight: 800 }}>✓</span>}
+            {segment.status === "failed"   && <span style={{ color: cfg.color, fontSize: "9px", fontWeight: 800 }}>✕</span>}
             <span style={{ fontSize: "9px", fontWeight: 700, color: cfg.color, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
               {cfg.label}
             </span>
@@ -168,7 +168,7 @@ export default function SegmentViewer() {
 
         {/* Meta */}
         <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", fontSize: "11px", fontFamily: "var(--font-mono)", color: "rgba(255,255,255,0.4)" }}>
-          <span>{route.vehicleId}</span>
+          <span>{formatDate(route.createdAt)}</span>
           <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
           <span>offset {formatOffset(segment.startSeconds)}</span>
           <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
@@ -184,7 +184,7 @@ export default function SegmentViewer() {
         {/* Left column */}
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
 
-          {/* Thumbnail / frame preview */}
+          {/* Thumbnail */}
           <div style={{ border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)", overflow: "hidden" }}>
             {imgErrored ? (
               <div style={{ height: "280px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--bg-elevated)" }}>
@@ -207,7 +207,6 @@ export default function SegmentViewer() {
             <div style={{ fontSize: "10px", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--text-muted)", fontWeight: 600, marginBottom: "var(--space-4)" }}>
               Annotation Tool
             </div>
-
             <a href={cvatUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
               <div
                 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-4) var(--space-5)", backgroundColor: "var(--bg-inverse)", border: "2px solid var(--bg-inverse)", cursor: "pointer", transition: "background-color var(--transition-fast), border-color var(--transition-fast)" }}
@@ -228,14 +227,13 @@ export default function SegmentViewer() {
                 <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "var(--text-sm)" }}>↗</span>
               </div>
             </a>
-
             <p style={{ marginTop: "var(--space-3)", fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
               CVAT base URL is configurable — update <code>CVAT_BASE_URL</code> in <code>SegmentViewer.tsx</code>.
             </p>
           </div>
 
-          {/* Annotation breakdown */}
-          {isAnnotated && (
+          {/* Annotation breakdown — only shown when uploaded and annotations exist */}
+          {isUploaded && totalAnnotations > 0 && (
             <div style={{ border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)", padding: "var(--space-5)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "var(--space-4)" }}>
                 <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--text-muted)", fontWeight: 600 }}>
@@ -246,7 +244,6 @@ export default function SegmentViewer() {
                   <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400, marginLeft: "4px" }}>total</span>
                 </span>
               </div>
-
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
                 {annotationClasses.map(({ label, count, color, shape }) => {
                   const pct = totalAnnotations > 0 ? (count / totalAnnotations) * 100 : 0;
@@ -280,7 +277,7 @@ export default function SegmentViewer() {
               { label: "Start offset", value: formatOffset(segment.startSeconds) },
               { label: "Duration",     value: formatDuration(segment.durationSeconds) },
               { label: "Frame count",  value: segment.frameCount.toLocaleString() },
-              { label: "Vehicle",      value: route.vehicleId },
+              { label: "Created",      value: formatDate(route.createdAt) },
               { label: "Route",        value: route.id },
             ].map(({ label, value }, i, arr) => (
               <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "var(--space-3)", padding: "var(--space-3) var(--space-4)", borderBottom: i < arr.length - 1 ? "1px solid var(--border-subtle)" : "none" }}>

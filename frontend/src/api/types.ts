@@ -4,73 +4,65 @@
 // Adjust here if your schemas differ.
 
 export type RouteStatus =
-  | "download_queue"
+  | "download queue"
   | "downloading"
-  | "download_failed"
-  | "downloaded"
-  | "segmented"
-  | "annotating"
-  | "annotated"
-  | "reviewed"
-  | "failed";
+  | "upload queue"
+  | "uploading"
+  | "failed"
+  | "uploaded";
 
 export type SegmentStatus =
-  | "recorded"
-  | "annotating"
-  | "annotated"
-  | "reviewed"
-  | "failed";
+  | "download queue"
+  | "downloading"
+  | "upload queue"
+  | "uploading"
+  | "failed"
+  | "uploaded";
 
-/** Mirrors RouteResponse from shared/schemas/route.py */
+export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+/** Terminal states — polling stops when a resource reaches one of these */
+export const ROUTE_TERMINAL_STATUSES: RouteStatus[] = ["uploaded", "failed"];
+export const SEGMENT_TERMINAL_STATUSES: SegmentStatus[] = ["uploaded", "failed"];
+export const JOB_TERMINAL_STATUSES: JobStatus[] = ["succeeded", "failed", "cancelled"];
+
 export interface RouteResponse {
   route_id: string;
+  file_path: string | null;
   status: RouteStatus;
-  vehicle_id?: string;
-  recorded_at?: string;        // ISO-8601 string
-  duration_seconds?: number;
-  segment_count?: number;
-  annotated_segment_count?: number;
-  annotating_segment_count?: number;
-  failed_segment_count?: number;
+  created_at: string;
 }
 
-/** Mirrors SegmentResponse from shared/schemas/segment.py */
 export interface SegmentResponse {
   route_id: string;
   segment_id: number;
   status: SegmentStatus;
-
   start_time: string;
   end_time: string;
-
+  created_at: string;
   frame_count?: number;
+}
+
+export interface JobRunResponse {
+  job_run_num: number;
+  job_def_id: number;
+  route_id: string;
+  status: JobStatus;
+  queued_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  error: string | null;
+  stats: Record<string, unknown> | null;
 }
 
 // ─── Normalised frontend types ────────────────────────────────────────────────
 // Camel-case versions used throughout the UI.
 
-export type AnnotationStatus =
-  | "recorded"
-  | "segmented"
-  | "annotating"
-  | "annotated"
-  | "reviewed"
-  | "failed"
-  | "downloading"
-  | "downloaded"
-  | "download_queue"
-  | "download_failed";
-
 export interface Route {
   id: string;
-  vehicleId: string;
-  recordedAt: string;
-  durationSeconds: number;
-  segmentCount: number;
-  annotatedSegmentCount: number;
-  annotatingSegmentCount: number;
-  failedSegmentCount: number;
-  status: AnnotationStatus;
+  filePath: string | null;
+  createdAt: string;
+  status: RouteStatus;
 }
 
 export interface Segment {
@@ -93,19 +85,26 @@ export interface Segment {
   };
 }
 
+export interface JobRun {
+  jobRunNum: number;
+  jobDefId: number;
+  routeId: string;
+  status: JobStatus;
+  queuedAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  error: string | null;
+  stats: Record<string, unknown> | null;
+}
+
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
 export function mapRoute(r: RouteResponse): Route {
   return {
     id: r.route_id,
-    vehicleId: r.vehicle_id ?? "unknown",
-    recordedAt: r.recorded_at ?? new Date(0).toISOString(),
-    durationSeconds: r.duration_seconds ?? 0,
-    segmentCount: r.segment_count ?? 0,
-    annotatedSegmentCount: r.annotated_segment_count ?? 0,
-    annotatingSegmentCount: r.annotating_segment_count ?? 0,
-    failedSegmentCount: r.failed_segment_count ?? 0,
-    status: r.status as AnnotationStatus,
+    filePath: r.file_path,
+    createdAt: r.created_at,
+    status: r.status,
   };
 }
 
@@ -122,7 +121,7 @@ export function mapSegment(s: SegmentResponse): Segment {
     index: s.segment_id,
     routeId: s.route_id,
 
-    // TEMP: will fix startSeconds next step
+    // startSeconds is calculated relative to first segment in listSegmentsForRoute
     startSeconds: 0,
 
     durationSeconds,
@@ -140,5 +139,19 @@ export function mapSegment(s: SegmentResponse): Segment {
       trafficLight: 0,
       stopSign: 0,
     },
+  };
+}
+
+export function mapJobRun(j: JobRunResponse): JobRun {
+  return {
+    jobRunNum: j.job_run_num,
+    jobDefId: j.job_def_id,
+    routeId: j.route_id,
+    status: j.status,
+    queuedAt: j.queued_at,
+    startedAt: j.started_at,
+    finishedAt: j.finished_at,
+    error: j.error,
+    stats: j.stats,
   };
 }

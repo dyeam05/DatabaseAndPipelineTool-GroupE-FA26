@@ -1,25 +1,24 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { listRoutes } from "../api/routes";
-import { getThumbnailUrl } from "../api/routes";
-import type { Route, AnnotationStatus } from "../api/types";
+import { useQuery } from "@tanstack/react-query";
+import { listRoutes, getThumbnailUrl } from "../api/routes";
 import { listSegments } from "../api/segments";
+import { listJobRuns } from "../api/job_runs";
+import type { Route, Segment, JobRun } from "../api/types";
+import { ROUTE_TERMINAL_STATUSES, SEGMENT_TERMINAL_STATUSES, JOB_TERMINAL_STATUSES } from "../api/types";
+
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
   string,
   { label: string; barColor: string; textColor: string; bg: string }
 > = {
-  recorded:        { label: "Recorded",        barColor: "var(--border-strong)",   textColor: "var(--status-recorded-text)", bg: "var(--status-recorded-bg)" },
-  downloaded:      { label: "Downloaded",      barColor: "var(--text-primary)",    textColor: "var(--text-secondary)",       bg: "var(--status-recorded-bg)" },
-  download_queue:  { label: "Queued",          barColor: "var(--text-primary)",    textColor: "var(--text-secondary)",       bg: "var(--status-recorded-bg)" },
-  downloading:     { label: "Downloading",     barColor: "var(--accent-caution)",  textColor: "var(--status-caution-text)",  bg: "var(--status-caution-bg)"  },
-  download_failed: { label: "Download Failed", barColor: "var(--accent-alert)",    textColor: "var(--status-alert-text)",    bg: "var(--status-alert-bg)"    },
-  segmented:       { label: "Segmented",       barColor: "var(--text-primary)",    textColor: "var(--text-secondary)",       bg: "var(--status-recorded-bg)" },
-  annotating:      { label: "Annotating",      barColor: "var(--accent-caution)",  textColor: "var(--status-caution-text)",  bg: "var(--status-caution-bg)"  },
-  annotated:       { label: "Annotated",       barColor: "var(--accent-go)",       textColor: "var(--status-go-text)",       bg: "var(--status-go-bg)"       },
-  reviewed:        { label: "Reviewed",        barColor: "var(--accent-go)",       textColor: "var(--status-go-text)",       bg: "var(--status-go-bg)"       },
-  failed:          { label: "Failed",          barColor: "var(--accent-alert)",    textColor: "var(--status-alert-text)",    bg: "var(--status-alert-bg)"    },
+  "download queue": { label: "Queued",       barColor: "var(--text-primary)",   textColor: "var(--text-secondary)",      bg: "var(--status-recorded-bg)" },
+  downloading:      { label: "Downloading",  barColor: "var(--accent-caution)", textColor: "var(--status-caution-text)", bg: "var(--status-caution-bg)"  },
+  "upload queue":   { label: "Upload Queue", barColor: "var(--text-primary)",   textColor: "var(--text-secondary)",      bg: "var(--status-recorded-bg)" },
+  uploading:        { label: "Uploading",    barColor: "var(--accent-caution)", textColor: "var(--status-caution-text)", bg: "var(--status-caution-bg)"  },
+  uploaded:         { label: "Uploaded",     barColor: "var(--accent-go)",      textColor: "var(--status-go-text)",      bg: "var(--status-go-bg)"       },
+  failed:           { label: "Failed",       barColor: "var(--accent-alert)",   textColor: "var(--status-alert-text)",   bg: "var(--status-alert-bg)"    },
 };
 
 const DEFAULT_STATUS_CFG = {
@@ -35,16 +34,8 @@ function getStatusCfg(status: string) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDuration(s: number): string {
-  if (!s) return "—";
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m ${String(s % 60).padStart(2, "0")}s`;
-}
-
 function formatDate(iso: string): string {
-  if (!iso || iso === new Date(0).toISOString()) return "—";
+  if (!iso) return "—";
   return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -58,7 +49,6 @@ function formatDate(iso: string): string {
 
 function RouteThumbnail({ route, hovered }: { route: Route; hovered: boolean }) {
   const [errored, setErrored] = useState(false);
-  // Use the first segment (index 0) as the route thumbnail
   const src = getThumbnailUrl(route.id, 0);
 
   return errored ? (
@@ -120,7 +110,7 @@ function StatusBadge({ status }: { status: string }) {
         backdropFilter: "blur(4px)",
       }}
     >
-      {status === "reviewed" && (
+      {status === "uploaded" && (
         <span style={{ color: cfg.textColor, fontSize: "9px", fontWeight: 800 }}>✓</span>
       )}
       <span
@@ -138,7 +128,46 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ─── CompletionBar ────────────────────────────────────────────────────────────
+// ─── LiveDot ──────────────────────────────────────────────────────────────────
+
+function LiveDot() {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+        padding: "2px 6px",
+        backgroundColor: "var(--status-caution-bg)",
+        border: "1px solid var(--accent-caution)",
+      }}
+    >
+      <span
+        style={{
+          width: "5px",
+          height: "5px",
+          borderRadius: "50%",
+          backgroundColor: "var(--accent-caution)",
+          flexShrink: 0,
+        }}
+      />
+      <span
+        style={{
+          fontSize: "9px",
+          fontWeight: 700,
+          color: "var(--status-caution-text)",
+          letterSpacing: "0.07em",
+          textTransform: "uppercase",
+          fontFamily: "var(--font-mono)",
+        }}
+      >
+        Live
+      </span>
+    </span>
+  );
+}
+
+// ─── Pip ──────────────────────────────────────────────────────────────────────
 
 function Pip({ color, label }: { color: string; label: string }) {
   return (
@@ -151,53 +180,66 @@ function Pip({ color, label }: { color: string; label: string }) {
   );
 }
 
-function CompletionBar({ route }: { route: Route }) {
-  const { segmentCount, annotatedSegmentCount, annotatingSegmentCount, failedSegmentCount } = route;
-  const pct = segmentCount > 0 ? Math.round((annotatedSegmentCount / segmentCount) * 100) : 0;
-  const isComplete = pct === 100;
-  const hasMultipleStates = annotatingSegmentCount > 0 || failedSegmentCount > 0;
+// ─── UploadBar ────────────────────────────────────────────────────────────────
+
+function UploadBar({ segments, jobRuns }: { segments: Segment[]; jobRuns: JobRun[] }) {
+  const total = segments.length;
+  const uploaded = segments.filter((s) => s.status === "uploaded").length;
+  const uploading = segments.filter(
+    (s) => s.status === "uploading" || s.status === "downloading"
+  ).length;
+  const failed = segments.filter((s) => s.status === "failed").length;
+  const pct = total > 0 ? Math.round((uploaded / total) * 100) : 0;
+
+  const activeJobs = jobRuns.filter((r) => r.status === "queued" || r.status === "running").length;
+  const succeededJobs = jobRuns.filter((r) => r.status === "succeeded").length;
+  const failedJobs = jobRuns.filter((r) => r.status === "failed").length;
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "6px" }}>
         <span style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
-          {annotatedSegmentCount} / {segmentCount} segments
+          {uploaded} / {total} uploaded
         </span>
         <span
           style={{
             fontSize: "var(--text-sm)",
             fontWeight: 700,
             fontFamily: "var(--font-mono)",
-            color: isComplete
-              ? "var(--accent-go)"
-              : failedSegmentCount === segmentCount
-              ? "var(--accent-alert)"
-              : "var(--text-primary)",
+            color: pct === 100 ? "var(--accent-go)" : failed === total && total > 0 ? "var(--accent-alert)" : "var(--text-primary)",
           }}
         >
-          {pct}%
+          {total > 0 ? `${pct}%` : "—"}
         </span>
       </div>
 
       <div style={{ height: "5px", backgroundColor: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", overflow: "hidden", display: "flex" }}>
-        {annotatedSegmentCount > 0 && (
-          <div style={{ width: `${(annotatedSegmentCount / segmentCount) * 100}%`, backgroundColor: "var(--accent-go)", flexShrink: 0 }} />
+        {uploaded > 0 && total > 0 && (
+          <div style={{ width: `${(uploaded / total) * 100}%`, backgroundColor: "var(--accent-go)", flexShrink: 0 }} />
         )}
-        {annotatingSegmentCount > 0 && (
-          <div style={{ width: `${(annotatingSegmentCount / segmentCount) * 100}%`, backgroundColor: "var(--accent-caution)", flexShrink: 0 }} />
+        {uploading > 0 && total > 0 && (
+          <div style={{ width: `${(uploading / total) * 100}%`, backgroundColor: "var(--accent-caution)", flexShrink: 0 }} />
         )}
-        {failedSegmentCount > 0 && (
-          <div style={{ width: `${(failedSegmentCount / segmentCount) * 100}%`, backgroundColor: "var(--accent-alert)", flexShrink: 0 }} />
+        {failed > 0 && total > 0 && (
+          <div style={{ width: `${(failed / total) * 100}%`, backgroundColor: "var(--accent-alert)", flexShrink: 0 }} />
         )}
       </div>
 
-      {hasMultipleStates && (
-        <div style={{ display: "flex", gap: "var(--space-4)", marginTop: "6px", flexWrap: "wrap" }}>
-          {annotatedSegmentCount > 0 && <Pip color="var(--accent-go)" label={`${annotatedSegmentCount} done`} />}
-          {annotatingSegmentCount > 0 && <Pip color="var(--accent-caution)" label={`${annotatingSegmentCount} in progress`} />}
-          {failedSegmentCount > 0 && <Pip color="var(--accent-alert)" label={`${failedSegmentCount} failed`} />}
-        </div>
-      )}
+      <div style={{ display: "flex", gap: "var(--space-4)", marginTop: "6px", flexWrap: "wrap" }}>
+        {(uploading > 0 || failed > 0) && (
+          <>
+            {uploading > 0 && <Pip color="var(--accent-caution)" label={`${uploading} uploading`} />}
+            {failed > 0 && <Pip color="var(--accent-alert)" label={`${failed} failed`} />}
+          </>
+        )}
+        {jobRuns.length > 0 && (
+          <>
+            {activeJobs > 0 && <Pip color="var(--accent-caution)" label={`${activeJobs} job${activeJobs > 1 ? "s" : ""} running`} />}
+            {succeededJobs > 0 && <Pip color="var(--accent-go)" label={`${succeededJobs} job${succeededJobs > 1 ? "s" : ""} done`} />}
+            {failedJobs > 0 && <Pip color="var(--accent-alert)" label={`${failedJobs} job${failedJobs > 1 ? "s" : ""} failed`} />}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -219,7 +261,17 @@ function StatCard({ label, value, accentColor }: { label: string; value: number 
 
 // ─── RouteCard ────────────────────────────────────────────────────────────────
 
-function RouteCard({ route, onClick }: { route: Route; onClick: () => void }) {
+function RouteCard({
+  route,
+  segments,
+  jobRuns,
+  onClick,
+}: {
+  route: Route;
+  segments: Segment[];
+  jobRuns: JobRun[];
+  onClick: () => void;
+}) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -230,6 +282,8 @@ function RouteCard({ route, onClick }: { route: Route; onClick: () => void }) {
       setTimeout(() => setCopied(false), 1500);
     });
   }
+
+  const activeJobCount = jobRuns.filter((r) => r.status === "queued" || r.status === "running").length;
 
   return (
     <div
@@ -253,9 +307,12 @@ function RouteCard({ route, onClick }: { route: Route; onClick: () => void }) {
         <div style={{ position: "absolute", bottom: "var(--space-2)", left: "var(--space-2)" }}>
           <StatusBadge status={route.status} />
         </div>
-        <div style={{ position: "absolute", bottom: "var(--space-2)", right: "var(--space-2)", backgroundColor: "rgba(17,17,17,0.75)", backdropFilter: "blur(4px)", padding: "2px var(--space-2)" }}>
+        <div style={{ position: "absolute", bottom: "var(--space-2)", right: "var(--space-2)", backgroundColor: "var(--bg-inverse)", backdropFilter: "blur(4px)", padding: "2px var(--space-2)", display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+          {activeJobCount > 0 && (
+            <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--accent-caution)", flexShrink: 0 }} title={`${activeJobCount} annotation job${activeJobCount > 1 ? "s" : ""} running`} />
+          )}
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 700, color: "var(--text-on-inverse)", letterSpacing: "0.04em" }}>
-            {route.segmentCount} seg
+            {segments.length} seg
           </span>
         </div>
       </div>
@@ -276,17 +333,13 @@ function RouteCard({ route, onClick }: { route: Route; onClick: () => void }) {
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "4px", fontSize: "10px", color: "var(--text-muted)", fontFamily: "var(--font-mono)", alignItems: "center", flexWrap: "wrap" }}>
-            <span>{route.vehicleId}</span>
-            <span style={{ color: "var(--border-strong)" }}>·</span>
-            <span>{formatDate(route.recordedAt)}</span>
-            <span style={{ color: "var(--border-strong)" }}>·</span>
-            <span>{formatDuration(route.durationSeconds)}</span>
+          <div style={{ marginTop: "4px", fontSize: "10px", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+            {formatDate(route.createdAt)}
           </div>
         </div>
 
         <div style={{ height: "1px", backgroundColor: "var(--border-subtle)" }} />
-        <CompletionBar route={route} />
+        <UploadBar segments={segments} jobRuns={jobRuns} />
       </div>
     </div>
   );
@@ -294,138 +347,164 @@ function RouteCard({ route, onClick }: { route: Route; onClick: () => void }) {
 
 // ─── RouteDashboard ───────────────────────────────────────────────────────────
 
-type SortKey = "date" | "status" | "segments" | "completion";
+type SortKey = "date" | "status" | "segments";
 
 export default function RouteDashboard() {
   const navigate = useNavigate();
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortKey>("date");
 
-  useEffect(() => {
-  let cancelled = false;
-  setLoading(true);
-  setError(null);
+  // ── Queries with live polling ───────────────────────────────────────────────
 
-  Promise.all([listRoutes(), listSegments()])
-    .then(([routesData, segmentsData]) => {
-      if (cancelled) return;
+  const routesQuery = useQuery({
+    queryKey: ["routes"],
+    queryFn: listRoutes,
+    refetchInterval: (query) => {
+      const routes = query.state.data ?? [];
+      // Active routes poll every 5s; fall back to 30s so newly created routes are detected
+      return routes.some((r) => !ROUTE_TERMINAL_STATUSES.includes(r.status)) ? 5000 : 30000;
+    },
+  });
 
-      const counts: Record<string, number> = {};
+  const segmentsQuery = useQuery({
+    queryKey: ["segments"],
+    queryFn: listSegments,
+    refetchInterval: (query) => {
+      const segs = query.state.data ?? [];
+      return segs.some((s) => !SEGMENT_TERMINAL_STATUSES.includes(s.status)) ? 5000 : false;
+    },
+  });
 
-      for (const s of segmentsData) {
-        counts[s.routeId] = (counts[s.routeId] || 0) + 1;
-      }
+  const jobRunsQuery = useQuery({
+    queryKey: ["jobRuns"],
+    queryFn: listJobRuns,
+    refetchInterval: (query) => {
+      const runs = query.state.data ?? [];
+      if (runs.length === 0) return 10000;
+      return runs.some((r) => !JOB_TERMINAL_STATUSES.includes(r.status)) ? 3000 : false;
+    },
+  });
 
-      const enriched = routesData.map((r) => ({
-        ...r,
-        segmentCount: counts[r.id] || 0,
-      }));
+  const routes = routesQuery.data ?? [];
+  const segments = segmentsQuery.data ?? [];
+  const jobRuns = jobRunsQuery.data ?? [];
+  const loading = routesQuery.isLoading;
+  const error = routesQuery.error ? (routesQuery.error as Error).message ?? "Failed to load routes" : null;
+  const isPolling = routesQuery.isFetching || segmentsQuery.isFetching || jobRunsQuery.isFetching;
 
-      setRoutes(enriched);
-      setLoading(false);
-    })
-    .catch((err) => {
-      if (!cancelled) {
-        setError(err.message ?? "Failed to load routes");
-        setLoading(false);
-      }
-    });
+  // ── Computed per-route maps ─────────────────────────────────────────────────
 
-  return () => {
-    cancelled = true;
-  };
-}, []);
+  const segmentsByRoute = useMemo(() => {
+    const map: Record<string, Segment[]> = {};
+    for (const s of segments) {
+      if (!map[s.routeId]) map[s.routeId] = [];
+      map[s.routeId].push(s);
+    }
+    return map;
+  }, [segments]);
+
+  const jobRunsByRoute = useMemo(() => {
+    const map: Record<string, JobRun[]> = {};
+    for (const j of jobRuns) {
+      if (!map[j.routeId]) map[j.routeId] = [];
+      map[j.routeId].push(j);
+    }
+    return map;
+  }, [jobRuns]);
+
+  // ── Stats ───────────────────────────────────────────────────────────────────
 
   const stats = useMemo(() => {
-    const totalSegments = routes.reduce((s, r) => s + r.segmentCount, 0);
-    const totalAnnotated = routes.reduce((s, r) => s + r.annotatedSegmentCount, 0);
+    const totalSegments = segments.length;
+    const totalUploaded = segments.filter((s) => s.status === "uploaded").length;
     return {
       total: routes.length,
       totalSegments,
-      overallPct: totalSegments > 0 ? Math.round((totalAnnotated / totalSegments) * 100) : 0,
-      pending: routes.filter((r) => r.status === "recorded" || r.status === "segmented" || r.status === "downloaded").length,
-      inProgress: routes.filter((r) => r.status === "annotating" || r.status === "downloading").length,
-      completed: routes.filter((r) => r.status === "annotated" || r.status === "reviewed").length,
-      failed: routes.filter((r) => r.status === "failed" || r.status === "download_failed").length,
+      overallPct: totalSegments > 0 ? Math.round((totalUploaded / totalSegments) * 100) : 0,
+      pending: routes.filter((r) => r.status === "download queue" || r.status === "upload queue").length,
+      inProgress: routes.filter((r) => {
+        const routeActive = r.status === "downloading" || r.status === "uploading";
+        const jobActive = (jobRunsByRoute[r.id] ?? []).some((j) => j.status === "queued" || j.status === "running");
+        return routeActive || jobActive;
+      }).length,
+      completed: routes.filter((r) => {
+        if (r.status !== "uploaded") return false;
+        const runs = jobRunsByRoute[r.id] ?? [];
+        return runs.length === 0 || runs.every((j) => JOB_TERMINAL_STATUSES.includes(j.status));
+      }).length,
+      failed: routes.filter((r) => r.status === "failed").length,
     };
-  }, [routes]);
+  }, [routes, segments, jobRunsByRoute]);
+
+  // ── Filter + sort ───────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = routes.filter((r) => {
-      if (q && !r.id.toLowerCase().includes(q) && !r.vehicleId.toLowerCase().includes(q)) return false;
+      if (q && !r.id.toLowerCase().includes(q)) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       return true;
     });
 
     list.sort((a, b) => {
       switch (sortBy) {
-        case "date": return new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime();
-        case "status": return a.status.localeCompare(b.status);
-        case "segments": return b.segmentCount - a.segmentCount;
-        case "completion": {
-          const pA = a.segmentCount > 0 ? a.annotatedSegmentCount / a.segmentCount : 0;
-          const pB = b.segmentCount > 0 ? b.annotatedSegmentCount / b.segmentCount : 0;
-          return pB - pA;
-        }
+        case "date":    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "status":  return a.status.localeCompare(b.status);
+        case "segments": return (segmentsByRoute[b.id]?.length ?? 0) - (segmentsByRoute[a.id]?.length ?? 0);
       }
     });
     return list;
-  }, [routes, search, statusFilter, sortBy]);
+  }, [routes, search, statusFilter, sortBy, segmentsByRoute]);
 
   return (
     <div style={{ paddingBottom: "var(--space-12)" }}>
       {/* Header */}
-      <div style={{ marginBottom: "var(--space-5)" }}>
-        <h1 style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-2xl)", fontWeight: 600, color: "var(--text-primary)" }}>
-          Routes
-        </h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", marginTop: "2px" }}>
-          Annotation pipeline overview
-        </p>
+      <div style={{ marginBottom: "var(--space-5)", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <div>
+          <h1 style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-2xl)", fontWeight: 600, color: "var(--text-primary)" }}>
+            Routes
+          </h1>
+          <p style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", marginTop: "2px" }}>
+            Annotation pipeline overview
+          </p>
+        </div>
+        {isPolling && <LiveDot />}
       </div>
 
       {/* Stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "1px", backgroundColor: "var(--border-subtle)", border: "1px solid var(--border-subtle)", marginBottom: "var(--space-5)" }}>
-        <StatCard label="Total Routes" value={loading ? "…" : stats.total} />
-        <StatCard label="Segments" value={loading ? "…" : stats.totalSegments} />
-        <StatCard label="Overall" value={loading ? "…" : `${stats.overallPct}%`} />
-        <StatCard label="Pending" value={loading ? "…" : stats.pending} />
-        <StatCard label="In Progress" value={loading ? "…" : stats.inProgress} accentColor={stats.inProgress > 0 ? "var(--accent-caution)" : undefined} />
-        <StatCard label="Completed" value={loading ? "…" : stats.completed} accentColor={stats.completed > 0 ? "var(--accent-go)" : undefined} />
-        <StatCard label="Failed" value={loading ? "…" : stats.failed} accentColor={stats.failed > 0 ? "var(--accent-alert)" : undefined} />
+        <StatCard label="Total Routes"  value={loading ? "…" : stats.total} />
+        <StatCard label="Segments"      value={loading ? "…" : stats.totalSegments} />
+        <StatCard label="Uploaded"      value={loading ? "…" : `${stats.overallPct}%`} />
+        <StatCard label="Pending"       value={loading ? "…" : stats.pending} />
+        <StatCard label="In Progress"   value={loading ? "…" : stats.inProgress}  accentColor={stats.inProgress  > 0 ? "var(--accent-caution)" : undefined} />
+        <StatCard label="Completed"     value={loading ? "…" : stats.completed}   accentColor={stats.completed   > 0 ? "var(--accent-go)"      : undefined} />
+        <StatCard label="Failed"        value={loading ? "…" : stats.failed}      accentColor={stats.failed      > 0 ? "var(--accent-alert)"   : undefined} />
       </div>
 
       {/* Filter bar */}
       <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
         <input
           type="search"
-          placeholder="Search route ID or vehicle…"
+          placeholder="Search route ID…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ flex: 1, minWidth: "200px", padding: "var(--space-2) var(--space-3)", border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)", fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", color: "var(--text-primary)", outline: "none" }}
         />
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)", fontSize: "var(--text-sm)", color: "var(--text-primary)", outline: "none", cursor: "pointer" }}>
           <option value="all">All Statuses</option>
-          <option value="download_queue">Queued</option>
+          <option value="download queue">Queued</option>
           <option value="downloading">Downloading</option>
-          <option value="downloaded">Downloaded</option>
-          <option value="download_failed">Download Failed</option>
-          <option value="segmented">Segmented</option>
-          <option value="annotating">Annotating</option>
-          <option value="annotated">Annotated</option>
-          <option value="reviewed">Reviewed</option>
+          <option value="upload queue">Upload Queue</option>
+          <option value="uploading">Uploading</option>
+          <option value="uploaded">Uploaded</option>
           <option value="failed">Failed</option>
         </select>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)} style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)", fontSize: "var(--text-sm)", color: "var(--text-primary)", outline: "none", cursor: "pointer" }}>
           <option value="date">Sort: Date</option>
           <option value="status">Sort: Status</option>
           <option value="segments">Sort: Segments</option>
-          <option value="completion">Sort: Completion %</option>
         </select>
       </div>
 
@@ -459,7 +538,13 @@ export default function RouteDashboard() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "var(--space-4)" }}>
             {filtered.map((route) => (
-              <RouteCard key={route.id} route={route} onClick={() => navigate(`/routes/${encodeURIComponent(route.id)}`)} />
+              <RouteCard
+                key={route.id}
+                route={route}
+                segments={segmentsByRoute[route.id] ?? []}
+                jobRuns={jobRunsByRoute[route.id] ?? []}
+                onClick={() => navigate(`/routes/${encodeURIComponent(route.id)}`)}
+              />
             ))}
           </div>
         )

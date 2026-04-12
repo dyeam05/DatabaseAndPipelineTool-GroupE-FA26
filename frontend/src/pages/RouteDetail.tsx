@@ -1,8 +1,12 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getRoute, getThumbnailUrl } from "../api/routes";
+import { useQuery } from "@tanstack/react-query";
+import { getThumbnailUrl } from "../api/routes";
 import { listSegmentsForRoute } from "../api/segments";
-import type { Route, Segment, SegmentStatus } from "../api/types";
+import type { Segment, SegmentStatus, JobRun } from "../api/types";
+import { SEGMENT_TERMINAL_STATUSES } from "../api/types";
+import { useRouteStatus } from "../hooks/useRouteStatus";
+import { useJobRunsForRoute, isAnnotationInProgress } from "../hooks/useJobRunsForRoute";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -10,34 +14,59 @@ const SEG_STATUS_CONFIG: Record<
   SegmentStatus,
   { label: string; timelineColor: string; textColor: string; bg: string; borderColor: string }
 > = {
-  recorded:   { label: "Recorded",   timelineColor: "var(--border-strong)",  textColor: "var(--status-recorded-text)", bg: "var(--status-recorded-bg)", borderColor: "var(--border-strong)"  },
-  annotating: { label: "Annotating", timelineColor: "var(--accent-caution)", textColor: "var(--status-caution-text)",  bg: "var(--status-caution-bg)",  borderColor: "var(--accent-caution)" },
-  annotated:  { label: "Annotated",  timelineColor: "var(--accent-go)",      textColor: "var(--status-go-text)",       bg: "var(--status-go-bg)",       borderColor: "var(--accent-go)"      },
-  reviewed:   { label: "Reviewed",   timelineColor: "var(--accent-go)",      textColor: "var(--status-go-text)",       bg: "var(--status-go-bg)",       borderColor: "var(--accent-go)"      },
-  failed:     { label: "Failed",     timelineColor: "var(--accent-alert)",   textColor: "var(--status-alert-text)",    bg: "var(--status-alert-bg)",    borderColor: "var(--accent-alert)"   },
+  "download queue": { label: "Queued",       timelineColor: "var(--border-strong)",  textColor: "var(--status-recorded-text)", bg: "var(--status-recorded-bg)", borderColor: "var(--border-strong)"  },
+  downloading:      { label: "Downloading",  timelineColor: "var(--accent-caution)", textColor: "var(--status-caution-text)",  bg: "var(--status-caution-bg)",  borderColor: "var(--accent-caution)" },
+  "upload queue":   { label: "Upload Queue", timelineColor: "var(--border-strong)",  textColor: "var(--status-recorded-text)", bg: "var(--status-recorded-bg)", borderColor: "var(--border-strong)"  },
+  uploading:        { label: "Uploading",    timelineColor: "var(--accent-caution)", textColor: "var(--status-caution-text)",  bg: "var(--status-caution-bg)",  borderColor: "var(--accent-caution)" },
+  uploaded:         { label: "Uploaded",     timelineColor: "var(--accent-go)",      textColor: "var(--status-go-text)",       bg: "var(--status-go-bg)",       borderColor: "var(--accent-go)"      },
+  failed:           { label: "Failed",       timelineColor: "var(--accent-alert)",   textColor: "var(--status-alert-text)",    bg: "var(--status-alert-bg)",    borderColor: "var(--accent-alert)"   },
 };
 
+const DEFAULT_SEG_CFG = SEG_STATUS_CONFIG["download queue"];
+
 const ROUTE_STATUS_COLORS: Record<string, string> = {
-  recorded:        "var(--status-recorded-text)",
-  downloaded:      "var(--text-secondary)",
-  download_queue:  "var(--text-secondary)",
-  downloading:     "var(--accent-caution)",
-  download_failed: "var(--accent-alert)",
-  segmented:       "var(--text-secondary)",
-  annotating:      "var(--accent-caution)",
-  annotated:       "var(--accent-go)",
-  reviewed:        "var(--accent-go)",
-  failed:          "var(--accent-alert)",
+  "download queue": "var(--text-secondary)",
+  downloading:      "var(--accent-caution)",
+  "upload queue":   "var(--text-secondary)",
+  uploading:        "var(--accent-caution)",
+  uploaded:         "var(--accent-go)",
+  failed:           "var(--accent-alert)",
 };
 
 const ROUTE_STATUS_LABELS: Record<string, string> = {
-  recorded: "Recorded", downloaded: "Downloaded", download_queue: "Queued",
-  downloading: "Downloading", download_failed: "Download Failed",
-  segmented: "Segmented", annotating: "Annotating", annotated: "Annotated",
-  reviewed: "Reviewed", failed: "Failed",
+  "download queue": "Queued",
+  downloading:      "Downloading",
+  "upload queue":   "Upload Queue",
+  uploading:        "Uploading",
+  uploaded:         "Uploaded",
+  failed:           "Failed",
+};
+
+const JOB_STATUS_COLORS: Record<string, string> = {
+  queued:    "var(--text-secondary)",
+  running:   "var(--accent-caution)",
+  succeeded: "var(--accent-go)",
+  failed:    "var(--accent-alert)",
+  cancelled: "var(--text-muted)",
+};
+
+const JOB_STATUS_LABELS: Record<string, string> = {
+  queued: "Queued", running: "Running", succeeded: "Succeeded",
+  failed: "Failed", cancelled: "Cancelled",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatOffset(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
 
 function formatDuration(s: number): string {
   if (!s) return "—";
@@ -47,15 +76,12 @@ function formatDuration(s: number): string {
   return `${m}m ${String(s % 60).padStart(2, "0")}s`;
 }
 
-function formatDate(iso: string): string {
-  if (!iso || iso === new Date(0).toISOString()) return "—";
-  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-function formatOffset(s: number): string {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${String(sec).padStart(2, "0")}`;
+function formatRelativeTime(iso: string | null): string {
+  if (!iso) return "—";
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return `${Math.floor(diff / 3600)}h ago`;
 }
 
 // ─── SegmentThumbnail ─────────────────────────────────────────────────────────
@@ -92,7 +118,7 @@ function SegmentTimeline({ segments }: { segments: Segment[] }) {
     <div>
       <div style={{ display: "flex", gap: "2px", flexWrap: "wrap" }}>
         {segments.map((seg) => {
-          const cfg = SEG_STATUS_CONFIG[seg.status] ?? SEG_STATUS_CONFIG.recorded;
+          const cfg = SEG_STATUS_CONFIG[seg.status] ?? DEFAULT_SEG_CFG;
           const isHovered = hoveredIdx === seg.index;
           return (
             <div
@@ -110,8 +136,8 @@ function SegmentTimeline({ segments }: { segments: Segment[] }) {
           seg{" "}
           <span style={{ color: "var(--text-on-inverse)", fontWeight: 700 }}>#{String(hoveredIdx).padStart(2, "0")}</span>
           {" · "}
-          <span style={{ color: (SEG_STATUS_CONFIG[segments[hoveredIdx].status] ?? SEG_STATUS_CONFIG.recorded).timelineColor }}>
-            {(SEG_STATUS_CONFIG[segments[hoveredIdx].status] ?? SEG_STATUS_CONFIG.recorded).label}
+          <span style={{ color: (SEG_STATUS_CONFIG[segments[hoveredIdx].status] ?? DEFAULT_SEG_CFG).timelineColor }}>
+            {(SEG_STATUS_CONFIG[segments[hoveredIdx].status] ?? DEFAULT_SEG_CFG).label}
           </span>
           {" · "}
           {formatOffset(segments[hoveredIdx].startSeconds)}
@@ -121,27 +147,71 @@ function SegmentTimeline({ segments }: { segments: Segment[] }) {
   );
 }
 
-// ─── HeroCompletionBar ────────────────────────────────────────────────────────
+// ─── HeroUploadBar ────────────────────────────────────────────────────────────
 
-function HeroCompletionBar({ route }: { route: Route }) {
-  const { segmentCount, annotatedSegmentCount, annotatingSegmentCount, failedSegmentCount } = route;
-  const pct = segmentCount > 0 ? Math.round((annotatedSegmentCount / segmentCount) * 100) : 0;
+function HeroUploadBar({ segments }: { segments: Segment[] }) {
+  const total = segments.length;
+  const uploaded = segments.filter((s) => s.status === "uploaded").length;
+  const uploading = segments.filter((s) => s.status === "uploading" || s.status === "downloading").length;
+  const failed = segments.filter((s) => s.status === "failed").length;
+  const pct = total > 0 ? Math.round((uploaded / total) * 100) : 0;
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "6px" }}>
         <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          {annotatedSegmentCount} / {segmentCount} segments annotated
+          {uploaded} / {total} segments uploaded
         </span>
         <span style={{ fontSize: "var(--text-sm)", fontWeight: 700, fontFamily: "var(--font-mono)", color: pct === 100 ? "var(--accent-go)" : pct === 0 ? "rgba(255,255,255,0.3)" : "var(--accent-caution)" }}>
-          {pct}%
+          {total > 0 ? `${pct}%` : "—"}
         </span>
       </div>
       <div style={{ height: "4px", backgroundColor: "rgba(255,255,255,0.1)", display: "flex", overflow: "hidden" }}>
-        {annotatedSegmentCount > 0 && <div style={{ width: `${(annotatedSegmentCount / segmentCount) * 100}%`, backgroundColor: "var(--accent-go)", flexShrink: 0 }} />}
-        {annotatingSegmentCount > 0 && <div style={{ width: `${(annotatingSegmentCount / segmentCount) * 100}%`, backgroundColor: "var(--accent-caution)", flexShrink: 0 }} />}
-        {failedSegmentCount > 0 && <div style={{ width: `${(failedSegmentCount / segmentCount) * 100}%`, backgroundColor: "var(--accent-alert)", flexShrink: 0 }} />}
+        {uploaded > 0 && total > 0 && <div style={{ width: `${(uploaded / total) * 100}%`, backgroundColor: "var(--accent-go)", flexShrink: 0 }} />}
+        {uploading > 0 && total > 0 && <div style={{ width: `${(uploading / total) * 100}%`, backgroundColor: "var(--accent-caution)", flexShrink: 0 }} />}
+        {failed > 0 && total > 0 && <div style={{ width: `${(failed / total) * 100}%`, backgroundColor: "var(--accent-alert)", flexShrink: 0 }} />}
       </div>
+    </div>
+  );
+}
+
+// ─── JobRunRow ────────────────────────────────────────────────────────────────
+
+function JobRunRow({ jobRun }: { jobRun: JobRun }) {
+  const color = JOB_STATUS_COLORS[jobRun.status] ?? "var(--text-secondary)";
+  const label = JOB_STATUS_LABELS[jobRun.status] ?? jobRun.status;
+  const isActive = jobRun.status === "queued" || jobRun.status === "running";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-3)",
+        padding: "var(--space-2) var(--space-3)",
+        backgroundColor: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: "100px" }}>
+        {isActive && (
+          <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
+        )}
+        <span style={{ fontSize: "9px", fontWeight: 700, color, letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+          {label}
+        </span>
+      </div>
+      <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "rgba(255,255,255,0.3)" }}>
+        job #{jobRun.jobRunNum} · def {jobRun.jobDefId}
+      </span>
+      <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "rgba(255,255,255,0.25)", marginLeft: "auto" }}>
+        {isActive ? `queued ${formatRelativeTime(jobRun.queuedAt)}` : formatRelativeTime(jobRun.finishedAt)}
+      </span>
+      {jobRun.error && (
+        <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "var(--accent-alert)", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={jobRun.error}>
+          {jobRun.error}
+        </span>
+      )}
     </div>
   );
 }
@@ -149,10 +219,10 @@ function HeroCompletionBar({ route }: { route: Route }) {
 // ─── SegStatusBadge ───────────────────────────────────────────────────────────
 
 function SegStatusBadge({ status }: { status: SegmentStatus }) {
-  const cfg = SEG_STATUS_CONFIG[status] ?? SEG_STATUS_CONFIG.recorded;
+  const cfg = SEG_STATUS_CONFIG[status] ?? DEFAULT_SEG_CFG;
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: "3px", paddingLeft: "var(--space-2)", paddingRight: "var(--space-2)", paddingTop: "2px", paddingBottom: "2px", borderLeft: `3px solid ${cfg.borderColor}`, backgroundColor: cfg.bg, backdropFilter: "blur(4px)" }}>
-      {(status === "reviewed" || status === "annotated") && <span style={{ color: cfg.textColor, fontSize: "8px", fontWeight: 800 }}>✓</span>}
+      {status === "uploaded" && <span style={{ color: cfg.textColor, fontSize: "8px", fontWeight: 800 }}>✓</span>}
       {status === "failed" && <span style={{ color: cfg.textColor, fontSize: "8px", fontWeight: 800 }}>✕</span>}
       <span style={{ fontSize: "8px", fontWeight: 700, color: cfg.textColor, letterSpacing: "0.07em", textTransform: "uppercase" }}>{cfg.label}</span>
     </div>
@@ -164,19 +234,21 @@ function SegStatusBadge({ status }: { status: SegmentStatus }) {
 type AnnotationKey = keyof Segment["annotations"];
 
 const LABEL_META: Record<AnnotationKey, { color: string; title: string; shape: (color: string) => React.ReactNode }> = {
-  person:       { color: "var(--class-pedestrian)",   title: "Person",        shape: (c) => <circle cx="6" cy="6" r="5" fill={c} /> },
-  bicycle:      { color: "var(--class-cyclist)",      title: "Bicycle",       shape: (c) => <><circle cx="3" cy="8" r="2.5" stroke={c} strokeWidth="1.5" fill="none" /><circle cx="9" cy="8" r="2.5" stroke={c} strokeWidth="1.5" fill="none" /><polyline points="3,8 6,3 9,8" stroke={c} strokeWidth="1.2" fill="none" /></> },
-  car:          { color: "var(--class-vehicle)",      title: "Car",           shape: (c) => <><rect x="1" y="6" width="10" height="4" fill={c} /><rect x="3" y="3" width="6" height="4" fill={c} /></> },
-  motorbike:    { color: "var(--class-motorbike)",    title: "Motorbike",     shape: (c) => <><circle cx="6" cy="6" r="4.5" stroke={c} strokeWidth="1.5" fill="none" /><circle cx="6" cy="6" r="1.2" fill={c} /></> },
-  bus:          { color: "var(--class-bus)",          title: "Bus",           shape: (c) => <><rect x="2" y="1" width="8" height="10" fill={c} /><rect x="3.5" y="2.5" width="2" height="2" fill="white" opacity="0.6" /><rect x="6.5" y="2.5" width="2" height="2" fill="white" opacity="0.6" /></> },
-  train:        { color: "var(--class-train)",        title: "Train",         shape: (c) => <><rect x="1" y="1" width="10" height="9" fill={c} /><line x1="1" y1="4.5" x2="11" y2="4.5" stroke="white" strokeWidth="0.8" opacity="0.6" /><line x1="1" y1="7.5" x2="11" y2="7.5" stroke="white" strokeWidth="0.8" opacity="0.6" /></> },
-  truck:        { color: "var(--class-truck)",        title: "Truck",         shape: (c) => <><rect x="0" y="4" width="9" height="5" fill={c} /><rect x="9" y="6" width="3" height="3" fill={c} /></> },
+  person:       { color: "var(--class-pedestrian)",    title: "Person",        shape: (c) => <circle cx="6" cy="6" r="5" fill={c} /> },
+  bicycle:      { color: "var(--class-cyclist)",       title: "Bicycle",       shape: (c) => <><circle cx="3" cy="8" r="2.5" stroke={c} strokeWidth="1.5" fill="none" /><circle cx="9" cy="8" r="2.5" stroke={c} strokeWidth="1.5" fill="none" /><polyline points="3,8 6,3 9,8" stroke={c} strokeWidth="1.2" fill="none" /></> },
+  car:          { color: "var(--class-vehicle)",       title: "Car",           shape: (c) => <><rect x="1" y="6" width="10" height="4" fill={c} /><rect x="3" y="3" width="6" height="4" fill={c} /></> },
+  motorbike:    { color: "var(--class-motorbike)",     title: "Motorbike",     shape: (c) => <><circle cx="6" cy="6" r="4.5" stroke={c} strokeWidth="1.5" fill="none" /><circle cx="6" cy="6" r="1.2" fill={c} /></> },
+  bus:          { color: "var(--class-bus)",           title: "Bus",           shape: (c) => <><rect x="2" y="1" width="8" height="10" fill={c} /><rect x="3.5" y="2.5" width="2" height="2" fill="white" opacity="0.6" /><rect x="6.5" y="2.5" width="2" height="2" fill="white" opacity="0.6" /></> },
+  train:        { color: "var(--class-train)",         title: "Train",         shape: (c) => <><rect x="1" y="1" width="10" height="9" fill={c} /><line x1="1" y1="4.5" x2="11" y2="4.5" stroke="white" strokeWidth="0.8" opacity="0.6" /><line x1="1" y1="7.5" x2="11" y2="7.5" stroke="white" strokeWidth="0.8" opacity="0.6" /></> },
+  truck:        { color: "var(--class-truck)",         title: "Truck",         shape: (c) => <><rect x="0" y="4" width="9" height="5" fill={c} /><rect x="9" y="6" width="3" height="3" fill={c} /></> },
   trafficLight: { color: "var(--class-traffic-light)", title: "Traffic Light", shape: (c) => <><rect x="3.5" y="1" width="5" height="10" rx="2.5" fill={c} /><circle cx="6" cy="3" r="1" fill="white" opacity="0.9" /><circle cx="6" cy="6" r="1" fill="white" opacity="0.9" /><circle cx="6" cy="9" r="1" fill="white" opacity="0.9" /></> },
-  stopSign:     { color: "var(--class-road-sign)",    title: "Stop Sign",     shape: (c) => <polygon points="8.6,2.5 10.5,5 10.5,7.5 8.6,10 5.9,10 4,7.5 4,5 5.9,2.5" fill={c} /> },
+  stopSign:     { color: "var(--class-road-sign)",     title: "Stop Sign",     shape: (c) => <polygon points="8.6,2.5 10.5,5 10.5,7.5 8.6,10 5.9,10 4,7.5 4,5 5.9,2.5" fill={c} /> },
 };
 
 function AnnotationDots({ annotations }: { annotations: Segment["annotations"] }) {
-  const items = (Object.keys(LABEL_META) as AnnotationKey[]).map((k) => ({ key: k, count: annotations[k], meta: LABEL_META[k] })).filter((x) => x.count > 0);
+  const items = (Object.keys(LABEL_META) as AnnotationKey[])
+    .map((k) => ({ key: k, count: annotations[k], meta: LABEL_META[k] }))
+    .filter((x) => x.count > 0);
   if (items.length === 0) return null;
   return (
     <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
@@ -194,7 +266,7 @@ function AnnotationDots({ annotations }: { annotations: Segment["annotations"] }
 
 function SegmentCard({ segment, onClick }: { segment: Segment; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
-  const isAnnotated = segment.status === "annotated" || segment.status === "reviewed";
+  const isUploaded = segment.status === "uploaded";
   const totalAnnotations = Object.values(segment.annotations).reduce((a, b) => a + b, 0);
 
   return (
@@ -227,7 +299,7 @@ function SegmentCard({ segment, onClick }: { segment: Segment; onClick: () => vo
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--text-secondary)" }}>{formatDuration(segment.durationSeconds)}</span>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--text-muted)" }}>{segment.frameCount.toLocaleString()} fr</span>
         </div>
-        {isAnnotated ? (
+        {isUploaded && totalAnnotations > 0 ? (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "4px" }}>
               <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>annotations</span>
@@ -237,7 +309,11 @@ function SegmentCard({ segment, onClick }: { segment: Segment; onClick: () => vo
           </div>
         ) : (
           <div style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-            {segment.status === "failed" ? "— processing failed" : "— pending annotation"}
+            {segment.status === "failed"
+              ? "— processing failed"
+              : segment.status === "uploading" || segment.status === "downloading"
+              ? "— in progress…"
+              : "— pending"}
           </div>
         )}
       </div>
@@ -266,42 +342,38 @@ export default function RouteDetail() {
   const navigate = useNavigate();
   const decodedRouteId = routeId ? decodeURIComponent(routeId) : "";
 
-  const [route, setRoute] = useState<Route | null>(null);
-  const [allSegments, setAllSegments] = useState<Segment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<SegFilterStatus>("all");
   const [sortBy, setSortBy] = useState<SegSortKey>("index");
 
-  useEffect(() => {
-    if (!decodedRouteId) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+  // ── Live polling queries ────────────────────────────────────────────────────
 
-    Promise.all([
-  getRoute(decodedRouteId),
-  listSegmentsForRoute(decodedRouteId),
-])
-      .then(([r, segs]) => {
-  if (!cancelled) {
-    setRoute({
-      ...r,
-      segmentCount: segs.length,
-    });
-    setAllSegments(segs);
-    setLoading(false);
-  }
-})
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err.message ?? "Failed to load route");
-          setLoading(false);
-        }
-      });
+  const { data: route, isLoading: routeLoading, error: routeError } = useRouteStatus(decodedRouteId || undefined);
 
-    return () => { cancelled = true; };
-  }, [decodedRouteId]);
+  const { data: allSegments = [], isLoading: segsLoading, isFetching: segsFetching } = useQuery({
+    queryKey: ["segments", decodedRouteId],
+    queryFn: () => listSegmentsForRoute(decodedRouteId),
+    enabled: !!decodedRouteId,
+    refetchInterval: (query) => {
+      const segs = query.state.data ?? [];
+      return segs.some((s) => !SEGMENT_TERMINAL_STATUSES.includes(s.status)) ? 3000 : false;
+    },
+  });
+
+  const { data: jobRuns = [], isFetching: jobsFetching } = useJobRunsForRoute(decodedRouteId || undefined);
+
+  const loading = routeLoading || segsLoading;
+  const error = routeError ? (routeError as Error).message ?? "Failed to load route" : null;
+  const isPolling = (segsFetching || jobsFetching) && !loading;
+  const annotationActive = isAnnotationInProgress(jobRuns);
+
+  // ── Derived segment stats ───────────────────────────────────────────────────
+
+  const uploadedSegs  = allSegments.filter((s) => s.status === "uploaded").length;
+  const uploadingSegs = allSegments.filter((s) => s.status === "uploading" || s.status === "downloading").length;
+  const failedSegs    = allSegments.filter((s) => s.status === "failed").length;
+  const queuedSegs    = allSegments.filter((s) => s.status === "download queue" || s.status === "upload queue").length;
+
+  // ── Filtered + sorted segments ─────────────────────────────────────────────
 
   const segments = useMemo(() => {
     let filtered = allSegments.filter((s) => statusFilter === "all" ? true : s.status === statusFilter);
@@ -317,7 +389,7 @@ export default function RouteDetail() {
     return filtered;
   }, [allSegments, statusFilter, sortBy]);
 
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={{ paddingBottom: "var(--space-12)" }}>
@@ -329,7 +401,7 @@ export default function RouteDetail() {
     );
   }
 
-  // ── Error ──────────────────────────────────────────────────────────────────
+  // ── Error ───────────────────────────────────────────────────────────────────
   if (error || !route) {
     return (
       <div style={{ padding: "var(--space-12)", textAlign: "center" }}>
@@ -345,10 +417,6 @@ export default function RouteDetail() {
 
   const routeStatusColor = ROUTE_STATUS_COLORS[route.status] ?? "var(--text-secondary)";
   const routeStatusLabel = ROUTE_STATUS_LABELS[route.status] ?? route.status;
-  const completedSegs = allSegments.filter((s) => s.status === "annotated" || s.status === "reviewed").length;
-  const inProgressSegs = allSegments.filter((s) => s.status === "annotating").length;
-  const failedSegs = allSegments.filter((s) => s.status === "failed").length;
-  const pendingSegs = allSegments.filter((s) => s.status === "recorded").length;
 
   return (
     <div style={{ paddingBottom: "var(--space-12)" }}>
@@ -365,45 +433,68 @@ export default function RouteDetail() {
           ← Routes
         </button>
 
-        {/* Route ID + status */}
+        {/* Route ID + status + live indicator */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap", marginBottom: "var(--space-2)" }}>
           <h1 style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-lg)", fontWeight: 700, color: "var(--text-on-inverse)", letterSpacing: "-0.01em", margin: 0 }}>
             {route.id}
           </h1>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px var(--space-3)", border: `1px solid ${routeStatusColor}` }}>
-            {route.status === "reviewed" && <span style={{ color: routeStatusColor, fontSize: "9px", fontWeight: 800 }}>✓</span>}
-            <span style={{ fontSize: "9px", fontWeight: 700, color: routeStatusColor, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
-              {routeStatusLabel}
-            </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+            {isPolling && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 6px", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--accent-caution)", flexShrink: 0 }} />
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>Live</span>
+              </span>
+            )}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px var(--space-3)", border: `1px solid ${routeStatusColor}` }}>
+              {route.status === "uploaded" && <span style={{ color: routeStatusColor, fontSize: "9px", fontWeight: 800 }}>✓</span>}
+              <span style={{ fontSize: "9px", fontWeight: 700, color: routeStatusColor, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+                {routeStatusLabel}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Meta row */}
         <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap", marginBottom: "var(--space-4)", fontSize: "11px", fontFamily: "var(--font-mono)", color: "rgba(255,255,255,0.45)" }}>
-          <span>{route.vehicleId}</span>
+          <span>{formatDate(route.createdAt)}</span>
           <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-          <span>{formatDate(route.recordedAt)}</span>
-          <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-          <span>{formatDuration(route.durationSeconds)}</span>
-          <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-          <span>{route.segmentCount} segments</span>
+          <span>{allSegments.length} segments</span>
         </div>
 
         {/* Stat cells */}
         <div style={{ display: "flex", flexWrap: "wrap", border: "1px solid rgba(255,255,255,0.08)", marginBottom: "var(--space-4)" }}>
-          <DarkStatCell label="Segments" value={route.segmentCount} />
-          <DarkStatCell label="Annotated" value={completedSegs} valueColor={completedSegs > 0 ? "var(--accent-go)" : undefined} />
-          <DarkStatCell label="In Progress" value={inProgressSegs} valueColor={inProgressSegs > 0 ? "var(--accent-caution)" : undefined} />
-          <DarkStatCell label="Failed" value={failedSegs} valueColor={failedSegs > 0 ? "var(--accent-alert)" : undefined} />
-          <DarkStatCell label="Pending" value={pendingSegs} />
+          <DarkStatCell label="Segments"   value={allSegments.length} />
+          <DarkStatCell label="Uploaded"   value={uploadedSegs}  valueColor={uploadedSegs  > 0 ? "var(--accent-go)"      : undefined} />
+          <DarkStatCell label="Uploading"  value={uploadingSegs} valueColor={uploadingSegs > 0 ? "var(--accent-caution)" : undefined} />
+          <DarkStatCell label="Failed"     value={failedSegs}    valueColor={failedSegs    > 0 ? "var(--accent-alert)"   : undefined} />
+          <DarkStatCell label="Queued"     value={queuedSegs} />
         </div>
 
-        {/* Completion bar */}
+        {/* Upload progress bar */}
         <div style={{ marginBottom: "var(--space-4)" }}>
-          <HeroCompletionBar route={route} />
+          <HeroUploadBar segments={allSegments} />
         </div>
 
-        {/* Timeline strip */}
+        {/* Annotation jobs */}
+        {jobRuns.length > 0 && (
+          <div style={{ marginBottom: "var(--space-4)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+              <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Annotation Jobs
+              </span>
+              {annotationActive && (
+                <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--accent-caution)" }} />
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              {jobRuns.map((jr) => (
+                <JobRunRow key={`${jr.jobRunNum}-${jr.jobDefId}`} jobRun={jr} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Segment timeline */}
         {allSegments.length > 0 && (
           <div>
             <div style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "var(--space-2)" }}>
@@ -418,10 +509,11 @@ export default function RouteDetail() {
       <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-5)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as SegFilterStatus)} style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)", fontSize: "var(--text-sm)", color: "var(--text-primary)", outline: "none", cursor: "pointer" }}>
           <option value="all">All Statuses</option>
-          <option value="recorded">Recorded</option>
-          <option value="annotating">Annotating</option>
-          <option value="annotated">Annotated</option>
-          <option value="reviewed">Reviewed</option>
+          <option value="download queue">Queued</option>
+          <option value="downloading">Downloading</option>
+          <option value="upload queue">Upload Queue</option>
+          <option value="uploading">Uploading</option>
+          <option value="uploaded">Uploaded</option>
           <option value="failed">Failed</option>
         </select>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SegSortKey)} style={{ padding: "var(--space-2) var(--space-3)", border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)", fontSize: "var(--text-sm)", color: "var(--text-primary)", outline: "none", cursor: "pointer" }}>
@@ -434,7 +526,7 @@ export default function RouteDetail() {
       {/* Count */}
       <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.09em", fontWeight: 600, marginBottom: "var(--space-4)" }}>
         {segments.length} segment{segments.length !== 1 ? "s" : ""}
-        {statusFilter !== "all" ? ` · ${(SEG_STATUS_CONFIG[statusFilter as SegmentStatus] ?? { label: statusFilter }).label}` : ""}
+        {statusFilter !== "all" ? ` · ${(SEG_STATUS_CONFIG[statusFilter as SegmentStatus] ?? DEFAULT_SEG_CFG).label}` : ""}
       </div>
 
       {/* Segment grid */}
