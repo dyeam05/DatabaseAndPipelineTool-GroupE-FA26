@@ -3,16 +3,12 @@ from datetime import datetime
 from db.models.segment import Segment, SegmentStatus
 from repositories.segment_repository import SegmentRepository
 from services.errors import SegmentAlreadyExistsError, SegmentNotFoundError
-from services.minio_service import MinioService
-from services.thumbnail_service import ThumbnailService
 
 
 # Service layer for managing segments
 class SegmentService:
-    def __init__(self, segment_repository: SegmentRepository, thumbnail_service: ThumbnailService) -> None:
+    def __init__(self, segment_repository: SegmentRepository) -> None:
         self._segment_repository = segment_repository
-        self._thumbnail_service = thumbnail_service
-
 
     async def list_segments(self) -> list[Segment]:
         return await self._segment_repository.list_all()
@@ -28,12 +24,6 @@ class SegmentService:
 
     async def get_segment(self, route_id: str, segment_id: int) -> Segment | None:
         return await self._segment_repository.get_by_id(route_id, segment_id)
-    
-    async def get_segment_thumbnail_stream(self, route_id: str, segment_id: int):
-        return await self._thumbnail_service.get_segment_thumbnail_stream(
-            route_id=route_id,
-            segment_id=segment_id,
-        )
 
     async def create_segment(
         self,
@@ -92,9 +82,3 @@ class SegmentService:
             raise SegmentNotFoundError(route_id, segment_id)
 
         await self._segment_repository.delete(segment)
-
-# TODO: query base on object id from postgress
-# instead of list object from minio and sort it to get the middle frame as thumbnail, 
-# we can directly query the object id from postgress and get the object from minio. This will be more efficient and faster.
-# fget the object from minio and return the file path to the caller, then the caller can read the file and return the stream to the client.
-# dont want to fget. fget - saves as file. we just need transient store file on backend, and return that
