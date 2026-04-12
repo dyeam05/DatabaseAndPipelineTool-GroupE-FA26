@@ -75,3 +75,9 @@ class MinioService:
             object_name=artifact.object_key, 
             file_path=str(dest_path)
         )
+
+    def download_artifact_to_stream(self, artifact: Artifact):
+        return self.minio_client.get_object(
+            bucket_name=artifact.bucket,
+            object_name=artifact.object_key,
+        )
