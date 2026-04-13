@@ -11,7 +11,7 @@ from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
 from utilities.service_builder_utilities import build_segment_service
-
+from utilities.service_builder_utilities import build_thumbnail_service
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,8 @@ async def get_segment_thumbnail(
     segment_id: int,
     session: AsyncSession = Depends(get_session),
 ):
-    segment_service = build_segment_service(session=session)
-    stream = await segment_service.get_segment_thumbnail_stream(route_id, segment_id)
+    thumbnail_service = build_thumbnail_service(session=session)
+    stream = await thumbnail_service.get_segment_thumbnail_stream(route_id, segment_id)
     return StreamingResponse(stream, media_type="image/png")
 
 @segments_router.get("/{route_id}/{segment_id}", response_model=SegmentResponse)

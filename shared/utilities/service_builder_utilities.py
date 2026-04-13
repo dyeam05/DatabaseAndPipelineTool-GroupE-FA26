@@ -22,35 +22,8 @@ def build_route_service(session: AsyncSession) -> RouteService:
     return RouteService(route_repository=repository)
 
 def build_segment_service(session: AsyncSession) -> SegmentService:
-    segment_repository = SegmentRepository(session=session)
-
-    frame_repository = FrameRepository(session=session)
-    frame_service = FrameService(frame_repository=frame_repository)
-
-    frame_artifact_repository = FrameArtifactRepository(session=session)
-    frame_artifact_service = FrameArtifactService(
-        frame_artifact_repository=frame_artifact_repository
-    )
-
-    artifact_repository = ArtifactRepository(session=session)
-    artifact_service = ArtifactService(
-        artifact_repository=artifact_repository
-    )
-
-    minio_service = MinioService()
-
-    thumbnail_service = ThumbnailService(
-        segment_repository=segment_repository,
-        minio_service=minio_service,
-        frame_service=frame_service,
-        frame_artifact_service=frame_artifact_service,
-        artifact_service=artifact_service,
-    )
-
-    return SegmentService(
-        segment_repository=segment_repository,
-        thumbnail_service=thumbnail_service,
-    )
+    repository = SegmentRepository(session=session)
+    return SegmentService(segment_repository=repository)
 
 def build_job_run_service(session: AsyncSession) -> JobRunService:
     repository = JobRunRepository(session=session)
@@ -59,3 +32,24 @@ def build_job_run_service(session: AsyncSession) -> JobRunService:
 def build_job_definition_service(session: AsyncSession) -> JobDefinitionService:
     repository = JobDefinitionRepository(session=session)
     return JobDefinitionService(job_definition_repository=repository)
+
+def build_thumbnail_service(session: AsyncSession) -> ThumbnailService:
+    segment_repository = SegmentRepository(session=session)
+
+    frame_repository = FrameRepository(session=session)
+    frame_service = FrameService(frame_repository=frame_repository)
+
+    frame_artifact_repository = FrameArtifactRepository(session=session)
+    frame_artifact_service = FrameArtifactService(frame_artifact_repository=frame_artifact_repository)
+    artifact_repository = ArtifactRepository(session=session)
+    artifact_service = ArtifactService(artifact_repository=artifact_repository)
+
+    minio_service = MinioService()
+
+    return ThumbnailService(
+        segment_repository=segment_repository,
+        minio_service=minio_service,
+        frame_service=frame_service,
+        frame_artifact_service=frame_artifact_service,
+        artifact_service=artifact_service,
+    )
