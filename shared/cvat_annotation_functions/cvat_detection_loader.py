@@ -8,4 +8,5 @@ BUILTIN_CVAT_DETECTION_PLUGINS = (
 
 def load_builtin_cvat_detection_plugins() -> None:
     for _plugin in BUILTIN_CVAT_DETECTION_PLUGINS:
+        _ = _plugin
         pass

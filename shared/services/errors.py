@@ -11,6 +11,12 @@ class RouteNotFoundError(ValueError):
     def __init__(self, route_id: str) -> None:
         super().__init__(f"Route {route_id} not found")
 
+class RouteNotReadyForJobRunError(ValueError):
+    def __init__(self, route_id: str, status: str) -> None:
+        super().__init__(
+            f"Route {route_id} is not ready for job creation; current status is {status}"
+        )
+
 class SegmentAlreadyExistsError(ValueError):
     def __init__(self, route_id: str, segment_id: int) -> None:
         super().__init__(f"Segment {segment_id} for route {route_id} already exists")

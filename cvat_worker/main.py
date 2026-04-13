@@ -18,11 +18,7 @@ from db.models.job_segment_run import JobSegmentRun
 from db.url import build_database_url
 from repositories.artifact_repository import ArtifactRepository
 from repositories.frame_artifact_repository import FrameArtifactRepository
-from repositories.job_definition_repository import JobDefinitionRepository
-from repositories.job_run_repository import JobRunRepository
-from repositories.job_segment_run_repository import JobSegmentRunRepository
 from repositories.frame_repository import FrameRepository
-from repositories.segment_repository import SegmentRepository
 from services.artifact_service import ArtifactService
 from services.cvat_service import CVATService
 from services.frame_artifact_downloader_service import FrameArtifactDownloaderService
@@ -30,10 +26,17 @@ from services.frame_artifact_service import FrameArtifactService
 from services.frame_service import FrameService
 from services.minio_service import MinioService
 from services.errors import SegmentNotFoundError
+from services.job_definition_service import JobDefinitionService
 from services.job_run_service import JobRunService
 from services.job_segment_run_service import JobSegmentRunService
 from services.segment_artifact_download_service import SegmentArtifactDownloadService
 from services.segment_service import SegmentService
+from utilities.service_builder_utilities import (
+    build_job_definition_service,
+    build_job_run_service,
+    build_job_segment_run_service,
+    build_segment_service,
+)
 
 
 POLL_INTERVAL_SECONDS = 1.0
@@ -196,7 +199,7 @@ async def process_job_segment_run(
 
 async def _process_job_run(
     job_run: JobRun,
-    job_definition_repository: JobDefinitionRepository,
+    job_definition_service: JobDefinitionService,
     job_run_service: JobRunService,
     segment_service: SegmentService,
     job_segment_run_service: JobSegmentRunService,
@@ -217,7 +220,7 @@ async def _process_job_run(
     await session.commit()
 
     try:
-        job_definition = await job_definition_repository.get_by_id(job_run.job_def_id)
+        job_definition = await job_definition_service.get_job_definition(job_def_id=job_run.job_def_id)
         if job_definition is None:
             raise ValueError(f"Could not find job definition {job_run.job_def_id}")
 
@@ -281,21 +284,16 @@ async def main():
 
     try:
         async with SessionLocal() as session:
-            job_definition_repository = JobDefinitionRepository(session=session)
-            job_run_repository = JobRunRepository(session=session)
-            job_run_service = JobRunService(job_run_repository=job_run_repository)
-            job_segment_run_repository = JobSegmentRunRepository(session=session)
-            job_segment_run_service = JobSegmentRunService(
-                job_segment_run_repository=job_segment_run_repository
-            )
+            job_definition_service = build_job_definition_service(session=session)
+            job_run_service = build_job_run_service(session=session)
+            job_segment_run_service = build_job_segment_run_service(session=session)
             frame_repository = FrameRepository(session=session)
             frame_service = FrameService(frame_repository=frame_repository)
             frame_artifact_repository = FrameArtifactRepository(session=session)
             frame_artifact_service = FrameArtifactService(frame_artifact_repository=frame_artifact_repository)
             artifact_repository = ArtifactRepository(session=session)
             artifact_service = ArtifactService(artifact_repository=artifact_repository)
-            segment_repository = SegmentRepository(session=session)
-            segment_service = SegmentService(segment_repository=segment_repository)
+            segment_service = build_segment_service(session=session)
             minio_service = MinioService()
             cvat_service = CVATService()
             frame_artifact_downloader_service = FrameArtifactDownloaderService(
@@ -325,7 +323,7 @@ async def main():
 
                 await _process_job_run(
                     job_run=job_run,
-                    job_definition_repository=job_definition_repository,
+                    job_definition_service=job_definition_service,
                     job_run_service=job_run_service,
                     segment_service=segment_service,
                     job_segment_run_service=job_segment_run_service,

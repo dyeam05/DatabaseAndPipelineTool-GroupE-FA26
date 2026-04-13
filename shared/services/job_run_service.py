@@ -1,12 +1,27 @@
 from datetime import datetime, timezone
 from db.enums import CameraType
 from db.models.job_run import JobRun, JobStatus
+from db.models.route import RouteStatus
+from repositories.job_definition_repository import JobDefinitionRepository
 from repositories.job_run_repository import JobRunRepository
-from services.errors import JobRunNotFoundError
+from repositories.route_repository import RouteRepository
+from services.errors import (
+    JobDefinitionNotFoundError,
+    JobRunNotFoundError,
+    RouteNotFoundError,
+    RouteNotReadyForJobRunError,
+)
 # This service is responsible for managing job runs.
 class JobRunService:
-    def __init__(self, job_run_repository: JobRunRepository) -> None:
+    def __init__(
+        self,
+        job_run_repository: JobRunRepository,
+        route_repository: RouteRepository,
+        job_definition_repository: JobDefinitionRepository,
+    ) -> None:
         self._job_run_repository = job_run_repository
+        self._route_repository = route_repository
+        self._job_definition_repository = job_definition_repository
 
     async def list_job_runs(self) -> list[JobRun]:
         return await self._job_run_repository.list_all()
@@ -31,6 +46,16 @@ class JobRunService:
         route_id: str,
         camera: CameraType
     ) -> JobRun:
+        route = await self._route_repository.get_by_id(route_id)
+        if route is None:
+            raise RouteNotFoundError(route_id)
+
+        if route.status != RouteStatus.UPLOADED:
+            raise RouteNotReadyForJobRunError(route_id=route_id, status=str(route.status))
+
+        job_definition = await self._job_definition_repository.get_by_id(job_def_id)
+        if job_definition is None:
+            raise JobDefinitionNotFoundError(job_def_id)
 
         return await self._job_run_repository.create(
             job_def_id=job_def_id,

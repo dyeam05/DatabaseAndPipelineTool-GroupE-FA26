@@ -18,6 +18,10 @@ Run the following:
 
 ```docker compose run --build --rm tests pytest ./end_to_end```
 
+For just endpoints:
+
+```docker compose run --build --rm tests pytest ./end_to_end/test_endpoints.py```
+
 ## Unit Tests
 
 Run unit tests with
