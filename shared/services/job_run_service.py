@@ -11,6 +11,9 @@ class JobRunService:
     async def list_job_runs(self) -> list[JobRun]:
         return await self._job_run_repository.list_all()
 
+    async def list_job_runs_by_route(self, route_id: str) -> list[JobRun]:
+        return await self._job_run_repository.list_by_route_id(route_id)
+
     async def get_job_runs_by_status(self, status: JobStatus) -> list[JobRun]:
         return await self._job_run_repository.get_by_status(status)
 
