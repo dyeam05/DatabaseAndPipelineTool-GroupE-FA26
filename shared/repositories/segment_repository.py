@@ -38,9 +38,9 @@ class SegmentRepository:
         stmt = (
             select(Segment)
             .where(Segment.route_id == route_id)
+            .order_by(Segment.segment_id.asc())
         )
         result = await self._session.scalars(stmt)
-        
         return list(result.all())
 
 

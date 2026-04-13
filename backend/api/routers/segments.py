@@ -27,6 +27,15 @@ async def list_segments(
     segment_service = build_segment_service(session=session)
     return await segment_service.list_segments()
 
+@segments_router.get("/by-route/{route_id}", response_model=list[SegmentResponse])
+async def list_segments_by_route(
+    route_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> list[Segment]:
+    logging.info(f"get segments for route {route_id}")
+    segment_service = build_segment_service(session=session)
+    return await segment_service.get_segments_by_route(route_id=route_id)
+
 @segments_router.get("/{route_id}/{segment_id}/thumbnail")
 async def get_segment_thumbnail(
     route_id: str,

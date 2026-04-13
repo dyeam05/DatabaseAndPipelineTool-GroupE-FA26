@@ -7,23 +7,14 @@
     return data.map(mapSegment);
   }
 
-  /**
-   * Returns all segments for a given route by fetching all segments and
-   * filtering client-side.  If your backend gains a ?route_id= query param
-   * in the future, update this function to use it instead.
-   */
   export async function listSegmentsForRoute(routeId: string): Promise<Segment[]> {
-    const raw = await apiFetch<SegmentResponse[]>("/segments/");
+    const raw = await apiFetch<SegmentResponse[]>(`/segments/by-route/${encodeURIComponent(routeId)}`);
 
-    const filtered = raw
-      .filter((s) => s.route_id === routeId)
-      .sort((a, b) => a.segment_id - b.segment_id);
+    if (raw.length === 0) return [];
 
-    if (filtered.length === 0) return [];
+    const baseTime = new Date(raw[0].start_time).getTime();
 
-    const baseTime = new Date(filtered[0].start_time).getTime();
-
-    return filtered.map((s) => ({
+    return raw.map((s) => ({
       ...mapSegment(s),
       startSeconds: Math.floor((new Date(s.start_time).getTime() - baseTime) / 1000),
     }));
