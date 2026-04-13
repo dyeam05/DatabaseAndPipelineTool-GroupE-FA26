@@ -42,6 +42,7 @@ This repository contains code for the data pipeline for the [Comma AI](https://c
 1. Push the migration with ```docker compose up --build alembic_worker```
 1. Ensure minio bucket is created with ```docker compose up --build minio_initializer```
 1. Start the backend and open pilot download worker with ```docker compose up --build -d backend open_pilot_download_worker open_pilot_upload_worker```.
+1. Start the cvat workers with ```docker compose up --build cvat_worker cvat_import_export_worker```
 
 ## Contributing
 
@@ -74,6 +75,18 @@ This is where the majority of code lives, in the `/shared/` directory. This code
 ### Data
 
 Do not put any code here. This folder `/data/` is used as a shared volume between workers.
+
+### Ruff
+
+Before commiting any code, run the `ruff` linter and fix any issues found.
+
+`ruff check .`
+
+### Pyright
+
+Before commiting any code, run the `pyright` static type checker and fix any issues found.
+
+`pyright`
 
 ## Testing
 

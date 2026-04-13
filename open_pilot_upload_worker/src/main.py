@@ -97,7 +97,7 @@ async def upload_segment(segment: Segment, segment_path: Path, segment_service: 
 
     # upload logs
     log_path = segment_path / "logs.json"
-    write_result = minio_service.put_segment_log(
+    _ = minio_service.put_segment_log(
         segment=segment,
         log_path=log_path
     )

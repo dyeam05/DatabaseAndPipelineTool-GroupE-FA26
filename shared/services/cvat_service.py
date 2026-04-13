@@ -9,7 +9,8 @@ from cvat_sdk.models import TaskWriteRequest
 import cvat_sdk.auto_annotation as cvataa
 
 from cvat_annotation_functions.i_cvat_detection import ICVATDetection
-from utilities.cvat_utilities import create_cvat_client, labels_to_patched_requests
+from models.job_segment_run_dir import JobSegmentRunDir
+from utilities.cvat_utilities import create_cvat_client, labels_to_patched_requests, extract_ids_to_labels_for_coco_annotation_file
 from utilities.file_utilities import does_dir_exist, get_pngs_in_directory
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,35 @@ class CVATService:
         )
 
         logger.info(f"Tak created with id {task.id}")
+        return task.id
+
+    def create_new_annotated_task_for_job_segment_run_dir(
+        self,
+        job_segment_run_dir: JobSegmentRunDir,
+        task_name: str
+    ) -> int:
+        """
+        Returns the task id of the created task
+        """
+
+        logging.info(f"Creating cvat task from directory with name {task_name}")
+        labels = extract_ids_to_labels_for_coco_annotation_file(
+            annotation_file=job_segment_run_dir.annotation_path
+        )
+        patched_labels = labels_to_patched_requests(labels=labels)
+        task_spec = TaskWriteRequest(
+            name=task_name,
+            labels=patched_labels
+        )
+        logging.info(job_segment_run_dir)
+        task = self.cvat_client.tasks.create_from_data(
+            spec=task_spec, # type: ignore
+            resources=job_segment_run_dir.image_paths,
+            resource_type=ResourceType.LOCAL,
+            annotation_path=str(job_segment_run_dir.annotation_path),
+            annotation_format="COCO 1.0"
+        )
+        logger.info(f"Created task with id {task.id}")
         return task.id
 
     def annotate_task(self, task_id: int, cvat_function: ICVATDetection) -> None:
@@ -124,7 +154,10 @@ class CVATService:
         )
 
 
-        logging.info(f"Removing CVAT Task: {task_id}")
-        self.cvat_client.tasks.remove_by_ids([task_id])
+        self.delete_task(task_id=task_id)
 
         return output_file
+
+    def delete_task(self, task_id: int):
+        logging.info(f"Removing CVAT Task: {task_id}")
+        self.cvat_client.tasks.remove_by_ids([task_id])

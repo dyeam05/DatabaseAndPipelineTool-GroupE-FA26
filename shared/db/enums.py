@@ -85,6 +85,22 @@ job_segment_run_enum = Enum(
     validate_strings=True
 )
 
+class JobSegmentRunImportStatus(StrEnum):
+    QUEUED_FOR_LOADING = "queued_for_loading"
+    LOADING = "loading"
+    LOADED = "loaded"
+    QUEUED_FOR_REMOVAL = "queued_for_removal"
+    REMOVING = "removing"
+    REMOVED = "removed"
+    FAILED = "failed"
+
+job_segment_run_import_status_enum = Enum(
+    JobSegmentRunImportStatus,
+    name="job_segment_run_review_status_enum",
+    native_enum=True,
+    validate_strings=True
+)
+
 class RouteStatus(StrEnum):
     DOWNLOAD_QUEUE = "download queue"
     DOWNLOADING = "downloading"

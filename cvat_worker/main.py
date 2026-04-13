@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from cvat_annotation_functions.cvat_detr_detection import CVATDetrDetection
-from db.enums import JobSegmentRunStatus, JobStatus
+from db.enums import ArtifactKind, JobSegmentRunStatus, JobStatus
 from db.models.job_run import JobRun
 from db.models.job_segment_run import JobSegmentRun
 from db.url import build_database_url
@@ -51,11 +51,12 @@ async def _mark_stale_running_jobs_as_failed(
 
     # for all of the stale jobs mark both the job_run and job_segment_run as failed
     for job in stale_jobs:
-        await job_run_service.set_status(
+        await job_run_service.set_error(
             job_run_num=job.job_run_num,
             job_def_id=job.job_def_id,
             route_id=job.route_id,
-            status=JobStatus.FAILED,
+            camera=job.camera,
+            error="Job marked as stale"
         )
 
         segments = await job_segment_run_service.get_segments_by_job_run(
@@ -74,6 +75,7 @@ async def _mark_stale_running_jobs_as_failed(
                     job_def_id=segment.job_def_id,
                     route_id=segment.route_id,
                     segment_id=segment.segment_id,
+                    camera=job.camera,
                     status=JobSegmentRunStatus.FAILED,
                 )
 
@@ -91,6 +93,7 @@ async def create_job_segment_runs_for_job_run(
             job_run_num=job_run.job_run_num,
             job_def_id=job_run.job_def_id,
             route_id=job_run.route_id,
+            camera=job_run.camera,
             segment_id=segment.segment_id,
         )
 
@@ -104,6 +107,7 @@ async def process_job_segment_run(
     job_segment_run_service: JobSegmentRunService,
     segment_artifact_download_service: SegmentArtifactDownloadService,
     segment_service: SegmentService,
+    artifact_service: ArtifactService,
     cvat_service: CVATService,
     minio_service: MinioService,
     session: AsyncSession,
@@ -116,6 +120,7 @@ async def process_job_segment_run(
             job_def_id=job_segment_run.job_def_id,
             route_id=job_segment_run.route_id,
             segment_id=job_segment_run.segment_id,
+            camera=job_segment_run.camera,
             status=JobSegmentRunStatus.RUNNING,
         )
         await session.commit()
@@ -132,7 +137,7 @@ async def process_job_segment_run(
         unique_id = str(uuid4())
         segment_dir = DATA_DIR / unique_id
         await segment_artifact_download_service.download_segment_frames(
-            segment=segment, dest_path=segment_dir
+            segment=segment, dest_path=segment_dir, camera=job_segment_run.camera
         )
 
         # logging.info(os.listdir(segment_dir))
@@ -142,17 +147,27 @@ async def process_job_segment_run(
             cvat_function=CVATDetrDetection(),
             output_dir=Path(segment_dir)
         )
-        minio_service.put_job_segment_run_data(
+        object_write_result = minio_service.put_job_segment_run_data(
             job_segment_run=job_segment_run,
             file_path=segment_detection_file_path
         )
 
+        artifact = await artifact_service.create_artifact(
+            bucket=minio_service.bucket_name,
+            object_key=object_write_result.object_name,
+            kind=ArtifactKind.JSON
+        )
+
+
+
+        job_segment_run.artifact_id = artifact.artifact_id
 
         await job_segment_run_service.set_status(
             job_run_num=job_segment_run.job_run_num,
             job_def_id=job_segment_run.job_def_id,
             route_id=job_segment_run.route_id,
             segment_id=job_segment_run.segment_id,
+            camera=job_segment_run.camera,
             status=JobSegmentRunStatus.SUCCEEDED,
         )
         await session.commit()
@@ -164,6 +179,7 @@ async def process_job_segment_run(
             job_def_id=job_segment_run.job_def_id,
             route_id=job_segment_run.route_id,
             segment_id=job_segment_run.segment_id,
+            camera=job_segment_run.camera,
             status=JobSegmentRunStatus.FAILED,
         )
         await session.commit()
@@ -177,6 +193,7 @@ async def _process_job_run(
     segment_artifact_download_service: SegmentArtifactDownloadService,
     cvat_service: CVATService,
     minio_service: MinioService,
+    artifact_service: ArtifactService,
     session: AsyncSession,
 ):
     logging.info(f"Processing job {job_run}")
@@ -184,6 +201,7 @@ async def _process_job_run(
         job_run_num=job_run.job_run_num,
         job_def_id=job_run.job_def_id,
         route_id=job_run.route_id,
+        camera=job_run.camera,
         status=JobStatus.RUNNING,
     )
     await session.commit()
@@ -206,6 +224,7 @@ async def _process_job_run(
                 segment_artifact_download_service=segment_artifact_download_service,
                 cvat_service=cvat_service,
                 minio_service=minio_service,
+                artifact_service=artifact_service,
                 session=session,
             )
 
@@ -214,6 +233,7 @@ async def _process_job_run(
             job_run_num=job_run.job_run_num,
             job_def_id=job_run.job_def_id,
             route_id=job_run.route_id,
+            camera=job_run.camera,
             status=JobStatus.SUCCEEDED,
         )
         await session.commit()
@@ -224,6 +244,7 @@ async def _process_job_run(
             job_run_num=job_run.job_run_num,
             job_def_id=job_run.job_def_id,
             route_id=job_run.route_id,
+            camera=job_run.camera,
             status=JobStatus.FAILED,
         )
         await session.commit()
@@ -292,6 +313,7 @@ async def main():
                     segment_artifact_download_service=segment_artifact_download_service,
                     cvat_service=cvat_service,
                     minio_service=minio_service,
+                    artifact_service=artifact_service,
                     session=session,
                 )
 

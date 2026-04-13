@@ -9,10 +9,6 @@ from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
 from utilities.service_builder_utilities import build_segment_service
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 segments_router = APIRouter(

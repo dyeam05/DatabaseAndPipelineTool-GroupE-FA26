@@ -45,6 +45,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       COMMA_JWT: ${COMMA_JWT}
+      CVAT_PUBLIC_URL: "http://localhost:8080"
       PYTHONPATH: /app/shared:/app/backend
     depends_on:
       - postgres
@@ -70,6 +71,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       COMMA_JWT: ${COMMA_JWT}
+      CVAT_PUBLIC_URL: "http://localhost:8080"
       PYTHONPATH: /app/shared:/app/backend
     volumes:
       - "./data:/app/data"
@@ -89,6 +91,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       COMMA_JWT: ${COMMA_JWT}
+      CVAT_PUBLIC_URL: "http://localhost:8080"
       PYTHONPATH: /app/shared:/app/backend
     volumes:
       - "./data:/app/data"
@@ -108,6 +111,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       COMMA_JWT: ${COMMA_JWT}
+      CVAT_PUBLIC_URL: "http://localhost:8080"
       PYTHONPATH: /app/shared:/app/backend
 
   tests:
@@ -130,6 +134,7 @@ services:
       CVAT_EMAIL: ${CVAT_EMAIL}
       CVAT_PASSWORD: ${CVAT_PASSWORD}
       CVAT_SHARE_ROOT: /app/cvat_share
+      CVAT_PUBLIC_URL: "http://localhost:8080"
     networks:
       - default
       - cvat_network
@@ -146,6 +151,7 @@ services:
       POSTGRES_PORT: 5432
       COMMA_JWT: ${COMMA_JWT}
       PYTHONPATH: /app/shared
+      CVAT_PUBLIC_URL: "http://localhost:8080"
     volumes:
       - ./alembic_worker:/app/alembic_worker
       - ./shared:/app/shared
@@ -170,6 +176,35 @@ services:
       CVAT_EMAIL: ${CVAT_EMAIL}
       CVAT_PASSWORD: ${CVAT_PASSWORD}
       CVAT_SHARE_ROOT: /app/cvat_share
+      CVAT_PUBLIC_URL: "http://localhost:8080"
+    volumes:
+      - ./cvat_share:/app/cvat_share
+      - ./annotations:/app/annotations
+    networks:
+      - default
+      - cvat_network
+    depends_on:
+      - postgres
+
+  cvat_import_export_worker:
+    build:
+      context: .
+      dockerfile: cvat_import_export_worker/Dockerfile
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      CVAT_HOST: http://cvat-server:8080
+      CVAT_EMAIL: ${CVAT_EMAIL}
+      CVAT_PASSWORD: ${CVAT_PASSWORD}
+      CVAT_SHARE_ROOT: /app/cvat_share
+      CVAT_PUBLIC_URL: "http://localhost:8080"
     volumes:
       - ./cvat_share:/app/cvat_share
       - ./annotations:/app/annotations

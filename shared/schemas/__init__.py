@@ -1,2 +1,3 @@
-from schemas.route import CreateRouteRequest, RouteResponse
-from schemas.openpilot_route_metadata import OpenPilotRouteMetadata
+from schemas.route import CreateRouteRequest as CreateRouteRequest
+from schemas.route import RouteResponse as RouteResponse
+from schemas.openpilot_route_metadata import OpenPilotRouteMetadata as OpenPilotRouteMetadata

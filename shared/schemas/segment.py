@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from db.enums import SegmentStatus
+from db.enums import CameraType, JobSegmentRunImportStatus, SegmentStatus
 
 
 class CreateSegmentRequest(BaseModel):
@@ -22,3 +22,20 @@ class SegmentResponse(BaseModel):
     end_time: datetime
     status: SegmentStatus
     created_at: datetime
+
+class SegmentJobImportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    route_id: str
+    job_run_num: int
+    job_def_id: int
+    segment_id: int
+    status: JobSegmentRunImportStatus
+    task_id: int | None
+    created_at: datetime
+    error_message: str | None
+    task_url: str | None
+    camera: CameraType
+
+
+
