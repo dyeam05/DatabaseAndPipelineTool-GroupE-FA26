@@ -23,7 +23,8 @@ x-python-service-env: &python-service-env
   COMMA_JWT: ${COMMA_JWT}
   PYTHONPATH: /app/shared:/app/backend
   CVAT_PUBLIC_URL: "http://localhost:8080"
-  FRONTEND_URL: http://localhost:5173
+  FRONTEND_URL: "http://localhost:5173"
+  VITE_API_URL: "http://localhost:8000"
 
 x-data-worker: &data-worker
   environment:
@@ -71,6 +72,30 @@ services:
       <<: *python-service-env
     depends_on:
       - postgres
+  frontend:
+      build:
+        context: ./frontend
+        dockerfile: Dockerfile
+        target: dev
+      ports:
+        - "5173:5173"
+      environment:
+        <<: *python-service-env
+      depends_on:
+        - backend
+      develop:
+        watch:
+          - action: sync
+            path: ./frontend/src
+            target: /app/src
+          - action: sync
+            path: ./frontend/public
+            target: /app/public
+          - action: sync+restart
+            path: ./frontend/index.html
+            target: /app/index.html
+          - action: rebuild
+            path: ./frontend/package.json
 
   open_pilot_download_worker:
     <<: *data-worker
@@ -148,46 +173,6 @@ services:
       - cvat_network
     depends_on:
       - postgres
-
-  cvat_import_export_worker:
-    build:
-      context: .
-      dockerfile: cvat_import_export_worker/Dockerfile
-    environment:
-      <<: [*postgres-env, *minio-env, *cvat-env]
-    volumes:
-      - ./cvat_share:/app/cvat_share
-      - ./annotations:/app/annotations
-    networks:
-      - default
-      - cvat_network
-    depends_on:
-      - postgres 
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: dev
-    ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_URL=http://localhost:8000
-    depends_on:
-      - backend
-    develop:
-      watch:
-        - action: sync
-          path: ./frontend/src
-          target: /app/src
-        - action: sync
-          path: ./frontend/public
-          target: /app/public
-        - action: sync+restart
-          path: ./frontend/index.html
-          target: /app/index.html
-        - action: rebuild
-          path: ./frontend/package.json
 
 networks:
   cvat_network:
