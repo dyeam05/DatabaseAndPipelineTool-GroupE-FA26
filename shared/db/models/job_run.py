@@ -18,11 +18,11 @@ class JobRun(Base):
     )
     # job def link to job run, one job def can have many job runs, but one job run only link to one job def
     job_def_id: Mapped[int] = mapped_column(
-        ForeignKey("job_definitions.job_def_id"),
+        ForeignKey("job_definitions.job_def_id", ondelete="CASCADE"),
         primary_key=True,
     )
     route_id: Mapped[str] = mapped_column(
-        ForeignKey("routes.route_id"),
+        ForeignKey("routes.route_id", ondelete="CASCADE"),
         primary_key=True,
     )
 

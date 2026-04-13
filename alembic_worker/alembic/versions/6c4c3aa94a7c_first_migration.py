@@ -1,8 +1,8 @@
 """first migration
 
-Revision ID: c81b81b5553e
+Revision ID: 6c4c3aa94a7c
 Revises: 
-Create Date: 2026-04-13 18:29:30.226547
+Create Date: 2026-04-13 18:59:15.228822
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'c81b81b5553e'
+revision: str = '6c4c3aa94a7c'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -63,8 +63,8 @@ def upgrade() -> None:
     sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('error', sa.String(), nullable=True),
     sa.Column('stats', sa.JSON(), nullable=True),
-    sa.ForeignKeyConstraint(['job_def_id'], ['job_definitions.job_def_id'], ),
-    sa.ForeignKeyConstraint(['route_id'], ['routes.route_id'], ),
+    sa.ForeignKeyConstraint(['job_def_id'], ['job_definitions.job_def_id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['route_id'], ['routes.route_id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('job_run_num', 'job_def_id', 'route_id', 'camera')
     )
     op.create_table('segments',
@@ -110,7 +110,7 @@ def upgrade() -> None:
     sa.Column('segment_id', sa.Integer(), nullable=False),
     sa.Column('artifact_id', sa.Uuid(), nullable=False),
     sa.Column('role', sa.Enum('FRAME_IMAGE', 'SEGMENT_LOG', 'COCO_EXPORT', 'DETECTION_JSON', 'SEGMENTATION_MASK', 'SEGMENTATION_MAP', 'DEPTH_MAP', name='artifact_role_enum'), nullable=False),
-    sa.ForeignKeyConstraint(['artifact_id'], ['artifacts.artifact_id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['artifact_id'], ['artifacts.artifact_id'], ),
     sa.ForeignKeyConstraint(['route_id', 'segment_id'], ['segments.route_id', 'segments.segment_id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('route_id', 'segment_id', 'role')
     )

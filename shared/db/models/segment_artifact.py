@@ -27,7 +27,7 @@ class SegmentArtifact(Base):
         primary_key=True,
     )
     artifact_id: Mapped[UUID] = mapped_column(
-    ForeignKey("artifacts.artifact_id", ondelete="CASCADE"),
+    ForeignKey("artifacts.artifact_id"),
     nullable=False,
     )
     # refer to  ArtifactRole. might change based on schema
