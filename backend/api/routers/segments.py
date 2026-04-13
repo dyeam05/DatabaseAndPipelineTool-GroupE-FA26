@@ -60,9 +60,3 @@ async def delete_segment(
     segment_service = build_segment_service(session=session)
     await segment_service.delete_segment(route_id=route_id, segment_id=segment_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-# TODO: query base on object id from postgress
-# instead of list object from minio and sort it to get the middle frame as thumbnail, 
-# we can directly query the object id from postgress and get the object from minio. This will be more efficient and faster.
-# fget the object from minio and return the file path to the caller, then the caller can read the file and return the stream to the client.
-# dont want to fget. fget - saves as file. we just need transient store file on backend, and return that
