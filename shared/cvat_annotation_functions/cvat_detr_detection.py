@@ -1,6 +1,7 @@
 import cvat_sdk.models as models
 import cvat_sdk.auto_annotation as cvataa
 
+from pydantic import BaseModel
 import torch
 from PIL import Image
 from transformers import (
@@ -9,16 +10,28 @@ from transformers import (
     DetrImageProcessor,
 )
 
+from cvat_annotation_functions.cvat_detection_registry import register_cvat_detection_plugin
 from cvat_annotation_functions.i_cvat_detection import ICVATDetection
 
-class CVATDetrDetection(ICVATDetection):
+class DetrDetectionConfig(BaseModel):
+    model_name: str = "PekingU/rtdetr_v2_r50vd"
+
+
+@register_cvat_detection_plugin(
+    key="detr_detection",
+    config_model=DetrDetectionConfig,
+    display_name="Detection Transformer Detection Model"
+)
+class CVATDetrDetection(ICVATDetection[DetrDetectionConfig]):
     """
     Docs [here](https://docs.cvat.ai/docs/api_sdk/sdk/auto-annotation/)
 
     Model that should allow the usage of an arbitrary hugging face DETR model.
     """
 
-    def __init__(self, model_name: str = "PekingU/rtdetr_v2_r50vd"):
+    def __init__(self, config: DetrDetectionConfig):
+        super().__init__(config)
+        model_name = config.model_name
         self.processor: DetrImageProcessor = AutoImageProcessor.from_pretrained(model_name) # type: ignore
         self.model = AutoModelForObjectDetection.from_pretrained(model_name)
         self.raw_labels: dict[int, str] = dict(self.model.config.id2label)

@@ -42,6 +42,7 @@ This repository contains code for the data pipeline for the [Comma AI](https://c
 1. Push the migration with ```docker compose up --build alembic_worker```
 1. Ensure minio bucket is created with ```docker compose up --build minio_initializer```
 1. Start the backend and open pilot download worker with ```docker compose up --build -d backend open_pilot_download_worker open_pilot_upload_worker```.
+1. Start the cvat workers with ```docker compose up --build cvat_worker cvat_import_export_worker```
 
 ## Contributing
 
@@ -75,9 +76,41 @@ This is where the majority of code lives, in the `/shared/` directory. This code
 
 Do not put any code here. This folder `/data/` is used as a shared volume between workers.
 
+### Ruff
+
+Before commiting any code, run the `ruff` linter and fix any issues found.
+
+`ruff check .`
+
+### Pyright
+
+Before commiting any code, run the `pyright` static type checker and fix any issues found.
+
+`pyright`
+
 ## Testing
 
 Testing code is inside the `./tests/` folder. See `./tests/README.md` for more information.
+
+## CVAT Job Extension Notes
+
+CVAT detection implementations live in `shared/cvat_annotation_functions/`. Built-in implementations register themselves through `cvat_detection_registry.py`, and `cvat_worker/main.py` loads them at startup and resolves a job by `implementation_key` plus `config`.
+
+You do not need a new plugin to make a new job definition if an existing implementation already does what you want. Example `POST /job-definitions` payload reusing the built-in `detr_detection` plugin with a different config:
+
+```json
+{
+  "type": "object_detection",
+  "implementation_key": "detr_detection",
+  "name": "RT-DETR small threshold test",
+  "description": "Reuse existing detector with different config",
+  "config": {
+    "model_name": "PekingU/rtdetr_v2_r50vd"
+  }
+}
+```
+
+Only add a new plugin when you need a new implementation key or different detection code path.
 
 ## TODO
 

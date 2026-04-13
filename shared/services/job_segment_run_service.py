@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from db.enums import JobSegmentRunStatus
+from db.enums import CameraType, JobSegmentRunStatus
 from db.models.job_segment_run import JobSegmentRun
 from repositories.job_segment_run_repository import JobSegmentRunRepository
 from services.errors import JobSegmentRunAlreadyExistsError, JobSegmentRunNotFoundError
@@ -19,12 +19,14 @@ class JobSegmentRunService:
         job_def_id: int,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
     ) -> JobSegmentRun | None:
         return await self._job_segment_run_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
             segment_id=segment_id,
+            camera=camera,
         )
 
     async def get_segments_by_job_run(
@@ -48,12 +50,14 @@ class JobSegmentRunService:
         job_def_id: int,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
     ) -> JobSegmentRun:
         existing = await self._job_segment_run_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
             segment_id=segment_id,
+            camera=camera,
         )
         if existing is not None:
             raise JobSegmentRunAlreadyExistsError(
@@ -67,6 +71,7 @@ class JobSegmentRunService:
             job_def_id=job_def_id,
             route_id=route_id,
             segment_id=segment_id,
+            camera=camera,
         )
 
     async def set_status(
@@ -75,6 +80,7 @@ class JobSegmentRunService:
         job_def_id: int,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
         status: JobSegmentRunStatus,
     ) -> JobSegmentRun:
         segment_run = await self._job_segment_run_repository.get_by_id(
@@ -82,6 +88,7 @@ class JobSegmentRunService:
             job_def_id=job_def_id,
             route_id=route_id,
             segment_id=segment_id,
+            camera=camera,
         )
         if segment_run is None:
             raise JobSegmentRunNotFoundError(
@@ -99,6 +106,7 @@ class JobSegmentRunService:
         job_def_id: int,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
         artifact_id: UUID,
     ) -> JobSegmentRun:
         segment_run = await self._job_segment_run_repository.get_by_id(
@@ -106,6 +114,7 @@ class JobSegmentRunService:
             job_def_id=job_def_id,
             route_id=route_id,
             segment_id=segment_id,
+            camera=camera,
         )
         if segment_run is None:
             raise JobSegmentRunNotFoundError(
@@ -123,12 +132,14 @@ class JobSegmentRunService:
         job_def_id: int,
         route_id: str,
         segment_id: int,
+        camera: CameraType,
     ) -> None:
         segment_run = await self._job_segment_run_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
             segment_id=segment_id,
+            camera=camera,
         )
         if segment_run is None:
             raise JobSegmentRunNotFoundError(

@@ -28,12 +28,14 @@ class JobDefinitionRepository:
     async def create(
         self,
         type: JobType,
+        implementation_key: str,
         name: str,
         config: dict,
         description: str | None = None,
     ) -> JobDefinition:
         job_definition = JobDefinition(
             type=type,
+            implementation_key=implementation_key,
             name=name,
             description=description,
             config=config,

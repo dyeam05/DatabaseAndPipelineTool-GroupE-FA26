@@ -19,12 +19,14 @@ class JobDefinitionService:
     async def create_job_definition(
         self,
         type: JobType, # go job detection as such
+        implementation_key: str,
         name: str,
         config: dict,
         description: str | None = None,
     ) -> JobDefinition:
         return await self._job_definition_repository.create(
             type=type,
+            implementation_key=implementation_key,
             name=name,
             config=config,
             description=description,

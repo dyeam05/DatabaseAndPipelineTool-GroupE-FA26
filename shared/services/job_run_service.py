@@ -1,5 +1,5 @@
-from uuid import uuid4, UUID
 from datetime import datetime, timezone
+from db.enums import CameraType
 from db.models.job_run import JobRun, JobStatus
 from repositories.job_run_repository import JobRunRepository
 from services.errors import JobRunNotFoundError
@@ -17,22 +17,25 @@ class JobRunService:
     async def get_next_job_run_by_status(self, status: JobStatus) -> JobRun | None:
         return await self._job_run_repository.get_next_by_status(status)
 
-    async def get_job_run(self, job_run_num: int, job_def_id: int, route_id: str) -> JobRun | None:
+    async def get_job_run(self, job_run_num: int, job_def_id: int, route_id: str, camera: CameraType) -> JobRun | None:
         return await self._job_run_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
-            route_id=route_id
+            route_id=route_id,
+            camera=camera
         )
 
     async def create_job_run(
         self,
         job_def_id: int,
         route_id: str,
+        camera: CameraType
     ) -> JobRun:
 
         return await self._job_run_repository.create(
             job_def_id=job_def_id,
-            route_id=route_id
+            route_id=route_id,
+            camera=camera
         )
 
     async def set_status(
@@ -40,12 +43,14 @@ class JobRunService:
         job_run_num: int,
         job_def_id: int,
         route_id: str,
+        camera: CameraType,
         status: JobStatus,
     ) -> JobRun:
         job_run = await self._job_run_repository.get_by_id(
             job_run_num=job_run_num, 
             job_def_id=job_def_id,
-            route_id=route_id
+            route_id=route_id,
+            camera=camera
         )
         if job_run is None:
             raise JobRunNotFoundError(
@@ -70,12 +75,14 @@ class JobRunService:
         job_run_num: int,
         job_def_id: int,
         route_id: str,
+        camera: CameraType,
         error: str | None, #error is a string that describes the error that may have during job exec.
     ) -> JobRun:
         job_run = await self._job_run_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
-            route_id=route_id
+            route_id=route_id,
+            camera=camera
         )
         if job_run is None:
             raise JobRunNotFoundError(
@@ -85,6 +92,7 @@ class JobRunService:
             )
 
         job_run.error = error
+        job_run.status = JobStatus.FAILED 
         return await self._job_run_repository.save(job_run)
 
     async def set_stats(
@@ -92,12 +100,14 @@ class JobRunService:
         job_run_num: int,
         job_def_id: int,
         route_id: str,
+        camera: CameraType,
         stats: dict | None,
     ) -> JobRun:
         job_run = await self._job_run_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
-            route_id=route_id
+            route_id=route_id,
+            camera=camera
         )
         if job_run is None:
             raise JobRunNotFoundError(
@@ -113,12 +123,14 @@ class JobRunService:
         self, 
         job_run_num: int,
         job_def_id: int,
-        route_id: str
+        route_id: str,
+        camera: CameraType
     ) -> None:
         job_run = await self._job_run_repository.get_by_id(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
-            route_id=route_id
+            route_id=route_id,
+            camera=camera
         )
         if job_run is None:
             raise JobRunNotFoundError(

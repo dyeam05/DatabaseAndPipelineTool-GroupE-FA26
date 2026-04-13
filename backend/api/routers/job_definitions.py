@@ -49,6 +49,7 @@ async def create_job_definition(
     job_definition_service: JobDefinitionService = build_job_definition_service(session=session)
     return await job_definition_service.create_job_definition(
         type=payload.type,
+        implementation_key=payload.implementation_key,
         name=payload.name,
         config=payload.config,
         description=payload.description,
