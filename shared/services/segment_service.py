@@ -9,7 +9,7 @@ from services.thumbnail_service import ThumbnailService
 
 # Service layer for managing segments
 class SegmentService:
-    def __init__(self, segment_repository: SegmentRepository, thumbnail_service: ThumbnailService) -> None:
+    def __init__(self, segment_repository: SegmentRepository, thumbnail_service: ThumbnailService | None = None) -> None:
         self._segment_repository = segment_repository
         self._thumbnail_service = thumbnail_service
 
