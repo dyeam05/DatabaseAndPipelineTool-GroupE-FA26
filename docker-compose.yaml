@@ -46,6 +46,7 @@ services:
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       COMMA_JWT: ${COMMA_JWT}
       PYTHONPATH: /app/shared:/app/backend
+      FRONTEND_URL: http://localhost:5173
     depends_on:
       - postgres
 
