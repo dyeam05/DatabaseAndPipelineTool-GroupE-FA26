@@ -34,11 +34,13 @@ class JobSegmentRunService:
         job_run_num: int,
         job_def_id: int,
         route_id: str,
+        camera: CameraType,
     ) -> list[JobSegmentRun]:
         return await self._job_segment_run_repository.get_segments_by_job_run(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,
+            camera=camera,
         )
 
     async def get_segments_by_status(self, status: JobSegmentRunStatus) -> list[JobSegmentRun]:

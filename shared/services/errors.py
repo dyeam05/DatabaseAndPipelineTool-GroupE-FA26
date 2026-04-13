@@ -17,6 +17,18 @@ class RouteNotReadyForJobRunError(ValueError):
             f"Route {route_id} is not ready for job creation; current status is {status}"
         )
 
+class DatasetExportNotFoundError(ValueError):
+    def __init__(self, export_id: int) -> None:
+        super().__init__(f"Dataset export {export_id} not found")
+
+class DatasetExportValidationError(ValueError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+class DatasetExportDeletionConflictError(ValueError):
+    def __init__(self, export_id: int) -> None:
+        super().__init__(f"Dataset export {export_id} cannot be deleted while RUNNING")
+
 class SegmentAlreadyExistsError(ValueError):
     def __init__(self, route_id: str, segment_id: int) -> None:
         super().__init__(f"Segment {segment_id} for route {route_id} already exists")

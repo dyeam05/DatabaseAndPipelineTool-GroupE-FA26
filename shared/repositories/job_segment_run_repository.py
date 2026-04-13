@@ -43,10 +43,11 @@ class JobSegmentRunRepository:
         
 
     async def get_segments_by_job_run(
-       self, 
-       job_run_num: int, 
-       job_def_id: int, 
-       route_id: str
+       self,
+       job_run_num: int,
+       job_def_id: int,
+       route_id: str,
+       camera: CameraType,
     ) -> list[JobSegmentRun]:
         stmt = (
             select(JobSegmentRun)
@@ -54,6 +55,7 @@ class JobSegmentRunRepository:
                 JobSegmentRun.job_run_num == job_run_num,
                 JobSegmentRun.job_def_id == job_def_id,
                 JobSegmentRun.route_id == route_id,
+                JobSegmentRun.camera == camera,
             )
         )
         result = await self._session.scalars(stmt)

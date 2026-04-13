@@ -7,6 +7,7 @@ class ArtifactKind(StrEnum):
     IMAGE = "image"
     JSON = "json"
     PARQUET = "parquet"
+    ZIP = "zip"
 
 artifact_kind_enum = Enum(
     ArtifactKind,
@@ -97,6 +98,19 @@ class JobSegmentRunImportStatus(StrEnum):
 job_segment_run_import_status_enum = Enum(
     JobSegmentRunImportStatus,
     name="job_segment_run_review_status_enum",
+    native_enum=True,
+    validate_strings=True
+)
+
+class DatasetExportStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+dataset_export_status_enum = Enum(
+    DatasetExportStatus,
+    name="dataset_export_status_enum",
     native_enum=True,
     validate_strings=True
 )
