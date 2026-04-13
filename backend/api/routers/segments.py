@@ -11,19 +11,8 @@ from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
 from utilities.service_builder_utilities import build_segment_service
+from utilities.service_builder_utilities import build_thumbnail_service
 
-minio_client = Minio(
-    os.getenv("MINIO_ENDPOINT"),
-    access_key=os.getenv("MINIO_ROOT_USER"),
-    secret_key=os.getenv("MINIO_ROOT_PASSWORD"),
-    secure=False,
-)
-MINIO_BUCKET = os.getenv("MINIO_BUCKET_NAME")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 segments_router = APIRouter(
@@ -39,14 +28,14 @@ async def list_segments(
     return await segment_service.list_segments()
 
 @segments_router.get("/{route_id}/{segment_id}/thumbnail")
-async def get_segment_thumbnail(route_id: str, segment_id: int):
-    prefix = f"v1/routes/{route_id}/segment/{segment_id}/front_wide/frames/"
-    objects = sorted(
-        minio_client.list_objects(MINIO_BUCKET, prefix=prefix, recursive=True),
-        key=lambda o: o.object_name,)
-    obj = objects[len(objects) // 2]
-    minio_response = minio_client.get_object(MINIO_BUCKET, obj.object_name)
-    return StreamingResponse(minio_response, media_type="image/png")
+async def get_segment_thumbnail(
+    route_id: str,
+    segment_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    thumbnail_service = build_thumbnail_service(session=session)
+    stream = await thumbnail_service.get_segment_thumbnail_stream(route_id, segment_id)
+    return StreamingResponse(stream, media_type="image/png")
 
 @segments_router.get("/{route_id}/{segment_id}", response_model=SegmentResponse)
 async def get_segment(
