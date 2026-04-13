@@ -92,6 +92,26 @@ Before commiting any code, run the `pyright` static type checker and fix any iss
 
 Testing code is inside the `./tests/` folder. See `./tests/README.md` for more information.
 
+## CVAT Job Extension Notes
+
+CVAT detection implementations live in `shared/cvat_annotation_functions/`. Built-in implementations register themselves through `cvat_detection_registry.py`, and `cvat_worker/main.py` loads them at startup and resolves a job by `implementation_key` plus `config`.
+
+You do not need a new plugin to make a new job definition if an existing implementation already does what you want. Example `POST /job-definitions` payload reusing the built-in `detr_detection` plugin with a different config:
+
+```json
+{
+  "type": "object_detection",
+  "implementation_key": "detr_detection",
+  "name": "RT-DETR small threshold test",
+  "description": "Reuse existing detector with different config",
+  "config": {
+    "model_name": "PekingU/rtdetr_v2_r50vd"
+  }
+}
+```
+
+Only add a new plugin when you need a new implementation key or different detection code path.
+
 ## TODO
 
 Check out the [course Kanban board](https://cscapstone.cs.ou.edu/pages/account/) for TODOs.

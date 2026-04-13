@@ -32,3 +32,16 @@ def register_cvat_detection_plugin(
         )
         return cls
     return decorator
+
+
+def get_cvat_detection_plugin_definition(key: str) -> CVATDetectionPluginDefinition:
+    try:
+        return CVAT_DETECTION_REGISTRY[key]
+    except KeyError as exc:
+        raise KeyError(f"Unknown CVAT detection implementation_key: {key}") from exc
+
+
+def build_cvat_detection_from_key(key: str, config: dict) -> ICVATDetection:
+    plugin_definition = get_cvat_detection_plugin_definition(key)
+    validated_config = plugin_definition.config_model.model_validate(config)
+    return plugin_definition.implementation_cls(validated_config)

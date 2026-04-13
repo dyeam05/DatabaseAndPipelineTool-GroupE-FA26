@@ -7,13 +7,18 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from cvat_annotation_functions.cvat_detr_detection import CVATDetrDetection
+from cvat_annotation_functions.cvat_detection_loader import (
+    load_builtin_cvat_detection_plugins,
+)
+from cvat_annotation_functions.cvat_detection_registry import build_cvat_detection_from_key
 from db.enums import ArtifactKind, JobSegmentRunStatus, JobStatus
+from db.models.job_definition import JobDefinition
 from db.models.job_run import JobRun
 from db.models.job_segment_run import JobSegmentRun
 from db.url import build_database_url
 from repositories.artifact_repository import ArtifactRepository
 from repositories.frame_artifact_repository import FrameArtifactRepository
+from repositories.job_definition_repository import JobDefinitionRepository
 from repositories.job_run_repository import JobRunRepository
 from repositories.job_segment_run_repository import JobSegmentRunRepository
 from repositories.frame_repository import FrameRepository
@@ -103,6 +108,7 @@ async def create_job_segment_runs_for_job_run(
 
 
 async def process_job_segment_run(
+    job_definition: JobDefinition,
     job_segment_run: JobSegmentRun,
     job_segment_run_service: JobSegmentRunService,
     segment_artifact_download_service: SegmentArtifactDownloadService,
@@ -140,11 +146,14 @@ async def process_job_segment_run(
             segment=segment, dest_path=segment_dir, camera=job_segment_run.camera
         )
 
-        # logging.info(os.listdir(segment_dir))
+        cvat_function = build_cvat_detection_from_key(
+            key=job_definition.implementation_key,
+            config=job_definition.config,
+        )
 
         segment_detection_file_path = cvat_service.get_detections_for_segment(
             segment_dir=segment_dir,
-            cvat_function=CVATDetrDetection(),
+            cvat_function=cvat_function,
             output_dir=Path(segment_dir)
         )
         object_write_result = minio_service.put_job_segment_run_data(
@@ -187,6 +196,7 @@ async def process_job_segment_run(
 
 async def _process_job_run(
     job_run: JobRun,
+    job_definition_repository: JobDefinitionRepository,
     job_run_service: JobRunService,
     segment_service: SegmentService,
     job_segment_run_service: JobSegmentRunService,
@@ -207,6 +217,10 @@ async def _process_job_run(
     await session.commit()
 
     try:
+        job_definition = await job_definition_repository.get_by_id(job_run.job_def_id)
+        if job_definition is None:
+            raise ValueError(f"Could not find job definition {job_run.job_def_id}")
+
         # Create job_segment_runs for each segment
         # for each segment in segments, process segment
         job_segment_runs = await create_job_segment_runs_for_job_run(
@@ -218,6 +232,7 @@ async def _process_job_run(
 
         for job_segment_run in job_segment_runs:
             await process_job_segment_run(
+                job_definition=job_definition,
                 job_segment_run=job_segment_run,
                 job_segment_run_service=job_segment_run_service,
                 segment_service=segment_service,
@@ -251,6 +266,8 @@ async def _process_job_run(
 
 
 async def main():
+    load_builtin_cvat_detection_plugins()
+
     # create session to access database
     engine = create_async_engine(build_database_url(), pool_pre_ping=True)
     SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
@@ -264,6 +281,7 @@ async def main():
 
     try:
         async with SessionLocal() as session:
+            job_definition_repository = JobDefinitionRepository(session=session)
             job_run_repository = JobRunRepository(session=session)
             job_run_service = JobRunService(job_run_repository=job_run_repository)
             job_segment_run_repository = JobSegmentRunRepository(session=session)
@@ -307,6 +325,7 @@ async def main():
 
                 await _process_job_run(
                     job_run=job_run,
+                    job_definition_repository=job_definition_repository,
                     job_run_service=job_run_service,
                     segment_service=segment_service,
                     job_segment_run_service=job_segment_run_service,

@@ -1,8 +1,8 @@
 """first migration
 
-Revision ID: 786124e8c0de
+Revision ID: 3e5d486c51aa
 Revises: 
-Create Date: 2026-04-11 04:09:58.878848
+Create Date: 2026-04-13 17:38:33.656076
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '786124e8c0de'
+revision: str = '3e5d486c51aa'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -33,6 +33,7 @@ def upgrade() -> None:
     op.create_table('job_definitions',
     sa.Column('job_def_id', sa.BigInteger(), nullable=False),
     sa.Column('type', sa.Enum('OBJECT_DETECTION', 'SEGMENTATION', 'DEPTH', 'ANNOTATION', name='job_type_enum'), nullable=False),
+    sa.Column('implementation_key', sa.String(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('config', sa.JSON(), nullable=False),
