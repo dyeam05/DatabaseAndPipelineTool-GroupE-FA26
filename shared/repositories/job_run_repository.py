@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.enums import CameraType
 from db.models.job_run import JobRun, JobStatus
 
 
@@ -8,11 +9,12 @@ class JobRunRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_by_id(self, job_run_num:int, job_def_id:int, route_id:str) -> JobRun | None:
+    async def get_by_id(self, job_run_num:int, job_def_id:int, route_id:str, camera: CameraType) -> JobRun | None:
         return await self._session.get(JobRun, {
             "job_run_num":job_run_num, 
             "job_def_id": job_def_id, 
-            "route_id": route_id
+            "route_id": route_id,
+            "camera": camera,
         }) # id refer to job_run_id in JobRun model
 
     async def list_all(self) -> list[JobRun]:
@@ -48,10 +50,12 @@ class JobRunRepository:
         self,
         job_def_id: int,
         route_id: str,
+        camera: CameraType,
     ) -> JobRun:
         job_run = JobRun(
             job_def_id=job_def_id,
             route_id=route_id,
+            camera=camera,
             status=JobStatus.QUEUED,
         )
         self._session.add(job_run)

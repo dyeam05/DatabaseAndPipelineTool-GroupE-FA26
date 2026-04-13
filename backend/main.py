@@ -7,12 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
 from db.url import build_database_url
-from services.errors import RouteAlreadyExistsError, RouteNotFoundError
+from services.errors import (
+    RouteAlreadyExistsError,
+    RouteNotFoundError,
+    RouteNotReadyForJobRunError,
+)
 
 from api.routers.routes import routes_router
 from api.routers.segments import segments_router
 from api.routers.job_runs import job_runs_router
 from api.routers.job_definitions import job_definitions_router
+from api.routers.job_segment_run import job_segment_run_router
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
@@ -66,7 +71,19 @@ async def handle_route_not_found_error(
     )
 
 
+@app.exception_handler(RouteNotReadyForJobRunError)
+async def handle_route_not_ready_for_job_run_error(
+    _: Request,
+    exc: RouteNotReadyForJobRunError,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": str(exc)},
+    )
+
+
 app.include_router(router=routes_router)
 app.include_router(router=segments_router)
 app.include_router(router=job_runs_router)
 app.include_router(router=job_definitions_router)
+app.include_router(router=job_segment_run_router)

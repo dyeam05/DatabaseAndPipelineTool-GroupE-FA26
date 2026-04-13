@@ -1,11 +1,10 @@
 import logging
-from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, Response, status, APIRouter
 
 from api.dependencies import get_session, get_transactional_session
-from db.enums import JobStatus
+from db.enums import CameraType
 from db.models.job_run import JobRun
 from schemas.job_run import CreateJobRunRequest, JobRunResponse
 from services.errors import JobRunNotFoundError
@@ -41,11 +40,12 @@ async def list_job_runs(
     return await job_run_service.list_job_runs()
 
 
-@job_runs_router.get("/", response_model=JobRunResponse)
+@job_runs_router.get("/{route_id:path}/{job_def_id}/{job_run_num}/{camera}", response_model=JobRunResponse)
 async def get_job_run(
     job_def_id: int,
     job_run_num: int,
     route_id: str,
+    camera: CameraType,
     session: AsyncSession = Depends(get_session),
 ) -> JobRun:
     logging.info(f"Getting job run ({job_def_id=}, {job_run_num=}, {route_id=})")
@@ -53,7 +53,8 @@ async def get_job_run(
     job_run = await job_run_service.get_job_run(
         job_def_id=job_def_id,
         job_run_num=job_run_num,
-        route_id=route_id
+        route_id=route_id,
+        camera=camera,
     )
     if job_run is None:
         raise JobRunNotFoundError(
@@ -74,6 +75,7 @@ async def create_job_run(
     return await job_run_service.create_job_run(
         job_def_id=payload.job_def_id,
         route_id=payload.route_id,
+        camera=payload.camera,
     )
 
 
@@ -82,13 +84,15 @@ async def delete_job_run(
     job_def_id: int,
     job_run_num: int,
     route_id: str,
+    camera: CameraType,
     session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("delete job run")
     job_run_service = build_job_run_service(session=session)
     await job_run_service.delete_job_run(
-            job_run_num=job_run_num,
-            job_def_id=job_def_id,
-            route_id=route_id
+        job_run_num=job_run_num,
+        job_def_id=job_def_id,
+        route_id=route_id,
+        camera=camera
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

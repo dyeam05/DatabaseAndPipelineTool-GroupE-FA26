@@ -18,12 +18,13 @@ class FrameRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
-    async def get_by_route_segment(self,route_id: str,segment_id: int,) -> list[Frame]:
+    async def get_by_route_segment(self,route_id: str,segment_id: int, camera: CameraType) -> list[Frame]:
         # make sure in the correct order for a given route and segment
         stmt = (
             select(Frame)
             .where(Frame.route_id == route_id)
             .where(Frame.segment_id == segment_id)
+            .where(Frame.camera == camera)
             .order_by(Frame.frame_id.asc())
         )
         result = await self._session.scalars(stmt)

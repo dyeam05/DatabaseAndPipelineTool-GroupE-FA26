@@ -1,10 +1,10 @@
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKeyConstraint, ForeignKey
+from sqlalchemy import ForeignKeyConstraint, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
-from db.enums import JobSegmentRunStatus, job_segment_run_enum
+from db.enums import CameraType, JobSegmentRunStatus, job_segment_run_enum, camera_type_enum
 
 
 class JobSegmentRun(Base):
@@ -12,8 +12,8 @@ class JobSegmentRun(Base):
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ["job_run_num", "route_id", "job_def_id"],
-            ["job_runs.job_run_num", "job_runs.route_id", "job_runs.job_def_id"],
+            ["job_run_num", "route_id", "job_def_id", "camera"],
+            ["job_runs.job_run_num", "job_runs.route_id", "job_runs.job_def_id", "job_runs.camera"],
             ondelete="CASCADE",
         ),
     )
@@ -30,6 +30,11 @@ class JobSegmentRun(Base):
 
     job_def_id: Mapped[int] = mapped_column(
         primary_key=True,
+    )
+
+    camera: Mapped[CameraType] = mapped_column(
+        camera_type_enum,
+        primary_key=True
     )
 
     segment_id: Mapped[int] = mapped_column(

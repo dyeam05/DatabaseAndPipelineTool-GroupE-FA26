@@ -1,8 +1,8 @@
 """first migration
 
-Revision ID: cd10dfe23fa4
+Revision ID: 6c4c3aa94a7c
 Revises: 
-Create Date: 2026-04-06 19:41:43.271451
+Create Date: 2026-04-13 18:59:15.228822
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'cd10dfe23fa4'
+revision: str = '6c4c3aa94a7c'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -33,6 +33,7 @@ def upgrade() -> None:
     op.create_table('job_definitions',
     sa.Column('job_def_id', sa.BigInteger(), nullable=False),
     sa.Column('type', sa.Enum('OBJECT_DETECTION', 'SEGMENTATION', 'DEPTH', 'ANNOTATION', name='job_type_enum'), nullable=False),
+    sa.Column('implementation_key', sa.String(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('config', sa.JSON(), nullable=False),
@@ -55,15 +56,16 @@ def upgrade() -> None:
     sa.Column('job_run_num', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('job_def_id', sa.BigInteger(), nullable=False),
     sa.Column('route_id', sa.String(), nullable=False),
+    sa.Column('camera', sa.Enum('FRONT_REGULAR', 'FRONT_WIDE', 'DRIVER', name='camera_type_enum'), nullable=False),
     sa.Column('status', sa.Enum('QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', name='job_status_enum'), nullable=False),
     sa.Column('queued_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('error', sa.String(), nullable=True),
     sa.Column('stats', sa.JSON(), nullable=True),
-    sa.ForeignKeyConstraint(['job_def_id'], ['job_definitions.job_def_id'], ),
-    sa.ForeignKeyConstraint(['route_id'], ['routes.route_id'], ),
-    sa.PrimaryKeyConstraint('job_run_num', 'job_def_id', 'route_id')
+    sa.ForeignKeyConstraint(['job_def_id'], ['job_definitions.job_def_id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['route_id'], ['routes.route_id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('job_run_num', 'job_def_id', 'route_id', 'camera')
     )
     op.create_table('segments',
     sa.Column('route_id', sa.String(), nullable=False),
@@ -95,19 +97,20 @@ def upgrade() -> None:
     sa.Column('job_run_num', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('route_id', sa.String(), nullable=False),
     sa.Column('job_def_id', sa.Integer(), nullable=False),
+    sa.Column('camera', sa.Enum('FRONT_REGULAR', 'FRONT_WIDE', 'DRIVER', name='camera_type_enum'), nullable=False),
     sa.Column('segment_id', sa.Integer(), nullable=False),
     sa.Column('status', sa.Enum('QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', name='job_segment_run_enum'), nullable=False),
     sa.Column('artifact_id', sa.Uuid(), nullable=True),
     sa.ForeignKeyConstraint(['artifact_id'], ['artifacts.artifact_id'], ),
-    sa.ForeignKeyConstraint(['job_run_num', 'route_id', 'job_def_id'], ['job_runs.job_run_num', 'job_runs.route_id', 'job_runs.job_def_id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('job_run_num', 'route_id', 'job_def_id', 'segment_id')
+    sa.ForeignKeyConstraint(['job_run_num', 'route_id', 'job_def_id', 'camera'], ['job_runs.job_run_num', 'job_runs.route_id', 'job_runs.job_def_id', 'job_runs.camera'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('job_run_num', 'route_id', 'job_def_id', 'camera', 'segment_id')
     )
     op.create_table('segment_artifacts',
     sa.Column('route_id', sa.String(), nullable=False),
     sa.Column('segment_id', sa.Integer(), nullable=False),
     sa.Column('artifact_id', sa.Uuid(), nullable=False),
     sa.Column('role', sa.Enum('FRAME_IMAGE', 'SEGMENT_LOG', 'COCO_EXPORT', 'DETECTION_JSON', 'SEGMENTATION_MASK', 'SEGMENTATION_MAP', 'DEPTH_MAP', name='artifact_role_enum'), nullable=False),
-    sa.ForeignKeyConstraint(['artifact_id'], ['artifacts.artifact_id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['artifact_id'], ['artifacts.artifact_id'], ),
     sa.ForeignKeyConstraint(['route_id', 'segment_id'], ['segments.route_id', 'segments.segment_id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('route_id', 'segment_id', 'role')
     )
@@ -119,12 +122,27 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['frame_pk'], ['frames.frame_pk'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('frame_pk', 'role')
     )
+    op.create_table('job_segment_run_review',
+    sa.Column('job_run_num', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('route_id', sa.String(), nullable=False),
+    sa.Column('job_def_id', sa.Integer(), nullable=False),
+    sa.Column('segment_id', sa.Integer(), nullable=False),
+    sa.Column('camera', sa.Enum('FRONT_REGULAR', 'FRONT_WIDE', 'DRIVER', name='camera_type_enum'), nullable=False),
+    sa.Column('status', sa.Enum('QUEUED_FOR_LOADING', 'LOADING', 'LOADED', 'QUEUED_FOR_REMOVAL', 'REMOVING', 'REMOVED', 'FAILED', name='job_segment_run_review_status_enum'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('task_id', sa.Integer(), nullable=True),
+    sa.Column('task_url', sa.String(), nullable=True),
+    sa.Column('error_message', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['job_run_num', 'route_id', 'job_def_id', 'segment_id', 'camera'], ['job_segment_run.job_run_num', 'job_segment_run.route_id', 'job_segment_run.job_def_id', 'job_segment_run.segment_id', 'job_segment_run.camera'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('job_run_num', 'route_id', 'job_def_id', 'segment_id', 'camera')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('job_segment_run_review')
     op.drop_table('frame_artifacts')
     op.drop_table('segment_artifacts')
     op.drop_table('job_segment_run')

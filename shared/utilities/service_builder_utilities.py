@@ -1,6 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from repositories.job_segment_run_import_repository import JobSegmentRunImportRepository
 from repositories.route_repository import RouteRepository
+from services.job_segment_run_import_service import JobSegmentRunImportService
 from services.route_service import RouteService
 from repositories.segment_repository import SegmentRepository
 from services.segment_service import SegmentService
@@ -16,6 +18,9 @@ from repositories.artifact_repository import ArtifactRepository
 from services.artifact_service import ArtifactService
 from services.minio_service import MinioService
 from services.thumbnail_service import ThumbnailService
+from repositories.job_segment_run_repository import JobSegmentRunRepository
+from services.job_segment_run_service import JobSegmentRunService
+
 
 def build_route_service(session: AsyncSession) -> RouteService:
     repository = RouteRepository(session=session)
@@ -26,8 +31,14 @@ def build_segment_service(session: AsyncSession) -> SegmentService:
     return SegmentService(segment_repository=repository)
 
 def build_job_run_service(session: AsyncSession) -> JobRunService:
-    repository = JobRunRepository(session=session)
-    return JobRunService(job_run_repository=repository)
+    job_run_repository = JobRunRepository(session=session)
+    route_repository = RouteRepository(session=session)
+    job_definition_repository = JobDefinitionRepository(session=session)
+    return JobRunService(
+        job_run_repository=job_run_repository,
+        route_repository=route_repository,
+        job_definition_repository=job_definition_repository,
+    )
 
 def build_job_definition_service(session: AsyncSession) -> JobDefinitionService:
     repository = JobDefinitionRepository(session=session)
@@ -53,3 +64,10 @@ def build_thumbnail_service(session: AsyncSession) -> ThumbnailService:
         frame_artifact_service=frame_artifact_service,
         artifact_service=artifact_service,
     )
+def build_job_segment_run_service(session: AsyncSession) -> JobSegmentRunService:
+    repository = JobSegmentRunRepository(session=session)
+    return JobSegmentRunService(job_segment_run_repository=repository)
+
+def build_job_segment_run_import_service(session: AsyncSession) -> JobSegmentRunImportService:
+    job_segment_run_import_repository = JobSegmentRunImportRepository(session=session)
+    return JobSegmentRunImportService(job_segment_run_import_repository=job_segment_run_import_repository)

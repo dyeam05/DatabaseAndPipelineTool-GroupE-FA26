@@ -1,3 +1,36 @@
+x-postgres-env: &postgres-env
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+
+x-minio-env: &minio-env
+  MINIO_ENDPOINT: "minio:9000"
+  MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+  MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+
+x-cvat-env: &cvat-env
+  CVAT_HOST: http://cvat-server:8080
+  CVAT_EMAIL: ${CVAT_EMAIL}
+  CVAT_PASSWORD: ${CVAT_PASSWORD}
+  CVAT_SHARE_ROOT: /app/cvat_share
+  CVAT_PUBLIC_URL: "http://localhost:8080"
+
+x-python-service-env: &python-service-env
+  <<: [*postgres-env, *minio-env]
+  COMMA_JWT: ${COMMA_JWT}
+  PYTHONPATH: /app/shared:/app/backend
+  CVAT_PUBLIC_URL: "http://localhost:8080"
+  FRONTEND_URL: http://localhost:5173
+
+x-data-worker: &data-worker
+  environment:
+    <<: *python-service-env
+  volumes:
+    - "./data:/app/data"
+
 services:
   postgres:
     image: postgres:16
@@ -35,102 +68,38 @@ services:
     ports:
       - "8000:8000"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      COMMA_JWT: ${COMMA_JWT}
-      PYTHONPATH: /app/shared:/app/backend
-      FRONTEND_URL: http://localhost:5173
+      <<: *python-service-env
     depends_on:
       - postgres
 
-
-
-
   open_pilot_download_worker:
+    <<: *data-worker
     build:
       context: .
       dockerfile: open_pilot_download_worker/Dockerfile
       args:
         JWT: ${COMMA_JWT}
     shm_size: 2g
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      COMMA_JWT: ${COMMA_JWT}
-      PYTHONPATH: /app/shared:/app/backend
-    volumes:
-      - "./data:/app/data"
 
   open_pilot_upload_worker:
+    <<: *data-worker
     build:
       context: .
       dockerfile: open_pilot_upload_worker/Dockerfile
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      COMMA_JWT: ${COMMA_JWT}
-      PYTHONPATH: /app/shared:/app/backend
-    volumes:
-      - "./data:/app/data"
 
   minio_initializer:
     build:
       context: .
       dockerfile: minio_initializer/Dockerfile
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      COMMA_JWT: ${COMMA_JWT}
-      PYTHONPATH: /app/shared:/app/backend
+      <<: *python-service-env
 
   tests:
     build:
       context: .
       dockerfile: tests/Dockerfile
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      COMMA_JWT: ${COMMA_JWT}
-      PYTHONPATH: /app/shared:/app/backend
-      CVAT_HOST: http://cvat-server:8080
-      CVAT_EMAIL: ${CVAT_EMAIL}
-      CVAT_PASSWORD: ${CVAT_PASSWORD}
-      CVAT_SHARE_ROOT: /app/cvat_share
+      <<: [*python-service-env, *cvat-env]
     networks:
       - default
       - cvat_network
@@ -140,13 +109,10 @@ services:
       context: .
       dockerfile: alembic_worker/Dockerfile
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      <<: *postgres-env
       COMMA_JWT: ${COMMA_JWT}
       PYTHONPATH: /app/shared
+      CVAT_PUBLIC_URL: "http://localhost:8080"
     volumes:
       - ./alembic_worker:/app/alembic_worker
       - ./shared:/app/shared
@@ -158,19 +124,37 @@ services:
       context: .
       dockerfile: cvat_worker/Dockerfile
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      CVAT_HOST: http://cvat-server:8080
-      CVAT_EMAIL: ${CVAT_EMAIL}
-      CVAT_PASSWORD: ${CVAT_PASSWORD}
-      CVAT_SHARE_ROOT: /app/cvat_share
+      <<: [*postgres-env, *minio-env, *cvat-env]
+    volumes:
+      - ./cvat_share:/app/cvat_share
+      - ./annotations:/app/annotations
+    networks:
+      - default
+      - cvat_network
+    depends_on:
+      - postgres
+
+  cvat_import_export_worker:
+    build:
+      context: .
+      dockerfile: cvat_import_export_worker/Dockerfile
+    environment:
+      <<: [*postgres-env, *minio-env, *cvat-env]
+    volumes:
+      - ./cvat_share:/app/cvat_share
+      - ./annotations:/app/annotations
+    networks:
+      - default
+      - cvat_network
+    depends_on:
+      - postgres
+
+  cvat_import_export_worker:
+    build:
+      context: .
+      dockerfile: cvat_import_export_worker/Dockerfile
+    environment:
+      <<: [*postgres-env, *minio-env, *cvat-env]
     volumes:
       - ./cvat_share:/app/cvat_share
       - ./annotations:/app/annotations

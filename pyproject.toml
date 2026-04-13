@@ -1,3 +1,4 @@
 # ruff check .
 [tool.ruff]
 src = ["backend", "shared"]
+exclude = ["tests"]

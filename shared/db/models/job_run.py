@@ -1,11 +1,10 @@
 from datetime import datetime
-from uuid import UUID
 
 from sqlalchemy import String, DateTime, func, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
-from db.enums import JobStatus, job_status_enum
+from db.enums import CameraType, JobStatus, job_status_enum, camera_type_enum
 
 # this tell job status, like queued, running, succeeded, failed or cancelled
 
@@ -19,12 +18,17 @@ class JobRun(Base):
     )
     # job def link to job run, one job def can have many job runs, but one job run only link to one job def
     job_def_id: Mapped[int] = mapped_column(
-        ForeignKey("job_definitions.job_def_id"),
+        ForeignKey("job_definitions.job_def_id", ondelete="CASCADE"),
         primary_key=True,
     )
     route_id: Mapped[str] = mapped_column(
-        ForeignKey("routes.route_id"),
+        ForeignKey("routes.route_id", ondelete="CASCADE"),
         primary_key=True,
+    )
+
+    camera: Mapped[CameraType] = mapped_column(
+        camera_type_enum,
+        primary_key=True
     )
     status: Mapped[JobStatus] = mapped_column(
         job_status_enum,

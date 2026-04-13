@@ -1,9 +1,10 @@
-from db.models.artifact import Artifact
-from db.models.frame import Frame
-from db.models.frame_artifact import FrameArtifact
-from db.models.job_definition import JobDefinition
-from db.models.job_run import JobRun
-from db.models.job_segment_run import JobSegmentRun
-from db.models.route import Route
-from db.models.segment import Segment
-from db.models.segment_artifact import SegmentArtifact
+from db.models.artifact import Artifact as Artifact
+from db.models.frame import Frame as Frame
+from db.models.frame_artifact import FrameArtifact as FrameArtifact
+from db.models.job_definition import JobDefinition as JobDefinition
+from db.models.job_run import JobRun as JobRun
+from db.models.job_segment_run import JobSegmentRun as JobSegmentRun
+from db.models.route import Route as Route
+from db.models.segment import Segment as Segment
+from db.models.segment_artifact import SegmentArtifact as SegmentArtifact
+from db.models.job_segment_run_import import JobSegmentRunImport as JobSegmentRunImport

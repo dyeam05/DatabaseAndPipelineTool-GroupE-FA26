@@ -6,10 +6,9 @@
 		"."
 	],
 	"exclude": [
-		"**/__pycache__"
-	],
-	"analysis": {
-		"autoSearchPaths": true,
-		"useLibraryCodeForTypes": true
-	}
+		"**/__pycache__",
+		"./cvat/",
+		"./open_pilot_download_worker/files/",
+		"./tests/"
+	]
 }

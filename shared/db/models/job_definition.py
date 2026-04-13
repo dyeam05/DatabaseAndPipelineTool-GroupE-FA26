@@ -20,6 +20,10 @@ class JobDefinition(Base):
         job_type_enum,
         nullable=False,
     )
+    implementation_key: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(
         String,
         nullable=False,
@@ -40,4 +44,7 @@ class JobDefinition(Base):
     )
 
     def __repr__(self):
-        return f"JobDefinition({self.job_def_id}, {self.type}, {self.name})"
+        return (
+            f"JobDefinition({self.job_def_id}, {self.type}, "
+            f"{self.implementation_key}, {self.name})"
+        )
