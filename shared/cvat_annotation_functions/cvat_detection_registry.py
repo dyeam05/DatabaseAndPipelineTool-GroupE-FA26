@@ -1,0 +1,34 @@
+from dataclasses import dataclass
+from pydantic import BaseModel
+from cvat_annotation_functions.i_cvat_detection import ICVATDetection
+
+@dataclass(frozen=True)
+class CVATDetectionPluginDefinition:
+    key: str
+    implementation_cls: type["ICVATDetection"]
+    config_model: type[BaseModel]
+    display_name: str
+    description: str | None = None
+
+CVAT_DETECTION_REGISTRY: dict[str, CVATDetectionPluginDefinition] = {}
+
+def register_cvat_detection_plugin(
+    *,
+    key: str,
+    config_model: type[BaseModel],
+    display_name: str,
+    description: str | None = None
+):
+    def decorator(cls: type["ICVATDetection"]):
+        if key in CVAT_DETECTION_REGISTRY:
+            raise ValueError(f"Duplictate CVAT detection pluging key: {key}")
+
+        CVAT_DETECTION_REGISTRY[key] = CVATDetectionPluginDefinition(
+            key=key,
+            implementation_cls=cls,
+            config_model=config_model,
+            display_name=display_name,
+            description=description
+        )
+        return cls
+    return decorator
