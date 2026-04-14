@@ -21,6 +21,16 @@ job_runs_router = APIRouter(
     prefix="/job-runs",
 )
 
+@job_runs_router.get("/by-route/{route_id}", response_model=list[JobRunResponse])
+async def list_job_runs_by_route(
+    route_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> list[JobRun]:
+    logging.info(f"get job runs for route {route_id}")
+    job_run_service = build_job_run_service(session=session)
+    return await job_run_service.list_job_runs_by_route(route_id)
+
+
 @job_runs_router.get("/", response_model=list[JobRunResponse])
 async def list_job_runs(
     session: AsyncSession = Depends(get_session),

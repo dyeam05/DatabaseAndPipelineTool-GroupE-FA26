@@ -22,6 +22,11 @@ class JobRunRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
+    async def list_by_route_id(self, route_id: str) -> list[JobRun]:
+        stmt = select(JobRun).where(JobRun.route_id == route_id).order_by(JobRun.queued_at.desc())
+        result = await self._session.scalars(stmt)
+        return list(result.all())
+
     async def get_by_status(self, status: JobStatus) -> list[JobRun]:
         stmt = (
             select(JobRun)

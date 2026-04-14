@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-
+import os
 from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
@@ -22,6 +23,8 @@ from api.routers.job_runs import job_runs_router
 from api.routers.job_definitions import job_definitions_router
 from api.routers.job_segment_run import job_segment_run_router
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     
@@ -37,6 +40,13 @@ async def lifespan(app: FastAPI):
         await engine.dispose()
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[FRONTEND_URL,],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health-check")
 async def health_check() -> dict[str, str]:

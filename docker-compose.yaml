@@ -23,6 +23,10 @@ x-python-service-env: &python-service-env
   COMMA_JWT: ${COMMA_JWT}
   PYTHONPATH: /app/shared:/app/backend
   CVAT_PUBLIC_URL: "http://localhost:8080"
+  FRONTEND_URL: "http://localhost:5173"
+
+x-frontend-env: &frontend-env
+  VITE_API_URL: "http://localhost:8000"
 
 x-data-worker: &data-worker
   environment:
@@ -70,6 +74,30 @@ services:
       <<: *python-service-env
     depends_on:
       - postgres
+  frontend:
+      build:
+        context: ./frontend
+        dockerfile: Dockerfile
+        target: dev
+      ports:
+        - "5173:5173"
+      environment:
+        <<: *frontend-env
+      depends_on:
+        - backend
+      develop:
+        watch:
+          - action: sync
+            path: ./frontend/src
+            target: /app/src
+          - action: sync
+            path: ./frontend/public
+            target: /app/public
+          - action: sync+restart
+            path: ./frontend/index.html
+            target: /app/index.html
+          - action: rebuild
+            path: ./frontend/package.json
 
   open_pilot_download_worker:
     <<: *data-worker

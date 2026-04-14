@@ -124,3 +124,10 @@ Check out the [course Kanban board](https://cscapstone.cs.ou.edu/pages/account/)
 - 16 Segments: db478799b6f9f210/00000098--ce43889a70
 - 4 Segments: db478799b6f9f210/0000000e--9ecd39f6bc
 - 2 Segments: db478799b6f9f210/00000081--23c1159034
+
+
+## front end
+
+run command 
+
+```docker compose up --build -d frontend```

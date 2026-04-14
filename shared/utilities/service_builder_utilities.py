@@ -10,6 +10,14 @@ from repositories.job_run_repository import JobRunRepository
 from services.job_run_service import JobRunService
 from repositories.job_definition_repository import JobDefinitionRepository
 from services.job_definition_service import JobDefinitionService
+from repositories.frame_repository import FrameRepository
+from services.frame_service import FrameService
+from repositories.frame_artifact_repository import FrameArtifactRepository
+from services.frame_artifact_service import FrameArtifactService
+from repositories.artifact_repository import ArtifactRepository
+from services.artifact_service import ArtifactService
+from services.minio_service import MinioService
+from services.thumbnail_service import ThumbnailService
 from repositories.job_segment_run_repository import JobSegmentRunRepository
 from services.job_segment_run_service import JobSegmentRunService
 from repositories.frame_repository import FrameRepository
@@ -63,6 +71,26 @@ def build_job_definition_service(session: AsyncSession) -> JobDefinitionService:
     repository = JobDefinitionRepository(session=session)
     return JobDefinitionService(job_definition_repository=repository)
 
+def build_thumbnail_service(session: AsyncSession) -> ThumbnailService:
+    segment_repository = SegmentRepository(session=session)
+
+    frame_repository = FrameRepository(session=session)
+    frame_service = FrameService(frame_repository=frame_repository)
+
+    frame_artifact_repository = FrameArtifactRepository(session=session)
+    frame_artifact_service = FrameArtifactService(frame_artifact_repository=frame_artifact_repository)
+    artifact_repository = ArtifactRepository(session=session)
+    artifact_service = ArtifactService(artifact_repository=artifact_repository)
+
+    minio_service = MinioService()
+
+    return ThumbnailService(
+        segment_repository=segment_repository,
+        minio_service=minio_service,
+        frame_service=frame_service,
+        frame_artifact_service=frame_artifact_service,
+        artifact_service=artifact_service,
+    )
 def build_job_segment_run_service(session: AsyncSession) -> JobSegmentRunService:
     repository = JobSegmentRunRepository(session=session)
     return JobSegmentRunService(job_segment_run_repository=repository)
