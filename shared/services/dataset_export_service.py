@@ -12,6 +12,7 @@ from repositories.dataset_export_repository import DatasetExportRepository
 from repositories.job_run_repository import JobRunRepository
 from repositories.route_repository import RouteRepository
 from services.frame_service import FrameService
+from services.minio_service import MinioService
 from services.errors import (
     ArtifactNotFoundError,
     DatasetExportDeletionConflictError,
@@ -207,6 +208,7 @@ class DatasetExportService:
         dataset_export = await self._require_dataset_export(export_id)
         if dataset_export.status == DatasetExportStatus.RUNNING:
             raise DatasetExportDeletionConflictError(export_id)
+        artifact = None
         if dataset_export.zip_artifact_id is not None:
             artifact = await self._artifact_repository.get_by_id(dataset_export.zip_artifact_id)
             if artifact is None:
@@ -216,8 +218,9 @@ class DatasetExportService:
                 bucket_name=artifact.bucket,
                 object_key=artifact.object_key,
             )
-            await self._artifact_repository.delete(artifact)
         await self._dataset_export_repository.delete(dataset_export)
+        if artifact is not None:
+            await self._artifact_repository.delete(artifact)
 
     async def _require_dataset_export(self, export_id: int) -> DatasetExport:
         dataset_export = await self._dataset_export_repository.get_by_id(export_id)
