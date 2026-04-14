@@ -30,6 +30,20 @@ class FrameRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
+    async def exists_by_route_camera(
+        self,
+        route_id: str,
+        camera: CameraType,
+    ) -> bool:
+        stmt = (
+            select(Frame.frame_pk)
+            .where(Frame.route_id == route_id)
+            .where(Frame.camera == camera)
+            .limit(1)
+        )
+        result = await self._session.scalars(stmt)
+        return result.first() is not None
+
     async def create(
         self,
         route_id: str,

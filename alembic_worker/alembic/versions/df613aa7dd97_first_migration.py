@@ -1,8 +1,8 @@
 """first migration
 
-Revision ID: 6c4c3aa94a7c
+Revision ID: df613aa7dd97
 Revises: 
-Create Date: 2026-04-13 18:59:15.228822
+Create Date: 2026-04-13 22:48:21.683176
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '6c4c3aa94a7c'
+revision: str = 'df613aa7dd97'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,7 +25,7 @@ def upgrade() -> None:
     sa.Column('artifact_id', sa.Uuid(), nullable=False),
     sa.Column('bucket', sa.String(), nullable=False),
     sa.Column('object_key', sa.String(), nullable=False),
-    sa.Column('kind', sa.Enum('IMAGE', 'JSON', 'PARQUET', name='artifact_kind_enum'), nullable=False),
+    sa.Column('kind', sa.Enum('IMAGE', 'JSON', 'PARQUET', 'ZIP', name='artifact_kind_enum'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('meta', sa.JSON(), nullable=True),
     sa.PrimaryKeyConstraint('artifact_id')
@@ -51,6 +51,20 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint("route_id <> ''", name='ck_routes_route_id_not_empty'),
     sa.PrimaryKeyConstraint('route_id')
+    )
+    op.create_table('dataset_exports',
+    sa.Column('export_id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('route_id', sa.String(), nullable=False),
+    sa.Column('camera_views', sa.JSON(), nullable=False),
+    sa.Column('status', sa.Enum('QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', name='dataset_export_status_enum'), nullable=False),
+    sa.Column('zip_artifact_id', sa.Uuid(), nullable=True),
+    sa.Column('error', sa.String(), nullable=True),
+    sa.Column('queued_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['route_id'], ['routes.route_id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['zip_artifact_id'], ['artifacts.artifact_id'], ),
+    sa.PrimaryKeyConstraint('export_id')
     )
     op.create_table('job_runs',
     sa.Column('job_run_num', sa.Integer(), autoincrement=True, nullable=False),
@@ -78,6 +92,16 @@ def upgrade() -> None:
     sa.CheckConstraint('segment_id >= 0', name='ck_segments_segment_id_non_negative'),
     sa.ForeignKeyConstraint(['route_id'], ['routes.route_id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('route_id', 'segment_id')
+    )
+    op.create_table('dataset_export_job_runs',
+    sa.Column('export_id', sa.Integer(), nullable=False),
+    sa.Column('route_id', sa.String(), nullable=False),
+    sa.Column('job_def_id', sa.Integer(), nullable=False),
+    sa.Column('job_run_num', sa.Integer(), nullable=False),
+    sa.Column('camera', sa.Enum('FRONT_REGULAR', 'FRONT_WIDE', 'DRIVER', name='camera_type_enum'), nullable=False),
+    sa.ForeignKeyConstraint(['export_id'], ['dataset_exports.export_id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['job_run_num', 'route_id', 'job_def_id', 'camera'], ['job_runs.job_run_num', 'job_runs.route_id', 'job_runs.job_def_id', 'job_runs.camera'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('export_id', 'route_id', 'job_def_id', 'job_run_num', 'camera')
     )
     op.create_table('frames',
     sa.Column('frame_pk', sa.BigInteger(), nullable=False),
@@ -147,8 +171,10 @@ def downgrade() -> None:
     op.drop_table('segment_artifacts')
     op.drop_table('job_segment_run')
     op.drop_table('frames')
+    op.drop_table('dataset_export_job_runs')
     op.drop_table('segments')
     op.drop_table('job_runs')
+    op.drop_table('dataset_exports')
     op.drop_table('routes')
     op.drop_table('job_definitions')
     op.drop_table('artifacts')

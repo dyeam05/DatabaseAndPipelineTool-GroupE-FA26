@@ -20,6 +20,17 @@ from services.minio_service import MinioService
 from services.thumbnail_service import ThumbnailService
 from repositories.job_segment_run_repository import JobSegmentRunRepository
 from services.job_segment_run_service import JobSegmentRunService
+from repositories.frame_repository import FrameRepository
+from services.frame_service import FrameService
+from repositories.artifact_repository import ArtifactRepository
+from services.artifact_service import ArtifactService
+from repositories.frame_artifact_repository import FrameArtifactRepository
+from services.frame_artifact_service import FrameArtifactService
+from repositories.segment_artifact_repository import SegmentArtifactRepository
+from services.segment_artifact_service import SegmentArtifactService
+from services.dataset_export_service import DatasetExportService
+from repositories.dataset_export_repository import DatasetExportRepository
+from repositories.dataset_export_job_run_repository import DatasetExportJobRunRepository
 
 
 def build_route_service(session: AsyncSession) -> RouteService:
@@ -29,6 +40,22 @@ def build_route_service(session: AsyncSession) -> RouteService:
 def build_segment_service(session: AsyncSession) -> SegmentService:
     repository = SegmentRepository(session=session)
     return SegmentService(segment_repository=repository)
+
+def build_frame_service(session: AsyncSession) -> FrameService:
+    repository = FrameRepository(session=session)
+    return FrameService(frame_repository=repository)
+
+def build_artifact_service(session: AsyncSession) -> ArtifactService:
+    repository = ArtifactRepository(session=session)
+    return ArtifactService(artifact_repository=repository)
+
+def build_frame_artifact_service(session: AsyncSession) -> FrameArtifactService:
+    repository = FrameArtifactRepository(session=session)
+    return FrameArtifactService(frame_artifact_repository=repository)
+
+def build_segment_artifact_service(session: AsyncSession) -> SegmentArtifactService:
+    repository = SegmentArtifactRepository(session=session)
+    return SegmentArtifactService(segment_artifact_repository=repository)
 
 def build_job_run_service(session: AsyncSession) -> JobRunService:
     job_run_repository = JobRunRepository(session=session)
@@ -67,6 +94,22 @@ def build_thumbnail_service(session: AsyncSession) -> ThumbnailService:
 def build_job_segment_run_service(session: AsyncSession) -> JobSegmentRunService:
     repository = JobSegmentRunRepository(session=session)
     return JobSegmentRunService(job_segment_run_repository=repository)
+
+def build_dataset_export_service(session: AsyncSession) -> DatasetExportService:
+    dataset_export_repository = DatasetExportRepository(session=session)
+    dataset_export_job_run_repository = DatasetExportJobRunRepository(session=session)
+    route_repository = RouteRepository(session=session)
+    job_run_repository = JobRunRepository(session=session)
+    frame_service = build_frame_service(session=session)
+    artifact_repository = ArtifactRepository(session=session)
+    return DatasetExportService(
+        dataset_export_repository=dataset_export_repository,
+        dataset_export_job_run_repository=dataset_export_job_run_repository,
+        route_repository=route_repository,
+        job_run_repository=job_run_repository,
+        frame_service=frame_service,
+        artifact_repository=artifact_repository,
+    )
 
 def build_job_segment_run_import_service(session: AsyncSession) -> JobSegmentRunImportService:
     job_segment_run_import_repository = JobSegmentRunImportRepository(session=session)
