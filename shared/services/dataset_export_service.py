@@ -208,7 +208,7 @@ class DatasetExportService:
         dataset_export = await self._require_dataset_export(export_id)
         if dataset_export.status == DatasetExportStatus.RUNNING:
             raise DatasetExportDeletionConflictError(export_id)
-        artifact = None
+        artifact: Artifact | None = None
         if dataset_export.zip_artifact_id is not None:
             artifact = await self._artifact_repository.get_by_id(dataset_export.zip_artifact_id)
             if artifact is None:
