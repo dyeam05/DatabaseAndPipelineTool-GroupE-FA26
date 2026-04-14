@@ -30,4 +30,3 @@ def get_job_segment_run_object_name(job_segment_run: JobSegmentRun):
 
 def is_bucket_in_list_of_buckets(target: str, buckets: list[Bucket]) -> bool:
     return any(bucket.name == target for bucket in buckets)
-

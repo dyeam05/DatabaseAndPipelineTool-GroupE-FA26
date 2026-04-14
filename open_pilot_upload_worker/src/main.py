@@ -7,7 +7,7 @@ import shutil
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from models.segment_dir import SegmentDir
-from db.enums import SegmentStatus
+from db.enums import ArtifactKind, ArtifactRole, SegmentStatus
 from db.models.route import Route
 from db.models.segment import Segment
 from db.url import build_database_url
@@ -16,6 +16,7 @@ from repositories.route_repository import RouteRepository
 from repositories.segment_repository import SegmentRepository
 from repositories.frame_artifact_repository import FrameArtifactRepository
 from repositories.artifact_repository import ArtifactRepository
+from repositories.segment_artifact_repository import SegmentArtifactRepository
 from services.frame_artifact_service import FrameArtifactService
 from services.frame_service import FrameService
 from services.frame_uploader_service import FrameUploaderService
@@ -23,6 +24,7 @@ from services.minio_service import MinioService
 from services.route_service import RouteService, RouteStatus
 from services.segment_service import SegmentService
 from services.artifact_service import ArtifactService
+from services.segment_artifact_service import SegmentArtifactService
 from utilities.camera_type_utilities import folder_name_to_camera_type
 from utilities.directory_utilities import does_directory_have_more_than_n_items, get_subdirectories
 from utilities.file_utilities import get_pngs_in_directory
@@ -79,7 +81,15 @@ def get_segment_camera_views(segment_path: Path) -> list[str]:
     return camera_views
 
 
-async def upload_segment(segment: Segment, segment_path: Path, segment_service: SegmentService, frame_uploader_service: FrameUploaderService, session: AsyncSession):
+async def upload_segment(
+    segment: Segment,
+    segment_path: Path,
+    segment_service: SegmentService,
+    frame_uploader_service: FrameUploaderService,
+    artifact_service: ArtifactService,
+    segment_artifact_service: SegmentArtifactService,
+    session: AsyncSession,
+):
     logging.info(f"Uploading segment {segment}")
     minio_service = MinioService()
 
@@ -97,10 +107,22 @@ async def upload_segment(segment: Segment, segment_path: Path, segment_service: 
 
     # upload logs
     log_path = segment_path / "logs.json"
-    _ = minio_service.put_segment_log(
+    log_upload_result = minio_service.put_segment_log(
         segment=segment,
         log_path=log_path
     )
+    log_artifact = await artifact_service.create_artifact(
+        bucket=log_upload_result.bucket_name,
+        object_key=log_upload_result.object_name,
+        kind=ArtifactKind.JSON,
+    )
+    await segment_artifact_service.create_segment_artifact(
+        route_id=segment.route_id,
+        segment_id=segment.segment_id,
+        artifact_id=log_artifact.artifact_id,
+        role=ArtifactRole.SEGMENT_LOG,
+    )
+    await session.commit()
 
     await segment_service.set_status(route_id=segment.route_id, segment_id=segment.segment_id, status=SegmentStatus.UPLOADED)
     await session.commit()
@@ -108,7 +130,15 @@ async def upload_segment(segment: Segment, segment_path: Path, segment_service: 
 
 
 
-async def _process_segment(segment: Segment, route_service: RouteService, segment_service: SegmentService, frame_uploader_service: FrameUploaderService, session: AsyncSession):
+async def _process_segment(
+    segment: Segment,
+    route_service: RouteService,
+    segment_service: SegmentService,
+    frame_uploader_service: FrameUploaderService,
+    artifact_service: ArtifactService,
+    segment_artifact_service: SegmentArtifactService,
+    session: AsyncSession,
+):
 
     logging.info(f"Processing segment {segment}")
     # We set the route status to uploading as soon as we start uploading any segments
@@ -134,6 +164,8 @@ async def _process_segment(segment: Segment, route_service: RouteService, segmen
                 segment_path=segment_path,
                 segment_service=segment_service,
                 frame_uploader_service=frame_uploader_service,
+                artifact_service=artifact_service,
+                segment_artifact_service=segment_artifact_service,
                 session=session
             )
 
@@ -207,6 +239,8 @@ async def main():
             frame_artifact_service = FrameArtifactService(frame_artifact_repository=frame_artifact_repository)
             artifact_repository = ArtifactRepository(session=session)
             artifact_service = ArtifactService(artifact_repository=artifact_repository)
+            segment_artifact_repository = SegmentArtifactRepository(session=session)
+            segment_artifact_service = SegmentArtifactService(segment_artifact_repository=segment_artifact_repository)
             frame_uploader_service = FrameUploaderService(
                 frame_service=frame_service,
                 frame_artifact_service=frame_artifact_service,
@@ -230,6 +264,8 @@ async def main():
                     route_service=route_service,
                     segment_service=segment_service,
                     frame_uploader_service=frame_uploader_service,
+                    artifact_service=artifact_service,
+                    segment_artifact_service=segment_artifact_service,
                     session=session
                 )
     finally:
@@ -240,4 +276,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

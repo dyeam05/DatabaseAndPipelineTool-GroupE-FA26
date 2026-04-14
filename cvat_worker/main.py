@@ -71,6 +71,7 @@ async def _mark_stale_running_jobs_as_failed(
             job_run_num=job.job_run_num,
             job_def_id=job.job_def_id,
             route_id=job.route_id,
+            camera=job.camera,
         )
         for segment in segments:
             # only stale if it was actively queued or running, if a segment was completed don't set it to failed

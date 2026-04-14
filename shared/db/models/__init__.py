@@ -1,4 +1,6 @@
 from db.models.artifact import Artifact as Artifact
+from db.models.dataset_export import DatasetExport as DatasetExport
+from db.models.dataset_export_job_run import DatasetExportJobRun as DatasetExportJobRun
 from db.models.frame import Frame as Frame
 from db.models.frame_artifact import FrameArtifact as FrameArtifact
 from db.models.job_definition import JobDefinition as JobDefinition

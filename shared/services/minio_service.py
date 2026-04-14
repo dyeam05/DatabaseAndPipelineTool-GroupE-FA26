@@ -4,6 +4,7 @@ import time
 
 from minio.datatypes import Bucket
 from minio.helpers import ObjectWriteResult
+from urllib3.response import BaseHTTPResponse
 
 from db.models.artifact import Artifact
 from db.models.job_segment_run import JobSegmentRun
@@ -43,6 +44,19 @@ class MinioService:
             file_path=str(file_path)
         )
 
+    def put_dataset_export_zip(
+        self,
+        route_id: str,
+        export_id: int,
+        file_path: Path,
+    ) -> ObjectWriteResult:
+        return self.minio_client.fput_object(
+            bucket_name=self.bucket_name,
+            object_name=f"exports/{route_id}/{export_id}.zip",
+            content_type="application/zip",
+            file_path=str(file_path),
+        )
+
 
     def wait_for_minio(self, timeout: int = 30) -> None:
         start = time.time()
@@ -70,8 +84,39 @@ class MinioService:
         )
 
     def download_artifact(self, artifact:Artifact,  dest_path:Path):
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
         self.minio_client.fget_object(
             bucket_name=artifact.bucket, 
             object_name=artifact.object_key, 
             file_path=str(dest_path)
         )
+
+    def delete_object(self, bucket_name: str, object_key: str) -> None:
+        self.minio_client.remove_object(bucket_name=bucket_name, object_name=object_key)
+
+    def get_object_stream(
+        self,
+        bucket_name: str,
+        object_key: str,
+    ) -> BaseHTTPResponse:
+        return self.minio_client.get_object(
+            bucket_name=bucket_name,
+            object_name=object_key,
+        )
+
+    def stream_object(
+        self,
+        bucket_name: str,
+        object_key: str,
+        chunk_size: int = 1024 * 1024,
+    ):
+        object_stream = self.get_object_stream(
+            bucket_name=bucket_name,
+            object_key=object_key,
+        )
+        try:
+            for chunk in object_stream.stream(amt=chunk_size):
+                yield chunk
+        finally:
+            object_stream.close()
+            object_stream.release_conn()

@@ -7,11 +7,15 @@ from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
 from db.url import build_database_url
 from services.errors import (
+    DatasetExportDeletionConflictError,
+    DatasetExportNotFoundError,
+    DatasetExportValidationError,
     RouteAlreadyExistsError,
     RouteNotFoundError,
     RouteNotReadyForJobRunError,
 )
 
+from api.routers.dataset_exports import dataset_exports_router
 from api.routers.routes import routes_router
 from api.routers.segments import segments_router
 from api.routers.job_runs import job_runs_router
@@ -72,8 +76,42 @@ async def handle_route_not_ready_for_job_run_error(
     )
 
 
+@app.exception_handler(DatasetExportNotFoundError)
+async def handle_dataset_export_not_found_error(
+    _: Request,
+    exc: DatasetExportNotFoundError,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(DatasetExportValidationError)
+async def handle_dataset_export_validation_error(
+    _: Request,
+    exc: DatasetExportValidationError,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(DatasetExportDeletionConflictError)
+async def handle_dataset_export_deletion_conflict_error(
+    _: Request,
+    exc: DatasetExportDeletionConflictError,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": str(exc)},
+    )
+
+
 app.include_router(router=routes_router)
 app.include_router(router=segments_router)
 app.include_router(router=job_runs_router)
 app.include_router(router=job_definitions_router)
 app.include_router(router=job_segment_run_router)
+app.include_router(router=dataset_exports_router)
