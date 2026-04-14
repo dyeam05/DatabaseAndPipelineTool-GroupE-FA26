@@ -24,6 +24,8 @@ x-python-service-env: &python-service-env
   PYTHONPATH: /app/shared:/app/backend
   CVAT_PUBLIC_URL: "http://localhost:8080"
   FRONTEND_URL: "http://localhost:5173"
+
+x-frontend-env: &frontend-env
   VITE_API_URL: "http://localhost:8000"
 
 x-data-worker: &data-worker
@@ -80,7 +82,7 @@ services:
       ports:
         - "5173:5173"
       environment:
-        <<: *python-service-env
+        <<: *frontend-env
       depends_on:
         - backend
       develop:
