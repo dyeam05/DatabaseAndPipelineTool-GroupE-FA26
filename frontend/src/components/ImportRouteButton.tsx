@@ -1,9 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import type { FormEvent } from "react";
 
-// Route ID format: <16-hex-dongle-id>|<8-hex-timestamp>--<10-hex-hash>
-// Example: db478799b6f9f210|0000000e--9ecd39f6bc
-const ROUTE_ID_REGEX = /^[0-9a-f]{16}\|[0-9a-f]{8}--[0-9a-f]{10}$/i;
+const ROUTE_ID_REGEX = /^[^|]+\|[^-]+--[^/]+$/;
 
 export function ImportRouteButton({
   onImport,
@@ -52,8 +49,7 @@ export function ImportRouteButton({
     setSubmitState("idle");
   }
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  function handleSubmit() {
     setTouched(true);
     if (!isValid) return;
     setSubmitState("loading");
@@ -95,7 +91,7 @@ export function ImportRouteButton({
           letterSpacing: "0.07em",
           textTransform: "uppercase",
           opacity: !dark && btnHovered ? 0.8 : 1,
-          transition: "var(--transition-fast)",
+          transition: expanded ? "none" : "var(--transition-fast)",
           visibility: expanded ? "hidden" : "visible",
         }}
       >
@@ -106,7 +102,7 @@ export function ImportRouteButton({
       {/* Expanded form — absolutely positioned over the button, grows leftward from right edge */}
       {expanded && (
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
           onKeyDown={(e) => { if (e.key === "Escape") close(); }}
           style={{
             position: "absolute",
