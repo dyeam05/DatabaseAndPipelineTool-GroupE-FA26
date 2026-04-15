@@ -64,6 +64,17 @@
   /* --- Hover states --- */
   --bg-inverse-hover: #2a2a2a; /* Slightly lifted dark surface       */
 
+  /* --- On-inverse tokens (UI elements placed on --bg-inverse dark surfaces) --- */
+  --bg-on-inverse:              rgba(255, 255, 255, 0.06); /* subtle surface, e.g. inputs  */
+  --bg-on-inverse-hover:        rgba(255, 255, 255, 0.10); /* hovered / raised surface     */
+  --border-on-inverse:          rgba(255, 255, 255, 0.18); /* standard border              */
+  --border-on-inverse-subtle:   rgba(255, 255, 255, 0.12); /* dim border                   */
+  --border-on-inverse-strong:   rgba(255, 255, 255, 0.25); /* stronger border, e.g. inputs */
+  --text-on-inverse-secondary:  rgba(255, 255, 255, 0.55); /* secondary label              */
+  --text-on-inverse-muted:      rgba(255, 255, 255, 0.35); /* muted / disabled             */
+  --accent-go-on-inverse:       rgba(24,  168, 97,  0.25); /* success tint on dark bg      */
+  --accent-alert-on-inverse:    rgba(239, 68,  68,  0.85); /* error text on dark bg        */
+
   /* --- Typography --- */
   --font-sans:  "General Sans", system-ui, sans-serif;
   --font-mono:  "Space Mono", "Courier New", monospace;

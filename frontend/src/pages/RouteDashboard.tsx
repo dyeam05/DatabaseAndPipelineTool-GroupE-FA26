@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { ImportRouteButton } from "../components/ImportRouteButton";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listRoutes, getThumbnailUrl } from "../api/routes";
@@ -461,7 +462,7 @@ export default function RouteDashboard() {
     <div style={{ paddingBottom: "var(--space-12)" }}>
       {/* Header */}
       <div style={{ marginBottom: "var(--space-5)", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-        <div>
+        <div style={{ flex: 1 }}>
           <h1 style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-2xl)", fontWeight: 600, color: "var(--text-primary)" }}>
             Routes
           </h1>
@@ -470,6 +471,7 @@ export default function RouteDashboard() {
           </p>
         </div>
         {isPolling && <LiveDot />}
+        <ImportRouteButton onImport={(_id) => {}} />
       </div>
 
       {/* Stat strip */}
