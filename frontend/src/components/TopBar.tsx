@@ -1,8 +1,9 @@
 import { NavLink } from "react-router-dom";
-import { Settings, Route } from "lucide-react";
+import { Settings, Route, BriefcaseBusiness } from "lucide-react";
 
 const navItems = [
   { to: "/routes", label: "Routes", icon: Route },
+  { to: "/job-definitions", label: "Jobs", icon: BriefcaseBusiness },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 

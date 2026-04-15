@@ -97,6 +97,38 @@ export interface JobRun {
   stats: Record<string, unknown> | null;
 }
 
+// ─── Job Definition Types ────────────────────────────────────────────────────
+
+export type JobType = "object_detection" | "lane_detection" | "segmentation";
+
+export interface JobDefinitionResponse {
+  id: number;
+  type: JobType;
+  implementation_key: string;
+  name: string;
+  config: Record<string, unknown>;
+  description: string;
+  created_at: string;
+}
+
+export interface JobDefinitionCreate {
+  type: JobType;
+  implementation_key: string;
+  name: string;
+  config: Record<string, unknown>;
+  description: string;
+}
+
+export interface JobDefinition {
+  id: number;
+  type: JobType;
+  implementationKey: string;
+  name: string;
+  config: Record<string, unknown>;
+  description: string;
+  createdAt: string;
+}
+
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
 export function mapRoute(r: RouteResponse): Route {
@@ -153,5 +185,17 @@ export function mapJobRun(j: JobRunResponse): JobRun {
     finishedAt: j.finished_at,
     error: j.error,
     stats: j.stats,
+  };
+}
+
+export function mapJobDefinition(j: JobDefinitionResponse): JobDefinition {
+  return {
+    id: j.id,
+    type: j.type,
+    implementationKey: j.implementation_key,
+    name: j.name,
+    config: j.config,
+    description: j.description,
+    createdAt: j.created_at,
   };
 }
