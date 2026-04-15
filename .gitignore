@@ -21,6 +21,7 @@ output/
 data/
 **/.pytest_cache/
 node_modules/
+dist/
 
 !openpilot_service/lib/openpilot/
 !shared/minio/
