@@ -11,9 +11,6 @@ export function DefinitionDetail({ def }: { def: JobDefinition }) {
   return (
     <div className="jd-detail">
       <div className="jd-detail__header">
-        <div className="jd-icon-block" style={{ backgroundColor: typeColor }}>
-          <span className="jd-icon-block__label">JD</span>
-        </div>
         <div>
           <div className="jd-detail__name">{def.name}</div>
           <div className="jd-detail__meta">

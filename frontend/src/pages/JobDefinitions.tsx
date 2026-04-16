@@ -1,24 +1,50 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listJobDefinitions } from "../api/job_definitions";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { listJobDefinitions, deleteJobDefinition } from "../api/job_definitions";
+import type { JobDefinition } from "../api/types";
 import { DefinitionCard } from "../components/job-definitions/DefinitionCard";
-import { DefinitionDetail } from "../components/job-definitions/DefinitionDetail";
 import { CreateForm } from "../components/job-definitions/CreateForm";
 
 export default function JobDefinitions() {
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const { data: definitions = [], isLoading, error } = useQuery({
     queryKey: ["job-definitions"],
     queryFn: listJobDefinitions,
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
   });
 
-  const selectedDef = definitions.find((d) => d.id === selectedId) ?? null;
+  // Optimistic delete — item vanishes instantly, restored if server errors
+  const deleteMutation = useMutation({
+    mutationFn: deleteJobDefinition,
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["job-definitions"] });
+      const snapshot = queryClient.getQueryData<JobDefinition[]>(["job-definitions"]);
+      queryClient.setQueryData<JobDefinition[]>(["job-definitions"], (old = []) =>
+        old.filter((d) => d.id !== id)
+      );
+      if (expandedId === id) setExpandedId(null);
+      return { snapshot };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.snapshot) {
+        queryClient.setQueryData(["job-definitions"], ctx.snapshot);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["job-definitions"] });
+    },
+  });
 
-  const handleCreated = () =>
+  // On create, insert the real server-returned item immediately — no refetch needed
+  const handleCreated = (newDef: JobDefinition) => {
+    queryClient.setQueryData<JobDefinition[]>(["job-definitions"], (old = []) => [
+      ...old,
+      newDef,
+    ]);
     queryClient.invalidateQueries({ queryKey: ["job-definitions"] });
+  };
 
   return (
     <div className="jd-page">
@@ -51,17 +77,12 @@ export default function JobDefinitions() {
               <DefinitionCard
                 key={def.id}
                 def={def}
-                isSelected={selectedId === def.id}
-                onClick={() => setSelectedId(def.id)}
+                isExpanded={expandedId === def.id}
+                onToggle={() => setExpandedId(expandedId === def.id ? null : def.id)}
+                onDelete={() => deleteMutation.mutateAsync(def.id)}
               />
             ))}
           </div>
-
-          {selectedDef && (
-            <div style={{ marginTop: "var(--space-4)" }}>
-              <DefinitionDetail def={selectedDef} />
-            </div>
-          )}
         </div>
 
         {/* Right — create form */}

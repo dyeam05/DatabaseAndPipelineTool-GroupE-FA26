@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { createJobDefinition } from "../../api/job_definitions";
-import type { JobDefinitionCreate } from "../../api/types";
+import type { JobDefinition, JobDefinitionCreate } from "../../api/types";
 import { ConfigEditor } from "./ConfigEditor";
 
 // ─── CreateForm ───────────────────────────────────────────────────────────────
 
-export function CreateForm({ onCreated }: { onCreated: () => void }) {
+export function CreateForm({ onCreated }: { onCreated: (def: JobDefinition) => void }) {
   const [name, setName] = useState("");
   const [implKey, setImplKey] = useState("");
   const [description, setDescription] = useState("");
@@ -38,12 +38,12 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
     };
 
     try {
-      await createJobDefinition(payload);
+      const result = await createJobDefinition(payload);
       setName("");
       setImplKey("");
       setDescription("");
       setConfig({});
-      onCreated();
+      onCreated(result);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create job definition");
     } finally {
