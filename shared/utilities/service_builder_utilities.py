@@ -20,12 +20,6 @@ from services.minio_service import MinioService
 from services.thumbnail_service import ThumbnailService
 from repositories.job_segment_run_repository import JobSegmentRunRepository
 from services.job_segment_run_service import JobSegmentRunService
-from repositories.frame_repository import FrameRepository
-from services.frame_service import FrameService
-from repositories.artifact_repository import ArtifactRepository
-from services.artifact_service import ArtifactService
-from repositories.frame_artifact_repository import FrameArtifactRepository
-from services.frame_artifact_service import FrameArtifactService
 from repositories.segment_artifact_repository import SegmentArtifactRepository
 from services.segment_artifact_service import SegmentArtifactService
 from services.dataset_export_service import DatasetExportService
