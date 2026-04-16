@@ -11,11 +11,13 @@ import { RouteCard } from "../components/RouteCard";
 import { StatCard } from "../components/StatCard";
 import { LiveDot } from "../components/LiveDot";
 import { ImportRouteButton } from "../components/ImportRouteButton";
-
+import { createRoute } from "../api/routes";
+import { useQueryClient } from "@tanstack/react-query";
 type SortKey = "date" | "status" | "segments";
 
 export default function RouteDashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient(); 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortKey>("date");
@@ -135,7 +137,16 @@ export default function RouteDashboard() {
           </p>
         </div>
         {isPolling && <LiveDot />}
-        <ImportRouteButton onImport={(_id) => {}} />
+      <ImportRouteButton
+        onImport={async (routeId) => {
+          try {
+            await createRoute(routeId);
+            queryClient.invalidateQueries({ queryKey: ["routes"] });
+          } catch (err) {
+            console.error("Failed to import route:", err);
+          }
+        }}
+      />
       </div>
 
       {/* Stat strip */}
