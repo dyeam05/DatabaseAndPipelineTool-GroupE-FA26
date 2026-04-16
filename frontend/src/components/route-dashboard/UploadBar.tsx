@@ -1,5 +1,5 @@
-import type { JobRun, Segment } from "../api/types";
-import { Pip } from "./Pip";
+import type { JobRun, Segment } from "../../api/types";
+import { Pip } from "../Pip";
 
 export function UploadBar({ segments, jobRuns }: { segments: Segment[]; jobRuns: JobRun[] }) {
   const total = segments.length;

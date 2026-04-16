@@ -72,8 +72,15 @@
   --border-on-inverse-strong:   rgba(255, 255, 255, 0.25); /* stronger border, e.g. inputs */
   --text-on-inverse-secondary:  rgba(255, 255, 255, 0.55); /* secondary label              */
   --text-on-inverse-muted:      rgba(255, 255, 255, 0.35); /* muted / disabled             */
+  --text-on-inverse-dim:        rgba(255, 255, 255, 0.25); /* very dim text / meta         */
+  --bg-on-inverse-subtle:       rgba(255, 255, 255, 0.04); /* barely visible surface       */
+  --border-on-inverse-faint:    rgba(255, 255, 255, 0.08); /* faintest border              */
   --accent-go-on-inverse:       rgba(24,  168, 97,  0.25); /* success tint on dark bg      */
   --accent-alert-on-inverse:    rgba(239, 68,  68,  0.85); /* error text on dark bg        */
+
+  /* --- Overlays (over images / thumbnails) --- */
+  --overlay-thumbnail-dark:     rgba(17, 17, 17, 0.70);                                        /* dark label tint              */
+  --overlay-thumbnail-gradient: linear-gradient(135deg, rgba(0,0,0,0.55) 0%, transparent 60%); /* corner vignette              */
 
   /* --- Typography --- */
   --font-sans:  "General Sans", system-ui, sans-serif;

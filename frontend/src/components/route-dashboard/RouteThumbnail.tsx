@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { Route } from "../api/types";
-import { getThumbnailUrl } from "../api/routes";
+import type { Route } from "../../api/types";
+import { getThumbnailUrl } from "../../api/routes";
 
 export function RouteThumbnail({ route, hovered }: { route: Route; hovered: boolean }) {
   const [errored, setErrored] = useState(false);
