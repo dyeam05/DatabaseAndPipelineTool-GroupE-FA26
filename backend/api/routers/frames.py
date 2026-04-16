@@ -1,13 +1,12 @@
 import logging
 
-from fastapi import Depends, Response, status, APIRouter
+from fastapi import Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
-from services.errors import FrameNotFoundError
-from api.dependencies import get_session, get_transactional_session
-from db.models.frame import Frame
 from db.enums import CameraType
-from repositories.frame_repository import FrameRepository
 from services.errors import FrameNotFoundError
+from api.dependencies import get_session
+from db.models.frame import Frame
+from repositories.frame_repository import FrameRepository
 
 
 logger = logging.getLogger(__name__)
@@ -31,11 +30,16 @@ async def get_frame(
 async def get_frames_by_segment(
     route_id: str,
     segment_id: int,
+    camera: CameraType,
     session: AsyncSession = Depends(get_session),
 ) -> list[Frame]:
     logging.info(f"Getting frames for route {route_id} segment {segment_id}")
     frame_repository = FrameRepository(session=session)
-    frames = await frame_repository.get_by_route_segment(route_id, segment_id)
+    frames = await frame_repository.get_by_route_segment(
+        route_id=route_id,
+        segment_id=segment_id,
+        camera=camera
+    )
     if not frames:
         raise FrameNotFoundError(frame_pk=-1) 
     return frames

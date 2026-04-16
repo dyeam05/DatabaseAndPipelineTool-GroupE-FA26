@@ -24,6 +24,8 @@ from api.routers.job_definitions import job_definitions_router
 from api.routers.job_segment_run import job_segment_run_router
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
+if not FRONTEND_URL:
+    raise ValueError("FRONTEND_URL can not be empty")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,7 +45,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL,],
+    allow_origins=[FRONTEND_URL],
     allow_methods=["*"],
     allow_headers=["*"],
 )
