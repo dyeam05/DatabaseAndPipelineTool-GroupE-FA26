@@ -37,6 +37,20 @@ class JobSegmentRunImportRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
+    async def get_by_route_id(self, route_id: str) -> list[JobSegmentRunImport]:
+        stmt = (
+            select(JobSegmentRunImport)
+            .where(JobSegmentRunImport.route_id == route_id)
+            .order_by(
+                JobSegmentRunImport.job_run_num.asc(),
+                JobSegmentRunImport.job_def_id.asc(),
+                JobSegmentRunImport.segment_id.asc(),
+                JobSegmentRunImport.camera.asc(),
+            )
+        )
+        result = await self._session.scalars(stmt)
+        return list(result.all())
+
     async def get_by_status(self, status: JobSegmentRunImportStatus) -> list[JobSegmentRunImport]:
         stmt = (
             select(JobSegmentRunImport)
@@ -102,5 +116,4 @@ class JobSegmentRunImportRepository:
         )
         result = await self._session.scalars(stmt)
         return result.first()
-
 

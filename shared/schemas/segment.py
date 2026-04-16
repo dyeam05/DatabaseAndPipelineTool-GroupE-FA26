@@ -13,6 +13,7 @@ class CreateSegmentRequest(BaseModel):
     status: SegmentStatus = SegmentStatus.DOWNLOAD_QUEUE
 
 
+
 class SegmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -30,6 +30,11 @@ class JobSegmentRunImportService:
     async def list_all(self) -> list[JobSegmentRunImport]:
         return await self._job_segment_run_import_repository.list_all()
 
+    async def get_by_route_id(self, route_id: str) -> list[JobSegmentRunImport]:
+        return await self._job_segment_run_import_repository.get_by_route_id(
+            route_id=route_id
+        )
+
     async def get_by_status(self, status: JobSegmentRunImportStatus) -> list[JobSegmentRunImport]:
         return await self._job_segment_run_import_repository.get_by_status(status=status)
 
