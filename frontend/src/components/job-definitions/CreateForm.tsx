@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { createJobDefinition } from "../../api/job_definitions";
-import type { JobType, JobDefinitionCreate } from "../../api/types";
-import { JOB_TYPES, TYPE_LABELS } from "./jobDefinitionConstants";
+import type { JobDefinitionCreate } from "../../api/types";
 import { ConfigEditor } from "./ConfigEditor";
 
 // ─── CreateForm ───────────────────────────────────────────────────────────────
 
 export function CreateForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
-  const [type, setType] = useState<JobType>("object_detection");
   const [implKey, setImplKey] = useState("");
   const [description, setDescription] = useState("");
   const [config, setConfig] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
 
   const canSubmit = Boolean(name.trim() && implKey.trim() && !submitting);
 
@@ -31,7 +30,7 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
     }
 
     const payload: JobDefinitionCreate = {
-      type,
+      type: "object_detection",
       implementation_key: implKey,
       name: name.trim(),
       config: parsedConfig,
@@ -44,7 +43,6 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
       setImplKey("");
       setDescription("");
       setConfig({});
-      setType("object_detection");
       onCreated();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create job definition");
@@ -56,13 +54,30 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
   return (
     <div className="jd-create-card">
       <div className="jd-create-card__header">
-        <div className="jd-create-card__title">New Job Definition</div>
+        <div className="jd-create-card__title-row">
+          <div className="jd-create-card__title">New Job Definition</div>
+          <button
+            type="button"
+            className="jd-info-btn"
+            aria-label="Show setup info"
+            aria-expanded={showInfo}
+            onClick={() => setShowInfo((v) => !v)}
+          >
+            i
+          </button>
+        </div>
         <div className="jd-create-card__subtitle">
           Define a new annotation job type for routes
         </div>
       </div>
 
       <div className="jd-create-card__body">
+        {showInfo && (
+          <div className="jd-info-panel">
+            Implementation Key is the name of the Python class that runs the job, and Config holds the parameters passed to that class (e.g. detection transformers need a model name).
+          </div>
+        )}
+
         {/* Name */}
         <div>
           <label className="jd-label">Name *</label>
@@ -74,29 +89,15 @@ export function CreateForm({ onCreated }: { onCreated: () => void }) {
           />
         </div>
 
-        {/* Type + Implementation Key */}
-        <div className="jd-type-impl-grid">
-          <div>
-            <label className="jd-label">Type *</label>
-            <select
-              className="jd-input jd-select"
-              value={type}
-              onChange={(e) => setType(e.target.value as JobType)}
-            >
-              {JOB_TYPES.map((t) => (
-                <option key={t} value={t}>{TYPE_LABELS[t]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="jd-label">Implementation Key *</label>
-            <input
-              className="jd-input"
-              value={implKey}
-              onChange={(e) => setImplKey(e.target.value)}
-              placeholder="e.g. yolov8_detector"
-            />
-          </div>
+        {/* Implementation Key */}
+        <div>
+          <label className="jd-label">Implementation Key *</label>
+          <input
+            className="jd-input"
+            value={implKey}
+            onChange={(e) => setImplKey(e.target.value)}
+            placeholder="e.g. YOLOv8Detector"
+          />
         </div>
 
         {/* Description */}

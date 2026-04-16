@@ -406,10 +406,49 @@
   border-bottom: 1px solid var(--border-black);
 }
 
+.jd-create-card__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .jd-create-card__title {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-on-inverse);
+}
+
+.jd-info-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--text-on-inverse-secondary);
+  background-color: transparent;
+  color: var(--text-on-inverse);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.jd-info-btn:hover {
+  background-color: var(--text-on-inverse-secondary);
+  color: var(--bg-inverse);
+}
+
+.jd-info-panel {
+  padding: var(--space-3);
+  background-color: var(--bg-elevated);
+  border-left: 3px solid var(--border-black);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 .jd-create-card__subtitle {
