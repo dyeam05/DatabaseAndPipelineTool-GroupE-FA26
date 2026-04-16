@@ -102,7 +102,7 @@ export interface JobRun {
 export type JobType = "object_detection" | "lane_detection" | "segmentation";
 
 export interface JobDefinitionResponse {
-  id: number;
+  job_def_id: number;
   type: JobType;
   implementation_key: string;
   name: string;
@@ -190,7 +190,7 @@ export function mapJobRun(j: JobRunResponse): JobRun {
 
 export function mapJobDefinition(j: JobDefinitionResponse): JobDefinition {
   return {
-    id: j.id,
+    id: j.job_def_id,
     type: j.type,
     implementationKey: j.implementation_key,
     name: j.name,

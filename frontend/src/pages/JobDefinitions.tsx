@@ -52,9 +52,7 @@ export default function JobDefinitions() {
                 key={def.id}
                 def={def}
                 isSelected={selectedId === def.id}
-                onClick={() =>
-                  setSelectedId(selectedId === def.id ? null : def.id)
-                }
+                onClick={() => setSelectedId(def.id)}
               />
             ))}
           </div>
