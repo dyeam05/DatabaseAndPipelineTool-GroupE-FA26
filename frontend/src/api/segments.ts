@@ -20,6 +20,16 @@
     }));
   }
 
+  export async function getFrameCount(
+    routeId: string,
+    segmentId: number
+  ): Promise<number> {
+    const res = await apiFetch<{ count: number }>(
+      `/segments/${encodeURIComponent(routeId)}/${segmentId}/frame-count`
+    );
+    return res.count;
+  }
+
   export async function getSegment(routeId: string, segmentId: number): Promise<Segment> {
     const data = await apiFetch<SegmentResponse>(
       `/segments/${encodeURIComponent(routeId)}/${segmentId}`

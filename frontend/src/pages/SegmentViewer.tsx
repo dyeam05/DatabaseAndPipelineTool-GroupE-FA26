@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getThumbnailUrl } from "../api/routes";
-import { listSegmentsForRoute } from "../api/segments";
-import type { Segment, SegmentStatus } from "../api/types";
+import { listSegmentsForRoute, getFrameCount } from "../api/segments";
+import type { Segment, SegmentStatus,  } from "../api/types";
 import { SEGMENT_TERMINAL_STATUSES } from "../api/types";
 import { useRouteStatus } from "../hooks/useRouteStatus";
 
@@ -107,7 +107,12 @@ export default function SegmentViewer() {
       </div>
     );
   }
-
+  // ── Main content ───────────────────────────────────────────────────────────
+  const { data: frameCount } = useQuery({
+  queryKey: ["frame-count", decodedRouteId, segIdx],
+  queryFn: () => getFrameCount(decodedRouteId, segIdx),
+  enabled: !!decodedRouteId && !isNaN(segIdx),
+});
   const cfg = SEG_STATUS_CONFIG[segment.status] ?? DEFAULT_SEG_CFG;
   const isUploaded = segment.status === "uploaded";
   const totalAnnotations = Object.values(segment.annotations).reduce((a, b) => a + b, 0);
@@ -174,7 +179,7 @@ export default function SegmentViewer() {
           <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
           <span>{formatDuration(segment.durationSeconds)}</span>
           <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-          <span>{segment.frameCount.toLocaleString()} frames</span>
+          <span>{(frameCount ?? 0).toLocaleString()} frames</span>
         </div>
       </div>
 
@@ -276,7 +281,7 @@ export default function SegmentViewer() {
               { label: "Segment",      value: `#${String(segIdx).padStart(2, "0")} of ${segments.length}` },
               { label: "Start offset", value: formatOffset(segment.startSeconds) },
               { label: "Duration",     value: formatDuration(segment.durationSeconds) },
-              { label: "Frame count",  value: segment.frameCount.toLocaleString() },
+              { label: "Frame count",  value: (frameCount ?? 0).toLocaleString() },
               { label: "Created",      value: formatDate(route.createdAt) },
               { label: "Route",        value: route.id },
             ].map(({ label, value }, i, arr) => (

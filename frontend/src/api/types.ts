@@ -67,6 +67,7 @@ export interface Route {
 
 export interface Segment {
   index: number;
+  segmentId: number;
   routeId: string;
   startSeconds: number;
   durationSeconds: number;
@@ -151,6 +152,7 @@ export function mapSegment(s: SegmentResponse): Segment {
 
   return {
     index: s.segment_id,
+    segmentId: s.segment_id,
     routeId: s.route_id,
 
     // startSeconds is calculated relative to first segment in listSegmentsForRoute
