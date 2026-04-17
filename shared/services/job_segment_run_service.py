@@ -46,6 +46,24 @@ class JobSegmentRunService:
     async def get_segments_by_status(self, status: JobSegmentRunStatus) -> list[JobSegmentRun]:
         return await self._job_segment_run_repository.get_by_status(status)
 
+    async def get_job_segment_runs_by_route_and_segment(
+        self,
+        route_id: str,
+        segment_id: int,
+    ) -> list[JobSegmentRun]:
+        return await self._job_segment_run_repository.get_by_route_and_segment(
+            route_id=route_id,
+            segment_id=segment_id,
+        )
+
+    async def get_job_segment_runs_by_route_id(
+        self,
+        route_id: str,
+    ) -> list[JobSegmentRun]:
+        return await self._job_segment_run_repository.get_by_route_id(
+            route_id=route_id,
+        )
+
     async def create_job_segment_run(
         self,
         job_run_num: int,
