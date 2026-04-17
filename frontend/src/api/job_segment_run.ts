@@ -2,12 +2,13 @@ import { apiFetch } from "./client";
 import { mapCvatImport, mapJobSegmentRun } from "./types";
 import type { CvatImport, CvatImportResponse, JobSegmentRun, JobSegmentRunResponse } from "./types";
 
-export async function getCvatImportsForRoute(routeId: string): Promise<CvatImport[]> {
+export async function getCvatImportsForSegment(routeId: string, segmentID: number): Promise<CvatImport[]> {
   const data = await apiFetch<CvatImportResponse[]>(
-    `/job_segment_run/cvat-import/${encodeURIComponent(routeId)}`
+    `/job_segment_run/cvat-import/${encodeURIComponent(routeId)}/${encodeURIComponent(segmentID)}`
   );
   return data.map(mapCvatImport);
 }
+
 
 export async function getJobSegmentRunsForSegment(routeId: string, segmentId: number): Promise<JobSegmentRun[]> {
   const data = await apiFetch<JobSegmentRunResponse[]>(
