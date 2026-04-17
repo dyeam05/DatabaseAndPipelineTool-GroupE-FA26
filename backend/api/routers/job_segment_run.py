@@ -5,15 +5,41 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_session, get_transactional_session
 from db.enums import CameraType, JobSegmentRunImportStatus
+from db.models.job_segment_run import JobSegmentRun
 from db.models.job_segment_run_import import JobSegmentRunImport
-from schemas.segment import SegmentJobImportResponse
-from utilities.service_builder_utilities import build_job_segment_run_import_service
+from schemas.segment import JobSegmentRunResponse, SegmentJobImportResponse
+from utilities.service_builder_utilities import build_job_segment_run_import_service, build_job_segment_run_service
 
 logger = logging.getLogger(__name__)
 
 job_segment_run_router = APIRouter(
     prefix="/job_segment_run",
 )
+
+@job_segment_run_router.get("/{route_id}/segment_id", response_model=list[JobSegmentRunResponse])
+async def get_job_segment_runs_by_segment(
+    route_id: str,
+    segment_id: int,
+    session: AsyncSession = Depends(get_session)
+) -> list[JobSegmentRun]:
+    logging.info(f"Getting job segment runs for {route_id}/{segment_id}")
+    job_segment_run_service = build_job_segment_run_service(session=session)
+    return await job_segment_run_service.get_job_segment_runs_by_route_and_segment(
+        route_id=route_id,
+        segment_id=segment_id
+    )
+
+@job_segment_run_router.get("/{route_id}", response_model=list[JobSegmentRunResponse])
+async def get_job_segment_runs_by_route(
+    route_id: str,
+    session: AsyncSession = Depends(get_session)
+) -> list[JobSegmentRun]:
+    logging.info(f"fGetting job segment runs for {route_id}")
+    job_segment_run_service = build_job_segment_run_service(session=session)
+    return await job_segment_run_service.get_job_segment_runs_by_route_id(
+        route_id=route_id
+    )
+
 
 @job_segment_run_router.get("/cvat-import", response_model=SegmentJobImportResponse | None)
 async def get_cvat_job_segment_run_imports(
