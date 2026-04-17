@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Route, Segment, JobRun } from "../api/types";
 import { formatDate } from "../utils/formatters";
 import { isAnnotationInProgress } from "../hooks/useJobRunsForRoute";
@@ -5,6 +6,7 @@ import { DarkStatCell } from "./DarkStatCell";
 import { HeroUploadBar } from "./HeroUploadBar";
 import { JobRunRow } from "./JobRunRow";
 import { SegmentTimeline } from "./SegmentTimeline";
+import { deleteRoute } from "../api/routes";
 
 const ROUTE_STATUS_COLORS: Record<string, string> = {
   "download queue": "var(--text-secondary)",
@@ -30,13 +32,28 @@ export function RouteDetailHeader({
   jobRuns,
   isPolling,
   onBack,
+  onDeleted,
 }: {
   route: Route;
   segments: Segment[];
   jobRuns: JobRun[];
   isPolling: boolean;
   onBack: () => void;
+  onDeleted?: () => void;
 }) {
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!confirm(`Delete route "${route.id}"?`)) return;
+    setDeleting(true);
+    try {
+      await deleteRoute(route.id);
+      onDeleted?.();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const uploadedSegs  = segments.filter((s) => s.status === "uploaded").length;
   const uploadingSegs = segments.filter((s) => s.status === "uploading" || s.status === "downloading").length;
   const failedSegs    = segments.filter((s) => s.status === "failed").length;
@@ -61,18 +78,33 @@ export function RouteDetailHeader({
         <h1 style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-lg)", fontWeight: 700, color: "var(--text-on-inverse)", letterSpacing: "-0.01em", margin: 0 }}>
           {route.id}
         </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-          {isPolling && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 6px", border: "1px solid var(--border-on-inverse)" }}>
-              <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--accent-caution)", flexShrink: 0 }} />
-              <span style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-on-inverse-muted)", letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>Live</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "var(--space-2)" }}>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            title="Delete route"
+            style={{ background: "none", border: "1px solid var(--accent-alert)", cursor: deleting ? "not-allowed" : "pointer", padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: "4px", opacity: deleting ? 0.5 : 1 }}
+            onMouseEnter={(e) => { if (!deleting) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,60,60,0.15)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
+          >
+            <span style={{ fontSize: "11px", color: "var(--accent-alert)" }}>✕</span>
+            <span style={{ fontSize: "9px", fontWeight: 700, color: "var(--accent-alert)", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+              {deleting ? "Deleting…" : "Delete"}
             </span>
-          )}
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px var(--space-3)", border: `1px solid ${routeStatusColor}` }}>
-            {route.status === "uploaded" && <span style={{ color: routeStatusColor, fontSize: "9px", fontWeight: 800 }}>✓</span>}
-            <span style={{ fontSize: "9px", fontWeight: 700, color: routeStatusColor, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
-              {routeStatusLabel}
-            </span>
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+            {isPolling && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 6px", border: "1px solid var(--border-on-inverse)" }}>
+                <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--accent-caution)", flexShrink: 0 }} />
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-on-inverse-muted)", letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>Live</span>
+              </span>
+            )}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px var(--space-3)", border: `1px solid ${routeStatusColor}` }}>
+              {route.status === "uploaded" && <span style={{ color: routeStatusColor, fontSize: "9px", fontWeight: 800 }}>✓</span>}
+              <span style={{ fontSize: "9px", fontWeight: 700, color: routeStatusColor, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+                {routeStatusLabel}
+              </span>
+            </div>
           </div>
         </div>
       </div>

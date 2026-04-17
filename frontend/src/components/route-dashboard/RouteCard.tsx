@@ -4,20 +4,24 @@ import { formatDate } from "../../utils/formatters";
 import { RouteThumbnail } from "./RouteThumbnail";
 import { StatusBadge } from "../StatusBadge";
 import { UploadBar } from "./UploadBar";
+import { deleteRoute } from "../../api/routes";
 
 export function RouteCard({
   route,
   segments,
   jobRuns,
   onClick,
+  onDeleted,
 }: {
   route: Route;
   segments: Segment[];
   jobRuns: JobRun[];
   onClick: () => void;
+  onDeleted?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   function handleCopy(e: React.MouseEvent) {
     e.stopPropagation();
@@ -25,6 +29,18 @@ export function RouteCard({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
+  }
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Delete route "${route.id}"?`)) return;
+    setDeleting(true);
+    try {
+      await deleteRoute(route.id);
+      onDeleted?.();
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const activeJobCount = jobRuns.filter((r) => r.status === "queued" || r.status === "running").length;
@@ -48,6 +64,16 @@ export function RouteCard({
       {/* Thumbnail */}
       <div style={{ position: "relative", height: "140px", overflow: "hidden", flexShrink: 0 }}>
         <RouteThumbnail route={route} hovered={hovered} />
+        {hovered && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            title="Delete route"
+            style={{ position: "absolute", top: "var(--space-2)", right: "var(--space-2)", background: "rgba(0,0,0,0.6)", border: "none", cursor: deleting ? "not-allowed" : "pointer", color: "var(--accent-alert)", width: "22px", height: "22px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", lineHeight: 1, opacity: deleting ? 0.5 : 1 }}
+          >
+            ✕
+          </button>
+        )}
         <div style={{ position: "absolute", bottom: "var(--space-2)", left: "var(--space-2)" }}>
           <StatusBadge status={route.status} />
         </div>
