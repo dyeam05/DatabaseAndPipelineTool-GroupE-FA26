@@ -139,6 +139,7 @@ const { data: allSegments = [], isLoading: segsLoading, isFetching: segsFetching
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "var(--space-3)" }}>
           {segments.map((seg) => (
             <SegmentCard
+              onClick={() => navigate(`/routes/${encodeURIComponent(route.id)}/segments/${seg.index}`)}
               key={seg.index}
               segment={{
                 ...seg,
