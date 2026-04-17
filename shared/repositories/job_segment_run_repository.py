@@ -61,6 +61,40 @@ class JobSegmentRunRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
+    async def get_by_route_and_segment(
+        self,
+        route_id: str,
+        segment_id: int,
+    ) -> list[JobSegmentRun]:
+        stmt = (
+            select(JobSegmentRun)
+            .where(
+                JobSegmentRun.route_id == route_id,
+                JobSegmentRun.segment_id == segment_id,
+            )
+            .order_by(
+                JobSegmentRun.job_run_num.asc(),
+                JobSegmentRun.job_def_id.asc(),
+                JobSegmentRun.camera.asc(),
+            )
+        )
+        result = await self._session.scalars(stmt)
+        return list(result.all())
+
+    async def get_by_route_id(self, route_id: str) -> list[JobSegmentRun]:
+        stmt = (
+            select(JobSegmentRun)
+            .where(JobSegmentRun.route_id == route_id)
+            .order_by(
+                JobSegmentRun.segment_id.asc(),
+                JobSegmentRun.job_run_num.asc(),
+                JobSegmentRun.job_def_id.asc(),
+                JobSegmentRun.camera.asc(),
+            )
+        )
+        result = await self._session.scalars(stmt)
+        return list(result.all())
+
 
     async def create(
         self,

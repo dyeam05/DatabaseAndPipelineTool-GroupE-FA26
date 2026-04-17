@@ -1,9 +1,7 @@
 import logging
-import os
 
 from fastapi import Depends, Response, status, APIRouter
 from fastapi.responses import StreamingResponse
-from minio import Minio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_session, get_transactional_session

@@ -221,6 +221,7 @@ export default function RouteDashboard() {
                 segments={segmentsByRoute[route.id] ?? []}
                 jobRuns={jobRunsByRoute[route.id] ?? []}
                 onClick={() => navigate(`/routes/${encodeURIComponent(route.id)}`)}
+                onDeleted={() => queryClient.invalidateQueries({ queryKey: ["routes"] })}
               />
             ))}
           </div>

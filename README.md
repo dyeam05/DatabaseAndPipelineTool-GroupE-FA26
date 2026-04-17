@@ -93,7 +93,15 @@ Testing code is inside the `./tests/` folder. See `./tests/README.md` for more i
 
 ## CVAT Job Extension Notes
 
-CVAT detection implementations live in `shared/cvat_annotation_functions/`. Built-in implementations register themselves through `cvat_detection_registry.py`, and `cvat_worker/main.py` loads them at startup and resolves a job by `implementation_key` plus `config`.
+CVAT Jobs are somewhat complicated, so this section aims to explain them as simple as possible.
+
+TLDR: CVAT jobs are defined by two things: a python class and a set of arguments for that class. If you want to make a new job, you might have to create a new python class, or you might be able to use an exhisting python class, but pass id different arguments.
+
+### CVAT Annotation Function
+
+Under `./shared/cvat_annotation_functions/` there is a file called `i_cvat_detection.py` which defines the `ICVATDetection` interface. This interface is a template for how custom CVAT functions should be defined. If you need a new type of CVAT job, you can create a new class (called a _plugin_) that inherites from the `ICVATDetection` interface. You will need to register this with the `@register_cvat_detection_plugin` function. Look at `./shared/cvat_annotation_functions/cvat_detr_detection.py` for an example.
+
+### Passing Arguments to a CVAT Annotation Function
 
 You do not need a new plugin to make a new job definition if an existing implementation already does what you want. Example `POST /job-definitions` payload reusing the built-in `detr_detection` plugin with a different config:
 

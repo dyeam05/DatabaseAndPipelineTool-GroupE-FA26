@@ -2,7 +2,7 @@ from services.frame_service import FrameService
 from repositories.segment_repository import SegmentRepository
 from services.minio_service import MinioService
 from services.errors import SegmentNotFoundError, FrameNotFoundError, FrameArtifactNotFoundError, ArtifactNotFoundError
-from db.enums import ArtifactRole
+from db.enums import ArtifactRole, CameraType
 from services.frame_artifact_service import FrameArtifactService
 from services.artifact_service import ArtifactService
 from db.enums import CameraType
@@ -27,7 +27,11 @@ class ThumbnailService:
         if segment is None:
             raise SegmentNotFoundError(route_id, segment_id)
 
-        frames = await self._frame_service.get_frames_by_route_segment(route_id, segment_id, camera=CameraType.FRONT_REGULAR)
+        frames = await self._frame_service.get_frames_by_route_segment(
+            route_id=route_id,
+            segment_id=segment_id,
+            camera=CameraType.FRONT_REGULAR
+        )
         if not frames:
             raise FrameNotFoundError(frame_pk=0)
 

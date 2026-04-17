@@ -100,6 +100,7 @@ const { data: allSegments = [], isLoading: segsLoading, isFetching: segsFetching
         jobRuns={jobRuns}
         isPolling={isPolling}
         onBack={() => navigate("/routes")}
+        onDeleted={() => navigate("/routes")}
       />
 
       <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-5)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
