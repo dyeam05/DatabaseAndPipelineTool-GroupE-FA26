@@ -16,7 +16,7 @@ job_segment_run_router = APIRouter(
     prefix="/job_segment_run",
 )
 
-@job_segment_run_router.get("/{route_id}/segment_id", response_model=list[JobSegmentRunResponse])
+@job_segment_run_router.get("/{route_id}/{segment_id}", response_model=list[JobSegmentRunResponse])
 async def get_job_segment_runs_by_segment(
     route_id: str,
     segment_id: int,

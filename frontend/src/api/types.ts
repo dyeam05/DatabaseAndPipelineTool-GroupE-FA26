@@ -97,6 +97,85 @@ export interface JobRun {
   stats: Record<string, unknown> | null;
 }
 
+export type JobSegmentRunStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface JobSegmentRunResponse {
+  job_run_num: number;
+  route_id: string;
+  job_def_id: number;
+  camera: string;
+  segment_id: number;
+  status: JobSegmentRunStatus;
+}
+
+export interface JobSegmentRun {
+  jobRunNum: number;
+  routeId: string;
+  jobDefId: number;
+  camera: string;
+  segmentId: number;
+  status: JobSegmentRunStatus;
+}
+
+// ─── CVAT Import Types ───────────────────────────────────────────────────────
+
+export type CvatImportStatus =
+  | "queued_for_loading"
+  | "loading"
+  | "loaded"
+  | "queued_for_removal"
+  | "removing"
+  | "removed"
+  | "failed";
+
+export const CVAT_IN_PROGRESS_STATUSES: CvatImportStatus[] = [
+  "queued_for_loading",
+  "loading",
+  "queued_for_removal",
+  "removing",
+];
+
+export interface CvatImportResponse {
+  route_id: string;
+  job_run_num: number;
+  job_def_id: number;
+  segment_id: number;
+  status: CvatImportStatus;
+  task_id: number | null;
+  created_at: string;
+  error_message: string | null;
+  task_url: string | null;
+  camera: string;
+}
+
+export interface CvatImport {
+  routeId: string;
+  jobRunNum: number;
+  jobDefId: number;
+  segmentId: number;
+  status: CvatImportStatus;
+  taskId: number | null;
+  createdAt: string;
+  errorMessage: string | null;
+  taskUrl: string | null;
+  camera: string;
+}
+
+export function mapCvatImport(r: CvatImportResponse): CvatImport {
+  return {
+    routeId: r.route_id,
+    jobRunNum: r.job_run_num,
+    jobDefId: r.job_def_id,
+    segmentId: r.segment_id,
+    status: r.status,
+    taskId: r.task_id,
+    createdAt: r.created_at,
+    errorMessage: r.error_message,
+    taskUrl: r.task_url,
+    camera: r.camera,
+  };
+}
+
 // ─── Job Definition Types ────────────────────────────────────────────────────
 
 export type JobType = "object_detection" | "lane_detection" | "segmentation";
@@ -197,5 +276,16 @@ export function mapJobDefinition(j: JobDefinitionResponse): JobDefinition {
     config: j.config,
     description: j.description,
     createdAt: j.created_at,
+  };
+}
+
+export function mapJobSegmentRun(j: JobSegmentRunResponse): JobSegmentRun {
+  return {
+    jobRunNum: j.job_run_num,
+    routeId: j.route_id,
+    jobDefId: j.job_def_id,
+    camera: j.camera,
+    segmentId: j.segment_id,
+    status: j.status,
   };
 }
