@@ -10,6 +10,8 @@ from api.dependencies import get_session, get_transactional_session
 from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
+from repositories.frame_repository import FrameRepository
+from services.frame_service import FrameService
 from utilities.service_builder_utilities import build_segment_service
 from utilities.service_builder_utilities import build_thumbnail_service
 
@@ -45,6 +47,18 @@ async def get_segment_thumbnail(
     thumbnail_service = build_thumbnail_service(session=session)
     stream = await thumbnail_service.get_segment_thumbnail_stream(route_id, segment_id)
     return StreamingResponse(stream, media_type="image/png")
+
+@segments_router.get("/{route_id}/{segment_id}/frame-count")
+async def get_frame_count(
+    route_id: str,
+    segment_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    repo = FrameRepository(session=session)
+    service = FrameService(frame_repository=repo)
+
+    count = await service.get_frame_count(route_id, segment_id)
+    return {"count": count}
 
 @segments_router.get("/{route_id}/{segment_id}", response_model=SegmentResponse)
 async def get_segment(

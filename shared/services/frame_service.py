@@ -18,6 +18,9 @@ class FrameService:
     ) -> list[Frame]:
         return await self._frame_repository.get_by_route_segment(route_id, segment_id, camera)
 
+    async def get_frame_count(self, route_id: str, segment_id: int) -> int:
+        return await self._frame_repository.count_by_route_segment(route_id, segment_id)
+
     async def camera_exists_on_route(
         self,
         route_id: str,

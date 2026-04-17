@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { listSegmentsForRoute } from "../api/segments";
+import { listSegmentsForRoute,getFrameCount } from "../api/segments";
 import type { SegmentStatus } from "../api/types";
 import { SEGMENT_TERMINAL_STATUSES } from "../api/types";
 import { useRouteStatus } from "../hooks/useRouteStatus";
@@ -9,7 +9,7 @@ import { useJobRunsForRoute } from "../hooks/useJobRunsForRoute";
 import { SEG_STATUS_CONFIG, DEFAULT_SEG_CFG } from "../utils/segmentStatusConfig";
 import { RouteDetailHeader } from "../components/RouteDetailHeader";
 import { SegmentCard } from "../components/route-detail/SegmentCard";
-
+import type { Segment } from "../api/types";
 type SegFilterStatus = SegmentStatus | "all";
 type SegSortKey = "index" | "status";
 
@@ -23,8 +23,8 @@ export default function RouteDetail() {
 
   const { data: route, isLoading: routeLoading, error: routeError } = useRouteStatus(decodedRouteId || undefined);
 
-  const { data: allSegments = [], isLoading: segsLoading, isFetching: segsFetching } = useQuery({
-    queryKey: ["segments", decodedRouteId],
+const { data: allSegments = [], isLoading: segsLoading, isFetching: segsFetching } = useQuery<Segment[]>({
+  queryKey: ["segments", decodedRouteId],
     queryFn: () => listSegmentsForRoute(decodedRouteId),
     enabled: !!decodedRouteId,
     refetchInterval: (query) => {
@@ -38,6 +38,21 @@ export default function RouteDetail() {
   const loading = routeLoading || segsLoading;
   const error = routeError ? (routeError as Error).message ?? "Failed to load route" : null;
   const isPolling = (segsFetching || jobsFetching) && !loading;
+
+  const { data: frameCounts = {} } = useQuery({
+  queryKey: ["frame-counts", decodedRouteId],
+  queryFn: async () => {
+    const entries = await Promise.all(
+      allSegments.map(async (s) => {
+        const count = await getFrameCount(decodedRouteId, s.segmentId);
+        return [s.segmentId, count] as const;
+        
+      })
+    );
+    return Object.fromEntries(entries);
+  },
+  enabled: !!decodedRouteId && allSegments.length > 0,
+});
 
   const segments = useMemo(() => {
     const filtered = allSegments.filter((s) => statusFilter === "all" || s.status === statusFilter);
@@ -124,9 +139,12 @@ export default function RouteDetail() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "var(--space-3)" }}>
           {segments.map((seg) => (
             <SegmentCard
-              key={seg.index}
-              segment={seg}
               onClick={() => navigate(`/routes/${encodeURIComponent(route.id)}/segments/${seg.index}`)}
+              key={seg.index}
+              segment={{
+                ...seg,
+                frameCount: frameCounts[seg.segmentId] ?? 0,
+              }}
             />
           ))}
         </div>
