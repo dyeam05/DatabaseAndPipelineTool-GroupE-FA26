@@ -30,8 +30,6 @@ class FrameRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
-    from sqlalchemy import select, func
-
     async def count_by_route_segment(self, route_id: str, segment_id: int) -> int:
         stmt = (
             select(func.count())
