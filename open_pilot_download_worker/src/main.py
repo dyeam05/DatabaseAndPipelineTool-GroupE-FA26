@@ -5,6 +5,7 @@ import shlex
 import signal
 from pathlib import Path
 from uuid import uuid4
+import shutil
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -155,6 +156,7 @@ async def _mark_stale_downloading_routes_as_failed(route_service: RouteService) 
 
     for route in stale_routes:
         await route_service.set_status(route.route_id, RouteStatus.FAILED)
+        shutil.rmtree(DATA_ROOT / str(route.file_path))
         logger.warning("Marked stale route as failed on startup: route=%s", route.route_id)
 
 
@@ -279,6 +281,8 @@ async def process_route(route_to_process: Route, route_service: RouteService, se
     )
     await session.commit()
 
+    unique_path = str(uuid4())
+    data_dir = DATA_ROOT / unique_path
     try:
         segments_to_download: list[Segment] = await create_segments_for_route(
             route_to_process,
@@ -287,8 +291,6 @@ async def process_route(route_to_process: Route, route_service: RouteService, se
         await session.commit()
         logging.info(f"Found {len(segments_to_download)} segments for {route_to_process.route_id}")
 
-        unique_path = str(uuid4())
-        data_dir = DATA_ROOT / unique_path
         await route_service.set_file_path(
             route_id=route_to_process.route_id,
             file_path=unique_path
@@ -318,6 +320,7 @@ async def process_route(route_to_process: Route, route_service: RouteService, se
                 logging.info(f"Successfully uploaded segment {segment}")
             except Exception:
                 logging.error(f"Failed to download segment {segment}... skipping")
+                shutil.rmtree(data_dir / str(segment.segment_id))
                 await segment_service.set_status(
                     route_id=segment.route_id,
                     segment_id=segment.segment_id,
@@ -332,6 +335,7 @@ async def process_route(route_to_process: Route, route_service: RouteService, se
         )
         await session.commit()
         logging.error(f"Could not process route {route_to_process}", e)
+        shutil.rmtree(data_dir)
 
     logging.info(f"Rout processed {route_to_process.route_id}")
     await route_service.set_status(

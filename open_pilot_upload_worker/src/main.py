@@ -38,7 +38,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def _mark_stale_uploading_segments_as_failed(segment_service: SegmentService):
+async def _mark_stale_uploading_segments_as_failed(route_service: RouteService, segment_service: SegmentService):
     logging.info("Checking for stale segments")
     stale_segments = await segment_service.get_segments_by_status(status=SegmentStatus.UPLOADING)
     if not stale_segments:
@@ -51,6 +51,12 @@ async def _mark_stale_uploading_segments_as_failed(segment_service: SegmentServi
             segment_id=segment.segment_id,
             status=SegmentStatus.FAILED
         )
+        route = await route_service.get_route(
+            route_id=segment.route_id
+        )
+        if route is not None and route.file_path is not None:
+            shutil.rmtree(DATA_ROOT / route.file_path / str(segment.segment_id))
+
         logger.warning(f"Marked stale segment as failed on startup: {segment}")
 
 
@@ -159,7 +165,7 @@ async def _process_segment(
             raise ValueError(f"Route {route.route_id} has no file_path")
 
         segment_path = DATA_ROOT / route.file_path / str(segment.segment_id)
-        route_path = DATA_ROOT / route.file_path
+        route_path = DATA_ROOT / route.file_path 
         try :
             await upload_segment(
                 segment=segment,
@@ -252,7 +258,10 @@ async def main():
                 artifact_service=artifact_service
             )
 
-            await _mark_stale_uploading_segments_as_failed(segment_service=segment_service)
+            await _mark_stale_uploading_segments_as_failed(
+                route_service=route_service,
+                segment_service=segment_service
+            )
             await session.commit()
 
             while not stop_event.is_set():
