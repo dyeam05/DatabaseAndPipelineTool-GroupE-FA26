@@ -54,16 +54,17 @@ logger = logging.getLogger(__name__)
 async def _mark_stale_running_jobs_as_failed(
     job_run_service: JobRunService, job_segment_run_service: JobSegmentRunService
 ):
-    stale_jobs = await job_run_service.get_job_runs_by_status(status=JobStatus.RUNNING)
-    if not stale_jobs:
-        return
-
     # Delete all temp files that might have been left over
     for item in DATA_DIR.iterdir():
         if item.is_dir():
             shutil.rmtree(item)
         else:
             item.unlink()
+
+    stale_jobs = await job_run_service.get_job_runs_by_status(status=JobStatus.RUNNING)
+    if not stale_jobs:
+        return
+
 
     # for all of the stale jobs mark both the job_run and job_segment_run as failed
     for job in stale_jobs:
