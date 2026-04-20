@@ -29,7 +29,7 @@ class SegmentArtifactDownloadService:
 
         image_paths: list[Path] = []
         for frame in frames:
-            img_path = dest_path / f"{str(frame.frame_id)}.png"
+            img_path = dest_path / f"{frame.frame_id:05}.png" # make the file name have 5 digits, with leading 0s. This keeps images sorted right
             image_paths.append(img_path)
 
             await self.frame_artifact_downloader_service.download_frame(
