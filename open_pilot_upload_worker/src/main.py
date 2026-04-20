@@ -157,8 +157,10 @@ async def _process_segment(
             await route_service.set_status(route_id=route.route_id, status=RouteStatus.FAILED)
             await session.commit()
             raise ValueError(f"Route {route.route_id} has no file_path")
+
+        segment_path = DATA_ROOT / route.file_path / str(segment.segment_id)
+        route_path = DATA_ROOT / route.file_path
         try :
-            segment_path = DATA_ROOT / route.file_path / str(segment.segment_id)
             await upload_segment(
                 segment=segment,
                 segment_path=segment_path,
@@ -181,6 +183,7 @@ async def _process_segment(
             logging.info(f"Processed segment {segment}")
         except Exception as e:
             logging.error(f"Failed to process segment {segment}", e)
+            shutil.rmtree(segment_path)
             await segment_service.set_status(
                 route_id=segment.route_id,
                 segment_id=segment.segment_id,
@@ -190,6 +193,7 @@ async def _process_segment(
 
         if (await are_all_segments_for_route_processed(route=route, segment_service=segment_service)):
             logging.info(f"All segments for {route} processed. Marking segment as uploaded")
+            shutil.rmtree(route_path)
             await route_service.set_status(route_id=route.route_id, status=RouteStatus.UPLOADED)
             await session.commit()
         else:
@@ -197,6 +201,7 @@ async def _process_segment(
 
     except Exception as e:
         logging.error("Error processing route", e)
+
         await session.rollback()
 
 
