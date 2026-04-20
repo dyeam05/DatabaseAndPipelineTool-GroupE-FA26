@@ -78,6 +78,8 @@ async def _process_loading_job(
     await session.commit()
 
 
+    unique_folder_name = str(uuid4())
+    dest_path = DATA_DIR / unique_folder_name
     try:
         # Download job run info from minio
         job_segment_run = await job_segment_run_service.get_job_segment_run(
@@ -95,8 +97,6 @@ async def _process_loading_job(
                 segment_id=job_segment_run_import.segment_id,
             )
 
-        unique_folder_name = str(uuid4())
-        dest_path = DATA_DIR / unique_folder_name
         job_segment_run_dir = await job_segment_artifact_downloader_service.download_job_segment_run_artifacts(
             job_segment_run=job_segment_run,
             dest_path=dest_path
@@ -111,10 +111,6 @@ async def _process_loading_job(
 
         job_segment_run_import.task_url = get_task_url(task_id=task_id)
         job_segment_run_import.task_id = task_id
-
-
-        # Remove files
-        shutil.rmtree(dest_path)
 
 
         await job_segment_run_import_service.set_status(
@@ -133,6 +129,8 @@ async def _process_loading_job(
             error_message=f"Failed while loading into cvat: {type(e)}, {e}"
         )
         await session.commit()
+    finally:
+        shutil.rmtree(dest_path)
 
 async def _process_removal_job(
     job_segment_run_import:JobSegmentRunImport,
