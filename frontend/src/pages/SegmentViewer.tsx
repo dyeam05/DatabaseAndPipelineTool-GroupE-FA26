@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getThumbnailUrl } from "../api/routes";
-import { listSegmentsForRoute } from "../api/segments";
-import type { Segment, SegmentStatus } from "../api/types";
+import { listSegmentsForRoute, getFrameCount } from "../api/segments";
+import type { Segment, SegmentStatus,  } from "../api/types";
 import { SEGMENT_TERMINAL_STATUSES } from "../api/types";
 import { useRouteStatus } from "../hooks/useRouteStatus";
+import { CvatJobRunsList } from "../components/CvatJobRunsList";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -22,9 +23,6 @@ const SEG_STATUS_CONFIG: Record<
 };
 
 const DEFAULT_SEG_CFG = SEG_STATUS_CONFIG["download queue"];
-
-// ─── CVAT base URL — update to match your deployment ─────────────────────────
-const CVAT_BASE_URL = "https://cvat.example.com";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,13 +105,17 @@ export default function SegmentViewer() {
       </div>
     );
   }
-
+  // ── Main content ───────────────────────────────────────────────────────────
+  const { data: frameCount } = useQuery({
+  queryKey: ["frame-count", decodedRouteId, segIdx],
+  queryFn: () => getFrameCount(decodedRouteId, segIdx),
+  enabled: !!decodedRouteId && !isNaN(segIdx),
+});
   const cfg = SEG_STATUS_CONFIG[segment.status] ?? DEFAULT_SEG_CFG;
   const isUploaded = segment.status === "uploaded";
   const totalAnnotations = Object.values(segment.annotations).reduce((a, b) => a + b, 0);
   const prevSeg = segIdx > 0 ? segments[segIdx - 1] : null;
   const nextSeg = segIdx < segments.length - 1 ? segments[segIdx + 1] : null;
-  const cvatUrl = `${CVAT_BASE_URL}/tasks?search=${encodeURIComponent(route.id)}&segment=${segIdx}`;
   const thumbnailSrc = getThumbnailUrl(route.id, segment.index);
 
   const annotationClasses: {
@@ -174,7 +176,7 @@ export default function SegmentViewer() {
           <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
           <span>{formatDuration(segment.durationSeconds)}</span>
           <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-          <span>{segment.frameCount.toLocaleString()} frames</span>
+          <span>{(frameCount ?? 0).toLocaleString()} frames</span>
         </div>
       </div>
 
@@ -202,35 +204,8 @@ export default function SegmentViewer() {
             )}
           </div>
 
-          {/* CVAT link */}
-          <div style={{ border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)", padding: "var(--space-5)" }}>
-            <div style={{ fontSize: "10px", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--text-muted)", fontWeight: 600, marginBottom: "var(--space-4)" }}>
-              Annotation Tool
-            </div>
-            <a href={cvatUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-              <div
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-4) var(--space-5)", backgroundColor: "var(--bg-inverse)", border: "2px solid var(--bg-inverse)", cursor: "pointer", transition: "background-color var(--transition-fast), border-color var(--transition-fast)" }}
-                onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.backgroundColor = "var(--bg-inverse-hover)"; el.style.borderColor = "var(--accent-cvat)"; }}
-                onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.backgroundColor = "var(--bg-inverse)"; el.style.borderColor = "var(--bg-inverse)"; }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                  <div style={{ width: "32px", height: "32px", backgroundColor: "var(--accent-cvat)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "9px", color: "var(--text-on-inverse)", letterSpacing: "0.04em" }}>CV</span>
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "var(--text-sm)", color: "var(--text-on-inverse)" }}>Open in CVAT</div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "rgba(255,255,255,0.35)", marginTop: "2px" }}>
-                      {route.id} · seg {String(segIdx).padStart(2, "0")}
-                    </div>
-                  </div>
-                </div>
-                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "var(--text-sm)" }}>↗</span>
-              </div>
-            </a>
-            <p style={{ marginTop: "var(--space-3)", fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-              CVAT base URL is configurable — update <code>CVAT_BASE_URL</code> in <code>SegmentViewer.tsx</code>.
-            </p>
-          </div>
+          {/* CVAT job runs */}
+          <CvatJobRunsList routeId={route.id} segmentId={segIdx} />
 
           {/* Annotation breakdown — only shown when uploaded and annotations exist */}
           {isUploaded && totalAnnotations > 0 && (
@@ -276,7 +251,7 @@ export default function SegmentViewer() {
               { label: "Segment",      value: `#${String(segIdx).padStart(2, "0")} of ${segments.length}` },
               { label: "Start offset", value: formatOffset(segment.startSeconds) },
               { label: "Duration",     value: formatDuration(segment.durationSeconds) },
-              { label: "Frame count",  value: segment.frameCount.toLocaleString() },
+              { label: "Frame count",  value: (frameCount ?? 0).toLocaleString() },
               { label: "Created",      value: formatDate(route.createdAt) },
               { label: "Route",        value: route.id },
             ].map(({ label, value }, i, arr) => (

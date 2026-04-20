@@ -25,7 +25,7 @@ from services.segment_artifact_service import SegmentArtifactService
 from services.dataset_export_service import DatasetExportService
 from repositories.dataset_export_repository import DatasetExportRepository
 from repositories.dataset_export_job_run_repository import DatasetExportJobRunRepository
-
+from services.delete_service import DeleteService
 
 def build_route_service(session: AsyncSession) -> RouteService:
     repository = RouteRepository(session=session)
@@ -108,3 +108,11 @@ def build_dataset_export_service(session: AsyncSession) -> DatasetExportService:
 def build_job_segment_run_import_service(session: AsyncSession) -> JobSegmentRunImportService:
     job_segment_run_import_repository = JobSegmentRunImportRepository(session=session)
     return JobSegmentRunImportService(job_segment_run_import_repository=job_segment_run_import_repository)
+
+def build_delete_service(session: AsyncSession) -> DeleteService:
+    segment_repository = SegmentRepository(session=session)
+    minio_service = MinioService()
+    return DeleteService(
+        segment_repository=segment_repository,
+        minio_service=minio_service,
+    )

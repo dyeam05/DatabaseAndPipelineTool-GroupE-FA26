@@ -18,6 +18,7 @@ class FrameService:
     ) -> list[Frame]:
         return await self._frame_repository.get_by_route_segment(route_id, segment_id, camera)
 
+
     async def camera_exists_on_route(
         self,
         route_id: str,

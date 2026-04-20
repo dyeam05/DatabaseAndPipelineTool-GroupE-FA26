@@ -64,6 +64,24 @@
   /* --- Hover states --- */
   --bg-inverse-hover: #2a2a2a; /* Slightly lifted dark surface       */
 
+  /* --- On-inverse tokens (UI elements placed on --bg-inverse dark surfaces) --- */
+  --bg-on-inverse:              rgba(255, 255, 255, 0.06); /* subtle surface, e.g. inputs  */
+  --bg-on-inverse-hover:        rgba(255, 255, 255, 0.10); /* hovered / raised surface     */
+  --border-on-inverse:          rgba(255, 255, 255, 0.18); /* standard border              */
+  --border-on-inverse-subtle:   rgba(255, 255, 255, 0.12); /* dim border                   */
+  --border-on-inverse-strong:   rgba(255, 255, 255, 0.25); /* stronger border, e.g. inputs */
+  --text-on-inverse-secondary:  rgba(255, 255, 255, 0.55); /* secondary label              */
+  --text-on-inverse-muted:      rgba(255, 255, 255, 0.35); /* muted / disabled             */
+  --text-on-inverse-dim:        rgba(255, 255, 255, 0.25); /* very dim text / meta         */
+  --bg-on-inverse-subtle:       rgba(255, 255, 255, 0.04); /* barely visible surface       */
+  --border-on-inverse-faint:    rgba(255, 255, 255, 0.08); /* faintest border              */
+  --accent-go-on-inverse:       rgba(24,  168, 97,  0.25); /* success tint on dark bg      */
+  --accent-alert-on-inverse:    rgba(239, 68,  68,  0.85); /* error text on dark bg        */
+
+  /* --- Overlays (over images / thumbnails) --- */
+  --overlay-thumbnail-dark:     rgba(17, 17, 17, 0.70);                                        /* dark label tint              */
+  --overlay-thumbnail-gradient: linear-gradient(135deg, rgba(0,0,0,0.55) 0%, transparent 60%); /* corner vignette              */
+
   /* --- Typography --- */
   --font-sans:  "General Sans", system-ui, sans-serif;
   --font-mono:  "Space Mono", "Courier New", monospace;
@@ -107,6 +125,438 @@
   --sidebar-width:  220px;
   --content-max-w:  1400px;
 
+}
+
+/* ============================================================
+   JOB DEFINITIONS
+   Scoped under .jd-* to avoid collisions with other pages.
+   ============================================================ */
+
+/* --- Page shell --- */
+.jd-page { padding-bottom: var(--space-12); }
+
+.jd-page__header { margin-bottom: var(--space-8); }
+
+.jd-page__title {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.jd-page__subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.jd-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* --- Section label ("Existing definitions (N)") --- */
+.jd-section-label {
+  display: block;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+
+/* --- Shared form elements --- */
+.jd-label {
+  display: block;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.jd-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.jd-input:focus { border-color: var(--border-black); }
+
+.jd-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-8);
+}
+
+.jd-textarea {
+  resize: vertical;
+  min-height: 72px;
+  font-family: var(--font-sans);
+}
+
+/* --- Buttons --- */
+.jd-btn {
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: none;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.jd-btn--remove {
+  padding: var(--space-1) var(--space-2);
+  background-color: transparent;
+  color: var(--accent-alert);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+}
+
+.jd-btn--add {
+  background-color: var(--bg-elevated);
+  color: var(--text-secondary);
+  align-self: flex-start;
+  font-size: var(--text-xs);
+}
+
+.jd-btn--submit {
+  background-color: var(--bg-inverse);
+  color: var(--text-on-inverse);
+  align-self: flex-end;
+}
+
+.jd-btn--submit:disabled {
+  background-color: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.jd-btn--submit[data-submitting="true"] { opacity: 0.6; }
+
+/* --- Type badge pill --- */
+.jd-type-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  /* background-color set inline (dynamic per type) */
+}
+
+/* --- Colored icon block (28×28) --- */
+.jd-icon-block {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* background-color set inline (dynamic per type) */
+}
+
+.jd-icon-block__label {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 8px;
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+
+/* --- Definition card (list item) --- */
+.jd-def-card {
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.jd-def-card:not(.jd-def-card--selected):hover .jd-def-card__trigger { background-color: var(--bg-elevated); }
+
+.jd-def-card--selected {
+  border: 2px solid var(--border-black);
+  background-color: var(--bg-elevated);
+}
+
+.jd-def-card__trigger {
+  padding: var(--space-4);
+  cursor: pointer;
+  position: relative;
+}
+
+.jd-def-card__chevron {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.jd-def-card__chevron--open {
+  transform: rotate(90deg);
+}
+
+.jd-def-card__delete {
+  position: absolute;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  padding: 2px var(--space-2);
+  background-color: transparent;
+  border: 1px solid var(--accent-alert);
+  color: var(--accent-alert);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.jd-def-card:hover .jd-def-card__delete,
+.jd-def-card--selected .jd-def-card__delete {
+  opacity: 1;
+}
+
+.jd-def-card__delete:hover {
+  background-color: var(--accent-alert);
+  color: #fff;
+}
+
+.jd-def-card__detail {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.jd-def-card__badge-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.jd-def-card__name {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.jd-def-card__key {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* --- Card list stack --- */
+.jd-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* --- Definition detail panel --- */
+.jd-detail {
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  padding: var(--space-5);
+}
+
+.jd-detail__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.jd-detail__name {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.jd-detail__meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.jd-detail__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.jd-detail__impl-key {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.jd-detail__section { margin-bottom: var(--space-4); }
+
+.jd-detail__description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.jd-config-block {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.8;
+}
+
+.jd-config-key   { color: var(--text-muted); }
+.jd-config-value { color: var(--text-primary); }
+
+/* --- Config editor rows --- */
+.jd-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.jd-config-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.jd-config-row .jd-input { flex: 1; }
+
+/* --- Create form card --- */
+.jd-create-card {
+  border: 2px solid var(--border-black);
+  background-color: var(--bg-surface);
+}
+
+.jd-create-card__header {
+  padding: var(--space-4) var(--space-5);
+  background-color: var(--bg-inverse);
+  border-bottom: 1px solid var(--border-black);
+}
+
+.jd-create-card__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.jd-create-card__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-on-inverse);
+}
+
+.jd-info-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--text-on-inverse-secondary);
+  background-color: transparent;
+  color: var(--text-on-inverse);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.jd-info-btn:hover {
+  background-color: var(--text-on-inverse-secondary);
+  color: var(--bg-inverse);
+}
+
+.jd-info-panel {
+  padding: var(--space-3);
+  background-color: var(--bg-elevated);
+  border-left: 3px solid var(--border-black);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.jd-create-card__subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-on-inverse-secondary);
+  margin-top: 2px;
+}
+
+.jd-create-card__body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.jd-type-impl-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+/* --- Inline error banner --- */
+.jd-error {
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--status-alert-bg);
+  color: var(--status-alert-text);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+}
+
+/* --- List states --- */
+.jd-loading {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+}
+
+.jd-list-error {
+  padding: var(--space-3);
+  background-color: var(--status-alert-bg);
+  color: var(--status-alert-text);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+}
+
+.jd-empty {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  border: 1px dashed var(--border-subtle);
+  background-color: var(--bg-surface);
 }
 
 /* ============================================================

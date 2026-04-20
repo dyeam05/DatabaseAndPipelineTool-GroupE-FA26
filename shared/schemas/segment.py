@@ -7,7 +7,7 @@ from db.enums import CameraType, JobSegmentRunImportStatus, JobSegmentRunStatus,
 
 class JobSegmentRunResponse(BaseModel):
     job_run_num: int
-    route_id: int
+    route_id: str
     job_def_id: int
     camera: CameraType
     segment_id: int

@@ -30,6 +30,7 @@ class FrameRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
+
     async def exists_by_route_camera(
         self,
         route_id: str,

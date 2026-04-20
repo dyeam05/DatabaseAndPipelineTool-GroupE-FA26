@@ -1,10 +1,10 @@
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.segment import Segment,SegmentStatus 
-
+from db.models.frame import Frame
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s"
@@ -43,7 +43,15 @@ class SegmentRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
-
+    async def count_by_route_segment(self, route_id: str, segment_id: int) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(Frame)
+            .where(Frame.route_id == route_id)
+            .where(Frame.segment_id == segment_id)
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
 
     async def get_next_by_status(self, status: SegmentStatus) -> Segment | None:
         stmt = (
