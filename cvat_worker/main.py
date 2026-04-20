@@ -203,8 +203,11 @@ async def process_job_segment_run(
             camera=job_segment_run.camera,
             status=JobSegmentRunStatus.FAILED,
         )
-        shutil.rmtree(segment_dir)
         await session.commit()
+    finally:
+        if segment_dir.exists():
+            logging.info(f"Removing Dir: {segment_dir}")
+            shutil.rmtree(segment_dir)
 
 
 async def _process_job_run(
