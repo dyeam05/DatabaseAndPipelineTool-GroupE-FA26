@@ -54,7 +54,6 @@ export function ImportRouteButton({
     if (!isValid) return;
     setSubmitState("loading");
 
-    // TODO: Replace with API call to import route from openpilot into the database
     // Example: createRoute(trimmed).then(() => setSubmitState("success")).catch(() => setSubmitState("idle"))
     onImport(trimmed);
 

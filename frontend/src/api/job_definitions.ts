@@ -9,10 +9,6 @@ import {
 // ─── Job Definitions API ─────────────────────────────────────────────────────
 
 
-// TODO: Confirm the base path with the backend (e.g. /job-definitions)
-// TODO: Add pagination support (offset/limit query params) if the backend supports it. back end currently does not support pagination
-// TODO: Add error handling specific to job definition validation errors (422)
-
 /** Fetch all job definitions */
 export async function listJobDefinitions(): Promise<JobDefinition[]> {
   const raw = await apiFetch<JobDefinitionResponse[]>("/job-definitions/");
@@ -51,12 +47,10 @@ export async function createJobDefinition(
 }
 
 /** Delete a job definition by ID */
-// TODO: Confirm DELETE endpoint exists on the backend
 export async function deleteJobDefinition(id: number): Promise<void> {
   await apiFetch<void>(`/job-definitions/${id}`, { method: "DELETE" });
 }
 
-// TODO: Add endpoint to fetch available implementation keys dynamically
 //       e.g. GET /job-definitions/implementations → string[]
 //       This would let the frontend populate a dropdown of registered model
 //       implementations instead of requiring free-text input.
@@ -64,7 +58,6 @@ export async function listImplementationKeys(): Promise<string[]> {
   return apiFetch<string[]>("/job-definitions/implementations");
 }
 
-// TODO: Add endpoint to fetch available job types dynamically
 //       e.g. GET /job-definitions/types → string[]
 //       This would let the frontend stay in sync with backend-registered types.
 export async function listJobTypes(): Promise<string[]> {
