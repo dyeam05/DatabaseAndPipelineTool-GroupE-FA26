@@ -10,6 +10,10 @@ from schemas.route import CreateRouteRequest, RouteResponse
 from services.errors import RouteNotFoundError
 from services.route_service import RouteService
 from utilities.service_builder_utilities import build_route_service
+from services.delete_service import DeleteService
+from repositories.route_repository import RouteRepository
+from services.minio_service import MinioService
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,8 +63,11 @@ async def delete_route(
     session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("deletee route")
-    route_service = build_route_service(session=session)
-    await route_service.delete_route(route_id=route_id)
+    repo = RouteRepository(session=session)
+    minio = MinioService()
+    service = DeleteService(route_repository=repo, minio_service=minio, segment_repository=None)
+
+    await service.delete_route(route_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

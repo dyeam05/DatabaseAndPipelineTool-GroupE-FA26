@@ -84,7 +84,7 @@ async def delete_segment(
 
     repo = SegmentRepository(session=session)
     minio = MinioService()
-    service = DeleteService(segment_repository=repo, minio_service=minio)
+    service = DeleteService(segment_repository=repo, minio_service=minio, route_repository=None)
 
     await service.delete_segment(route_id=route_id, segment_id=segment_id)
 
