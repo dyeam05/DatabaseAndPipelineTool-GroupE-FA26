@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import shutil
 import signal
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -53,9 +54,17 @@ logger = logging.getLogger(__name__)
 async def _mark_stale_running_jobs_as_failed(
     job_run_service: JobRunService, job_segment_run_service: JobSegmentRunService
 ):
+    # Delete all temp files that might have been left over
+    for item in DATA_DIR.iterdir():
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+
     stale_jobs = await job_run_service.get_job_runs_by_status(status=JobStatus.RUNNING)
     if not stale_jobs:
         return
+
 
     # for all of the stale jobs mark both the job_run and job_segment_run as failed
     for job in stale_jobs:
@@ -124,6 +133,8 @@ async def process_job_segment_run(
 ):
     logging.info(f"Processing job segment run {job_segment_run}")
 
+    unique_id = str(uuid4())
+    segment_dir = DATA_DIR / unique_id
     try:
         await job_segment_run_service.set_status(
             job_run_num=job_segment_run.job_run_num,
@@ -144,8 +155,6 @@ async def process_job_segment_run(
                 route_id=job_segment_run.route_id, segment_id=job_segment_run.segment_id
             )
 
-        unique_id = str(uuid4())
-        segment_dir = DATA_DIR / unique_id
         await segment_artifact_download_service.download_segment_frames(
             segment=segment, dest_path=segment_dir, camera=job_segment_run.camera
         )
@@ -196,6 +205,10 @@ async def process_job_segment_run(
             status=JobSegmentRunStatus.FAILED,
         )
         await session.commit()
+    finally:
+        if segment_dir.exists():
+            logging.info(f"Removing Dir: {segment_dir}")
+            shutil.rmtree(segment_dir)
 
 
 async def _process_job_run(

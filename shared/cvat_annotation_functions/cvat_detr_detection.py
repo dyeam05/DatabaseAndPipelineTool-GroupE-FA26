@@ -59,7 +59,7 @@ class CVATDetrDetection(ICVATDetection[DetrDetectionConfig]):
         with torch.no_grad():
             inputs = self.processor(images=[image], return_tensors="pt")
             outputs = self.model(**inputs)
-            target_sizes = torch.tensor([[image.size[1], image.size[0]]])
+            target_sizes = torch.tensor([[image.size[1], image.size[0]]]) # type: ignore
             results = self.processor.post_process_object_detection(
                 outputs=outputs,
                 threshold=conf_threshold,

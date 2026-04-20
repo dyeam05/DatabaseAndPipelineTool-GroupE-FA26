@@ -5,7 +5,6 @@ from services.errors import SegmentNotFoundError, FrameNotFoundError, FrameArtif
 from db.enums import ArtifactRole, CameraType
 from services.frame_artifact_service import FrameArtifactService
 from services.artifact_service import ArtifactService
-from db.enums import CameraType
 
 class ThumbnailService:
     def __init__(

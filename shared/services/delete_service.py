@@ -1,11 +1,9 @@
 import logging
 
-from db.models.segment import Segment
 from repositories.segment_repository import SegmentRepository
 from services.minio_service import MinioService
 from utilities.minio_utilities import get_segment_object_name
 from repositories.route_repository import RouteRepository
-from db.models.route import Route
 
 logger = logging.getLogger(__name__)
 

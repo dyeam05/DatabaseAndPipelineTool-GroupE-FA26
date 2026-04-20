@@ -8,11 +8,9 @@ from api.dependencies import get_session, get_transactional_session
 from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
-from utilities.service_builder_utilities import build_segment_service
+from utilities.service_builder_utilities import build_delete_service, build_segment_service
 from utilities.service_builder_utilities import build_thumbnail_service
-from services.delete_service import DeleteService
 from repositories.segment_repository import SegmentRepository
-from services.minio_service import MinioService
 from services.segment_service import SegmentService
 
 logger = logging.getLogger(__name__)
@@ -80,10 +78,7 @@ async def delete_segment(
     session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("delete segment")
-
-    repo = SegmentRepository(session=session)
-    minio = MinioService()
-    service = DeleteService(segment_repository=repo, minio_service=minio, route_repository=None)
+    service = build_delete_service(session=session)
 
     await service.delete_segment(route_id=route_id, segment_id=segment_id)
 
