@@ -10,9 +10,7 @@ from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
 from utilities.service_builder_utilities import build_delete_service, build_segment_service
 from utilities.service_builder_utilities import build_thumbnail_service
-from services.delete_service import DeleteService
 from repositories.segment_repository import SegmentRepository
-from services.minio_service import MinioService
 from services.segment_service import SegmentService
 
 logger = logging.getLogger(__name__)

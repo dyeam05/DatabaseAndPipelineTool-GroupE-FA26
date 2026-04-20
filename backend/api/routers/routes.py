@@ -10,9 +10,6 @@ from schemas.route import CreateRouteRequest, RouteResponse
 from services.errors import RouteNotFoundError
 from services.route_service import RouteService
 from utilities.service_builder_utilities import build_delete_service, build_route_service
-from services.delete_service import DeleteService
-from repositories.route_repository import RouteRepository
-from services.minio_service import MinioService
 
 
 logging.basicConfig(
