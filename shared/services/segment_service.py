@@ -25,6 +25,9 @@ class SegmentService:
     async def get_segment(self, route_id: str, segment_id: int) -> Segment | None:
         return await self._segment_repository.get_by_id(route_id, segment_id)
 
+    async def get_frame_count(self, route_id: str, segment_id: int) -> int:
+        return await self._segment_repository.count_by_route_segment(route_id, segment_id)
+
     async def create_segment(
         self,
         route_id: str,

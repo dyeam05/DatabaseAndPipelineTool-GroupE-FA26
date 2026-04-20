@@ -8,13 +8,12 @@ from api.dependencies import get_session, get_transactional_session
 from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
-from repositories.frame_repository import FrameRepository
-from services.frame_service import FrameService
 from utilities.service_builder_utilities import build_segment_service
 from utilities.service_builder_utilities import build_thumbnail_service
 from services.delete_service import DeleteService
 from repositories.segment_repository import SegmentRepository
 from services.minio_service import MinioService
+from services.segment_service import SegmentService
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +54,8 @@ async def get_frame_count(
     segment_id: int,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    repo = FrameRepository(session=session)
-    service = FrameService(frame_repository=repo)
+    repo = SegmentRepository(session=session)
+    service = SegmentService(segment_repository=repo)
 
     count = await service.get_frame_count(route_id, segment_id)
     return {"count": count}

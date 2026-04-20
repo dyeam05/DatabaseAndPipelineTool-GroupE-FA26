@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.enums import CameraType
@@ -30,15 +30,6 @@ class FrameRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
-    async def count_by_route_segment(self, route_id: str, segment_id: int) -> int:
-        stmt = (
-            select(func.count())
-            .select_from(Frame)
-            .where(Frame.route_id == route_id)
-            .where(Frame.segment_id == segment_id)
-        )
-        result = await self._session.execute(stmt)
-        return result.scalar_one()
 
     async def exists_by_route_camera(
         self,
