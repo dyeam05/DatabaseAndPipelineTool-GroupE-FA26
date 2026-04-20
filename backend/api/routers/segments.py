@@ -12,6 +12,9 @@ from repositories.frame_repository import FrameRepository
 from services.frame_service import FrameService
 from utilities.service_builder_utilities import build_segment_service
 from utilities.service_builder_utilities import build_thumbnail_service
+from services.delete_service import DeleteService
+from repositories.segment_repository import SegmentRepository
+from services.minio_service import MinioService
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +81,11 @@ async def delete_segment(
     session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("delete segment")
-    segment_service = build_segment_service(session=session)
-    await segment_service.delete_segment(route_id=route_id, segment_id=segment_id)
+
+    repo = SegmentRepository(session=session)
+    minio = MinioService()
+    service = DeleteService(segment_repository=repo, minio_service=minio)
+
+    await service.delete_segment(route_id=route_id, segment_id=segment_id)
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
