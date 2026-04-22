@@ -112,9 +112,12 @@ def build_job_segment_run_import_service(session: AsyncSession) -> JobSegmentRun
 def build_delete_service(session: AsyncSession) -> DeleteService:
     segment_repository = SegmentRepository(session=session)
     route_repository = RouteRepository(session=session)
+    artifact_repo = ArtifactRepository(session=session)
     minio_service = MinioService()
     return DeleteService(
         segment_repository=segment_repository,
         minio_service=minio_service,
-        route_repository=route_repository
+        route_repository=route_repository,
+        artifact_repository=artifact_repo,
+        session=session,
     )
