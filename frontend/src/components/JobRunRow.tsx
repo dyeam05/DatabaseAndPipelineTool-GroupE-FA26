@@ -37,7 +37,7 @@ export function JobRunRow({ jobRun }: { jobRun: JobRun }) {
         </span>
       </div>
       <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--text-on-inverse-muted)" }}>
-        job #{jobRun.jobRunNum} · {defName}
+        job #{jobRun.jobRunNum} · {defName} · {jobRun.camera}
       </span>
       <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--text-on-inverse-dim)", marginLeft: "auto" }}>
         {isActive ? `queued ${formatRelativeTime(jobRun.queuedAt)}` : formatRelativeTime(jobRun.finishedAt)}
