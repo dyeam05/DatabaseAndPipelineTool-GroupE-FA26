@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { JobRun } from "../api/types";
 import { formatRelativeTime } from "../utils/formatters";
 import { listJobDefinitions } from "../api/job_definitions";
+import { ExportJobRunButton } from "./route-detail/ExportJobRunButton";
 
 const JOB_STATUS_COLORS: Record<string, string> = {
   queued:    "var(--text-secondary)",
@@ -46,6 +47,13 @@ export function JobRunRow({ jobRun }: { jobRun: JobRun }) {
           {jobRun.error}
         </span>
       )}
+      <ExportJobRunButton
+        routeId={jobRun.routeId}
+        jobDefId={jobRun.jobDefId}
+        jobRunNum={jobRun.jobRunNum}
+        camera={jobRun.camera}
+        jobSucceeded={jobRun.status === "succeeded"}
+      />
     </div>
   );
 }

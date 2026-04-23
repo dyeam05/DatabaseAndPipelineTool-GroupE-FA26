@@ -47,6 +47,7 @@ export interface JobRunResponse {
   job_run_num: number;
   job_def_id: number;
   route_id: string;
+  camera: string;
   status: JobStatus;
   queued_at: string | null;
   started_at: string | null;
@@ -90,6 +91,7 @@ export interface JobRun {
   jobRunNum: number;
   jobDefId: number;
   routeId: string;
+  camera: string;
   status: JobStatus;
   queuedAt: string | null;
   startedAt: string | null;
@@ -260,6 +262,7 @@ export function mapJobRun(j: JobRunResponse): JobRun {
     jobRunNum: j.job_run_num,
     jobDefId: j.job_def_id,
     routeId: j.route_id,
+    camera: j.camera,
     status: j.status,
     queuedAt: j.queued_at,
     startedAt: j.started_at,
