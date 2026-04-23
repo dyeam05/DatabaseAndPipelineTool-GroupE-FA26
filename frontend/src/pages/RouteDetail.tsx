@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listSegmentsForRoute,getFrameCount } from "../api/segments";
 import type { SegmentStatus } from "../api/types";
-import { SEGMENT_TERMINAL_STATUSES } from "../api/types";
+import { SEGMENT_TERMINAL_STATUSES, JOB_TERMINAL_STATUSES } from "../api/types";
 import { useRouteStatus } from "../hooks/useRouteStatus";
 import { useJobRunsForRoute } from "../hooks/useJobRunsForRoute";
 import { SEG_STATUS_CONFIG, DEFAULT_SEG_CFG } from "../utils/segmentStatusConfig";
@@ -23,7 +23,7 @@ export default function RouteDetail() {
 
   const { data: route, isLoading: routeLoading, error: routeError } = useRouteStatus(decodedRouteId || undefined);
 
-const { data: allSegments = [], isLoading: segsLoading, isFetching: segsFetching } = useQuery<Segment[]>({
+const { data: allSegments = [], isLoading: segsLoading } = useQuery<Segment[]>({
   queryKey: ["segments", decodedRouteId],
     queryFn: () => listSegmentsForRoute(decodedRouteId),
     enabled: !!decodedRouteId,
@@ -33,11 +33,13 @@ const { data: allSegments = [], isLoading: segsLoading, isFetching: segsFetching
     },
   });
 
-  const { data: jobRuns = [], isFetching: jobsFetching } = useJobRunsForRoute(decodedRouteId || undefined);
+  const { data: jobRuns = [] } = useJobRunsForRoute(decodedRouteId || undefined);
 
   const loading = routeLoading || segsLoading;
   const error = routeError ? (routeError as Error).message ?? "Failed to load route" : null;
-  const isPolling = (segsFetching || jobsFetching) && !loading;
+  const hasNonTerminalSegments = allSegments.some((s) => !SEGMENT_TERMINAL_STATUSES.includes(s.status));
+  const hasActiveJobRun = jobRuns.some((r) => !JOB_TERMINAL_STATUSES.includes(r.status));
+  const isPolling = !loading && (hasNonTerminalSegments || hasActiveJobRun);
 
   const { data: frameCounts = {} } = useQuery({
   queryKey: ["frame-counts", decodedRouteId],
