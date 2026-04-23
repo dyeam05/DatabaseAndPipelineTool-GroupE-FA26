@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from itertools import chain
 
 from sqlalchemy import select
@@ -43,19 +44,23 @@ class DeleteService:
             recursive=True,
         )
 
+        object_keys: list[str] = []
         for obj in objects:
             if obj.object_name is None:
                 continue
+            object_keys.append(obj.object_name)
 
-            self._minio_service.delete_object(
+        if object_keys:
+            self._minio_service.delete_objects(
                 bucket_name=self._minio_service.bucket_name,
-                object_key=obj.object_name,
+                object_keys=object_keys,
             )
 
         await self._segment_repository.delete(segment)
 
     async def delete_route(self, route_id: str) -> None:
         # delete frame artifacts
+        logger.info(f"Deleting route {route_id}")
         stmt =(
             select(Artifact)
             .join(FrameArtifact, Artifact.artifact_id == FrameArtifact.artifact_id)
@@ -85,20 +90,25 @@ class DeleteService:
             .where(DatasetExport.route_id == route_id)
         )
         artifacts_from_dataset_export = (await self._session.scalars(stmt)).all()
-        
+
         artifacts =  list(chain(artifacts_from_frame, artifacts_from_segment, artifacts_from_job_segment_run, artifacts_from_dataset_export))
-          
+        logger.info(f"Preparing to delete {len(artifacts)} minio artifacts")
+
         # delete artifacts from minio
-        for obj in artifacts :
+        object_keys_by_bucket: dict[str, list[str]] = defaultdict(list)
+        for obj in artifacts:
             if obj.object_key:
-                self._minio_service.delete_object(
-                    bucket_name=self._minio_service.bucket_name,
-                    object_key=obj.object_key,
-                )
-        
+                object_keys_by_bucket[obj.bucket].append(obj.object_key)
+
+        for bucket_name, object_keys in object_keys_by_bucket.items():
+            self._minio_service.delete_objects(
+                bucket_name=bucket_name,
+                object_keys=object_keys,
+            )
+
         route = await self._route_repository.get_by_id(route_id)
         if route:
             await self._route_repository.delete(route)
-      
+
         for artifact in artifacts:
             await self._artifact_repository.delete(artifact)
