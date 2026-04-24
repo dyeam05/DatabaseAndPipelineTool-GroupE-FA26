@@ -35,6 +35,9 @@ class JobSegmentRunImportService:
             route_id=route_id
         )
 
+    async def get_by_job_def(self, job_def_id: int) -> list[JobSegmentRunImport]:
+        return await self._job_segment_run_import_repository.get_by_job_def(job_def_id=job_def_id)
+
     async def get_by_job(
         self,
         job_def_id: int,

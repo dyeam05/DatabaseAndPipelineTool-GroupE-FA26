@@ -70,6 +70,14 @@ class JobSegmentRunImportRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
+    async def get_by_job_def(self, job_def_id: int) -> list[JobSegmentRunImport]:
+        stmt = (
+            select(JobSegmentRunImport)
+            .where(JobSegmentRunImport.job_def_id == job_def_id)
+        )
+        result = await self._session.scalars(stmt)
+        return list(result.all())
+
     async def get_by_status(self, status: JobSegmentRunImportStatus) -> list[JobSegmentRunImport]:
         stmt = (
             select(JobSegmentRunImport)

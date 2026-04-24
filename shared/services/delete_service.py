@@ -9,8 +9,10 @@ from db.enums import CameraType, JobSegmentRunImportStatus
 from db.models.job_segment_run_import import JobSegmentRunImport
 from db.models.segment import Segment
 from repositories.segment_repository import SegmentRepository
+from schemas import job_definition
 from services.cvat_service import CVATService
 from services.errors import JobSegmentRunImportDeleteError
+from services.job_definition_service import JobDefinitionService
 from services.job_run_service import JobRunService
 from services.job_segment_run_import_service import JobSegmentRunImportService
 from services.minio_service import MinioService
@@ -30,6 +32,7 @@ class DeleteService:
         cvat_service: CVATService,
         job_segment_run_import_service: JobSegmentRunImportService,
         job_run_service: JobRunService,
+        job_definition_service: JobDefinitionService,
         session: AsyncSession,
     ) -> None:
         self._segment_repository = segment_repository
@@ -39,6 +42,7 @@ class DeleteService:
         self._cvat_service = cvat_service
         self._job_segment_run_import_service = job_segment_run_import_service
         self._job_run_service = job_run_service
+        self._job_definition_service = job_definition_service
         self._session = session
 
     async def delete_job_run(
@@ -134,6 +138,18 @@ class DeleteService:
             await self.delete_job_segment_run_import_artifacts(job_segment_run_import=import_to_delete)
 
         return 
+
+    async def delete_job_definition(
+        self,
+        job_def_id: int
+    ) -> None:
+        logger.info(f"Deleting job definition {job_definition}")
+        imports_to_delete = await self._job_segment_run_import_service.get_by_job_def(job_def_id=job_def_id)
+        logger.info(f"Deleting {len(imports_to_delete)} CVAT imports for job definition {job_def_id}")
+        for import_to_delete in imports_to_delete:
+            await self.delete_job_segment_run_import_artifacts(job_segment_run_import=import_to_delete)
+        await self._job_definition_service.delete_job_definition(job_def_id=job_def_id)
+
 
     async def delete_job_segment_run_import_artifacts(self, job_segment_run_import: JobSegmentRunImport):
         if job_segment_run_import.status not in [JobSegmentRunImportStatus.LOADED, JobSegmentRunImportStatus.REMOVED, JobSegmentRunImportStatus.FAILED]:
