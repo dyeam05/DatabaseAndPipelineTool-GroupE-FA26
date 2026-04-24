@@ -1,7 +1,9 @@
+import logging
 import os
 from pathlib import Path
 import time
 
+from minio.deleteobjects import DeleteObject
 from minio.datatypes import Bucket
 from minio.helpers import ObjectWriteResult
 from urllib3.response import BaseHTTPResponse
@@ -10,6 +12,8 @@ from db.models.artifact import Artifact
 from db.models.job_segment_run import JobSegmentRun
 from db.models.segment import Segment
 from utilities.minio_utilities import get_job_segment_run_object_name, get_minio_client, get_segment_image_object_name, get_segment_log_object_name, is_bucket_in_list_of_buckets
+
+logger = logging.getLogger(__name__)
 
 class MinioService:
     def __init__(self):
@@ -92,7 +96,21 @@ class MinioService:
         )
 
     def delete_object(self, bucket_name: str, object_key: str) -> None:
+        logger.info(f"deleting artifcat {object_key}")
         self.minio_client.remove_object(bucket_name=bucket_name, object_name=object_key)
+
+    def delete_objects(self, bucket_name: str, object_keys: list[str]) -> None:
+        delete_objects = [DeleteObject(object_key) for object_key in object_keys]
+        for object_key in object_keys:
+            logger.info(f"deleting artifcat {object_key}")
+
+        errors = self.minio_client.remove_objects(
+            bucket_name=bucket_name,
+            delete_object_list=delete_objects,
+        )
+
+        for error in errors:
+            logger.error(f"Error deleting object from minio: {error}")
 
     def get_object_stream(
         self,
