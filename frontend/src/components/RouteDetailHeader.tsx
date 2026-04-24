@@ -6,6 +6,7 @@ import { DarkStatCell } from "./DarkStatCell";
 import { HeroUploadBar } from "./HeroUploadBar";
 import { JobRunRow } from "./JobRunRow";
 import { SegmentTimeline } from "./SegmentTimeline";
+import { CreateJobRunButton } from "./route-detail/CreateJobRunButton";
 import { deleteRoute } from "../api/routes";
 
 const ROUTE_STATUS_COLORS: Record<string, string> = {
@@ -127,21 +128,24 @@ export function RouteDetailHeader({
         <HeroUploadBar segments={segments} />
       </div>
 
-      {jobRuns.length > 0 && (
-        <div style={{ marginBottom: "var(--space-4)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-            <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "var(--text-on-inverse-dim)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              Annotation Jobs
-            </span>
-            {annotationActive && <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--accent-caution)" }} />}
-          </div>
+      <div style={{ marginBottom: "var(--space-4)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+          <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "var(--text-on-inverse-dim)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Annotation Jobs
+          </span>
+          {annotationActive && <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--accent-caution)" }} />}
+        </div>
+        <div style={{ marginBottom: "var(--space-2)" }}>
+          <CreateJobRunButton routeId={route.id} />
+        </div>
+        {jobRuns.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             {jobRuns.map((jr) => (
               <JobRunRow key={`${jr.jobRunNum}-${jr.jobDefId}`} jobRun={jr} />
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {segments.length > 0 && (
         <div>
