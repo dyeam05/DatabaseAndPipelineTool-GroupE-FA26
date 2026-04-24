@@ -51,6 +51,25 @@ class JobSegmentRunImportRepository:
         result = await self._session.scalars(stmt)
         return list(result.all())
 
+    async def get_by_job(
+        self,
+        job_def_id: int,
+        job_run_num: int,
+        route_id: str,
+        camera: CameraType,
+    ) -> list[JobSegmentRunImport]:
+        stmt = (
+            select(JobSegmentRunImport)
+            .where(
+                JobSegmentRunImport.job_def_id == job_def_id,
+                JobSegmentRunImport.job_run_num == job_run_num,
+                JobSegmentRunImport.route_id == route_id,
+                JobSegmentRunImport.camera == camera
+            )
+        )
+        result = await self._session.scalars(stmt)
+        return list(result.all())
+
     async def get_by_status(self, status: JobSegmentRunImportStatus) -> list[JobSegmentRunImport]:
         stmt = (
             select(JobSegmentRunImport)

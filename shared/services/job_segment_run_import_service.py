@@ -35,6 +35,20 @@ class JobSegmentRunImportService:
             route_id=route_id
         )
 
+    async def get_by_job(
+        self,
+        job_def_id: int,
+        job_run_num: int,
+        route_id: str,
+        camera: CameraType,
+    ) -> list[JobSegmentRunImport]:
+        return await self._job_segment_run_import_repository.get_by_job(
+            job_def_id=job_def_id,
+            job_run_num=job_run_num,
+            route_id=route_id,
+            camera=camera
+        )
+
     async def get_by_status(self, status: JobSegmentRunImportStatus) -> list[JobSegmentRunImport]:
         return await self._job_segment_run_import_repository.get_by_status(status=status)
 

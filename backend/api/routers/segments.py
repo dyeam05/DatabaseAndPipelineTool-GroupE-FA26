@@ -1,14 +1,14 @@
 import logging
 
-from fastapi import Depends, Response, status, APIRouter
+from fastapi import Depends, APIRouter
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.dependencies import get_session, get_transactional_session
+from api.dependencies import get_session
 from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
-from utilities.service_builder_utilities import build_delete_service, build_segment_service
+from utilities.service_builder_utilities import build_segment_service
 from utilities.service_builder_utilities import build_thumbnail_service
 from repositories.segment_repository import SegmentRepository
 from services.segment_service import SegmentService
