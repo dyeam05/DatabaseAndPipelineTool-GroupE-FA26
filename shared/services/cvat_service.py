@@ -4,7 +4,7 @@ import time
 import logging
 import zipfile
 
-from cvat_sdk.core.proxies.tasks import ResourceType
+from cvat_sdk.core.proxies.tasks import ResourceType, Task
 from cvat_sdk.models import TaskWriteRequest
 import cvat_sdk.auto_annotation as cvataa
 
@@ -66,7 +66,7 @@ class CVATService:
         self,
         job_segment_run_dir: JobSegmentRunDir,
         task_name: str
-    ) -> int:
+    ) -> Task:
         """
         Returns the task id of the created task
         """
@@ -89,7 +89,7 @@ class CVATService:
             annotation_format="COCO 1.0"
         )
         logger.info(f"Created task with id {task.id}")
-        return task.id
+        return task
 
     def annotate_task(self, task_id: int, cvat_function: ICVATDetection) -> None:
         logging.info(f"Annotating CVAT Task: {task_id}")

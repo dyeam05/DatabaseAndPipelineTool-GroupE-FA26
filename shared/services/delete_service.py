@@ -5,13 +5,13 @@ from itertools import chain
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.enums import CameraType, JobSegmentRunImportStatus
+from db.enums import CameraType, JobSegmentRunImportStatus, JobStatus
 from db.models.job_segment_run_import import JobSegmentRunImport
 from db.models.segment import Segment
 from repositories.segment_repository import SegmentRepository
 from schemas import job_definition
 from services.cvat_service import CVATService
-from services.errors import JobSegmentRunImportDeleteError
+from services.errors import JobRunningError, JobSegmentRunImportDeleteError
 from services.job_definition_service import JobDefinitionService
 from services.job_run_service import JobRunService
 from services.job_segment_run_import_service import JobSegmentRunImportService
@@ -74,6 +74,15 @@ class DeleteService:
 
 
     async def delete_route(self, route_id: str) -> None:
+        # ensure there are no running jobs for this route
+        job_runs = await self._job_run_service.list_job_runs_by_route(route_id=route_id)
+        for job_run in job_runs:
+            logger.warning(f"Trying to delete route with running job {job_run}")
+            if job_run.status == JobStatus.RUNNING:
+                logger.error(f"Can not delete route {route_id} because it has an active job happpening.")
+                raise JobRunningError(f"Can not delete route {route_id} because it has a running job.")
+
+
         # delete cvat imports
         await self.delete_cvat_imports_for_route(route_id=route_id)
         # delete frame artifacts

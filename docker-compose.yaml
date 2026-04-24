@@ -19,7 +19,7 @@ x-cvat-env: &cvat-env
   CVAT_PUBLIC_URL: "http://localhost:8080"
 
 x-python-service-env: &python-service-env
-  <<: [*postgres-env, *minio-env]
+  <<: [*postgres-env, *minio-env, *cvat-env]
   COMMA_JWT: ${COMMA_JWT}
   PYTHONPATH: /app/shared:/app/backend
   CVAT_PUBLIC_URL: "http://localhost:8080"
@@ -74,6 +74,10 @@ services:
       <<: *python-service-env
     depends_on:
       - postgres
+    networks:
+      - default
+      - cvat_network
+
   frontend:
       build:
         context: ./frontend

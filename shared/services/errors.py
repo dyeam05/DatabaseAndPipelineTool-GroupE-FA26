@@ -117,3 +117,7 @@ class RouteDeleteError(ValueError):
     def __init__(self, reason: str):
         super().__init__(reason)
 
+class JobRunningError(ValueError):
+    def __init__(self, reason: str):
+        super().__init__(reason)
+
