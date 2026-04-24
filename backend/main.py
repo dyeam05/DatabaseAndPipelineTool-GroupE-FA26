@@ -12,6 +12,7 @@ from services.errors import (
     DatasetExportNotFoundError,
     DatasetExportValidationError,
     RouteAlreadyExistsError,
+    RouteDeleteError,
     RouteNotFoundError,
     RouteNotReadyForJobRunError,
 )
@@ -119,6 +120,13 @@ async def handle_dataset_export_deletion_conflict_error(
         status_code=status.HTTP_409_CONFLICT,
         content={"detail": str(exc)},
     )
+
+@app.exception_handler(RouteDeleteError)
+async def handle_route_delete_error(
+        _: Request,
+        exec: RouteDeleteError
+    ):
+    return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": str(exec)})
 
 
 app.include_router(router=routes_router)

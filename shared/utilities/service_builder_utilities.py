@@ -1,7 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from repositories import job_segment_run_import_repository
 from repositories.job_segment_run_import_repository import JobSegmentRunImportRepository
 from repositories.route_repository import RouteRepository
+from services import job_segment_run_import_service
+from services.cvat_service import CVATService
 from services.job_segment_run_import_service import JobSegmentRunImportService
 from services.route_service import RouteService
 from repositories.segment_repository import SegmentRepository
@@ -114,10 +117,17 @@ def build_delete_service(session: AsyncSession) -> DeleteService:
     route_repository = RouteRepository(session=session)
     artifact_repo = ArtifactRepository(session=session)
     minio_service = MinioService()
+    cvat_service = CVATService()
+    job_segment_run_import_repository = JobSegmentRunImportRepository(session=session)
+    job_segment_run_import_service = JobSegmentRunImportService(job_segment_run_import_repository=job_segment_run_import_repository)
+
+
     return DeleteService(
         segment_repository=segment_repository,
         minio_service=minio_service,
         route_repository=route_repository,
         artifact_repository=artifact_repo,
+        job_segment_run_import_service=job_segment_run_import_service,
+        cvat_service=cvat_service,
         session=session,
     )

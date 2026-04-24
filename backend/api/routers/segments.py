@@ -70,16 +70,3 @@ async def get_segment(
     if segment is None:
         raise SegmentNotFoundError(route_id=route_id, segment_id=segment_id)
     return segment
-
-@segments_router.delete("/{route_id}/{segment_id}")
-async def delete_segment(
-    route_id: str,
-    segment_id: int,
-    session: AsyncSession = Depends(get_transactional_session),
-):
-    logging.info("delete segment")
-    service = build_delete_service(session=session)
-
-    await service.delete_segment(route_id=route_id, segment_id=segment_id)
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

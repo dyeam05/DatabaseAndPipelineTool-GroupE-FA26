@@ -108,3 +108,7 @@ class JobSegmentRunReviewNotFound(ValueError):
         segment_id: int,
     ) -> None:
         super().__init__(f"Job segment run review {(job_run_num, job_def_id, route_id, segment_id)} not found")
+
+class RouteDeleteError(ValueError):
+    def __init__(self, reason: str):
+        super().__init__(reason)

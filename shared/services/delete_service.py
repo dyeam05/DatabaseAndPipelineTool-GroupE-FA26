@@ -5,10 +5,13 @@ from itertools import chain
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.enums import JobSegmentRunImportStatus
 from db.models.segment import Segment
 from repositories.segment_repository import SegmentRepository
+from services.cvat_service import CVATService
+from services.errors import RouteDeleteError
+from services.job_segment_run_import_service import JobSegmentRunImportService
 from services.minio_service import MinioService
-from utilities.minio_utilities import get_segment_object_name
 from repositories.route_repository import RouteRepository
 from repositories.artifact_repository import ArtifactRepository
 from db.models import JobSegmentRun, SegmentArtifact, DatasetExport, Artifact, FrameArtifact, Frame
@@ -22,43 +25,21 @@ class DeleteService:
         minio_service: MinioService,
         route_repository: RouteRepository,
         artifact_repository: ArtifactRepository,
+        cvat_service: CVATService,
+        job_segment_run_import_service: JobSegmentRunImportService,
         session: AsyncSession,
     ) -> None:
         self._segment_repository = segment_repository
         self._minio_service = minio_service
         self._route_repository = route_repository
         self._artifact_repository = artifact_repository
+        self._cvat_service = cvat_service
+        self._job_segment_run_import_service = job_segment_run_import_service
         self._session = session
 
-
-    async def delete_segment(self, route_id: str, segment_id: int) -> None:
-        segment = await self._segment_repository.get_by_id(route_id, segment_id)
-        if segment is None:
-            return
-
-        prefix = get_segment_object_name(segment)
-
-        objects = self._minio_service.minio_client.list_objects(
-            bucket_name=self._minio_service.bucket_name,
-            prefix=prefix,
-            recursive=True,
-        )
-
-        object_keys: list[str] = []
-        for obj in objects:
-            if obj.object_name is None:
-                continue
-            object_keys.append(obj.object_name)
-
-        if object_keys:
-            self._minio_service.delete_objects(
-                bucket_name=self._minio_service.bucket_name,
-                object_keys=object_keys,
-            )
-
-        await self._segment_repository.delete(segment)
-
     async def delete_route(self, route_id: str) -> None:
+        # delete cvat imports
+        await self.delete_cvat_imports_for_route(route_id=route_id)
         # delete frame artifacts
         logger.info(f"Deleting route {route_id}")
         stmt =(
@@ -112,3 +93,21 @@ class DeleteService:
 
         for artifact in artifacts:
             await self._artifact_repository.delete(artifact)
+
+    async def delete_cvat_imports_for_route(self, route_id: str) -> None:
+        logger.info(f"Deleting CVAT imports for route {route_id}")
+        imports_to_delete = await self._job_segment_run_import_service.get_by_route_id(route_id=route_id)
+        logger.info(f"Deleting {len(imports_to_delete)} CVAT imports for route {route_id}")
+        for import_to_delete in imports_to_delete:
+            # Raise error if trying to delete a route while an import is in-progress, as this could cause race conditions
+            if import_to_delete.status not in [JobSegmentRunImportStatus.LOADED, JobSegmentRunImportStatus.REMOVED, JobSegmentRunImportStatus.FAILED]:
+                logger.error(f"Can not delete route with job segment run import having status {import_to_delete.status}")
+                raise RouteDeleteError(reason=f"Can not delete route with job segment run import having status {import_to_delete.status}")
+
+            if import_to_delete.status == JobSegmentRunImportStatus.LOADED and import_to_delete.task_id is not None:
+                self._cvat_service.delete_task(task_id=import_to_delete.task_id)
+
+        return 
+
+
+
