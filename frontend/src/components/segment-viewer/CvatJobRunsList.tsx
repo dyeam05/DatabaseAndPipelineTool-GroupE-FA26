@@ -1,11 +1,11 @@
 import { useQuery, useQueries, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { getJobSegmentRunsForSegment, importToCvat, deleteFromCvat, getCvatImportForRun } from "../api/job_segment_run";
-import { listJobDefinitions } from "../api/job_definitions";
-import type { CvatImport, JobSegmentRun } from "../api/types";
-import { CVAT_IN_PROGRESS_STATUSES } from "../api/types";
-import { STATUS_COLOR, STATUS_LABEL, resolveAction } from "../utils/jobSegmentRunConfig";
-import type { CvatAction } from "../utils/jobSegmentRunConfig";
-import { CvatActionButton } from "./segment-viewer/CvatActionButton";
+import { getJobSegmentRunsForSegment, importToCvat, deleteFromCvat, getCvatImportForRun } from "../../api/job_segment_run";
+import { listJobDefinitions } from "../../api/job_definitions";
+import type { CvatImport, JobSegmentRun } from "../../api/types";
+import { CVAT_IN_PROGRESS_STATUSES } from "../../api/types";
+import { STATUS_COLOR, STATUS_LABEL, resolveAction } from "../../utils/jobSegmentRunConfig";
+import type { CvatAction } from "../../utils/jobSegmentRunConfig";
+import { CvatActionButton } from "./CvatActionButton";
 
 type RunKeyFields = Pick<JobSegmentRun, "jobDefId" | "jobRunNum" | "segmentId" | "camera">;
 const runKey = (r: RunKeyFields) => `${r.jobDefId}-${r.jobRunNum}-${r.segmentId}-${r.camera}`;
@@ -139,4 +139,3 @@ function RunRow({ run, imp, action, defName, isLoading, isUnloading, onLoad, onU
     </div>
   );
 }
-

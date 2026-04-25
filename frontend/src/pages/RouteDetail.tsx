@@ -7,7 +7,7 @@ import { SEGMENT_TERMINAL_STATUSES, JOB_TERMINAL_STATUSES } from "../api/types";
 import { useRouteStatus } from "../hooks/useRouteStatus";
 import { useJobRunsForRoute } from "../hooks/useJobRunsForRoute";
 import { SEG_STATUS_CONFIG, DEFAULT_SEG_CFG } from "../utils/segmentStatusConfig";
-import { RouteDetailHeader } from "../components/RouteDetailHeader";
+import { RouteDetailHeader } from "../components/route-detail/RouteDetailHeader";
 import { SegmentCard } from "../components/route-detail/SegmentCard";
 import type { Segment } from "../api/types";
 type SegFilterStatus = SegmentStatus | "all";

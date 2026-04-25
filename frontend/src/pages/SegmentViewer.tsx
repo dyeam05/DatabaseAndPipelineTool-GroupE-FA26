@@ -6,7 +6,7 @@ import { listSegmentsForRoute, getFrameCount } from "../api/segments";
 import type { Segment } from "../api/types";
 import { SEGMENT_TERMINAL_STATUSES } from "../api/types";
 import { useRouteStatus } from "../hooks/useRouteStatus";
-import { CvatJobRunsList } from "../components/CvatJobRunsList";
+import { CvatJobRunsList } from "../components/segment-viewer/CvatJobRunsList";
 import { SegmentViewerSkeleton } from "../components/segment-viewer/SegmentViewerSkeleton";
 import { SegmentHero } from "../components/segment-viewer/SegmentHero";
 import { SegmentThumbnailPanel } from "../components/segment-viewer/SegmentThumbnailPanel";
