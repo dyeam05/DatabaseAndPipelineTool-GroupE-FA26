@@ -1,54 +1,18 @@
-import type { CSSProperties, ReactNode } from "react";
-import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getJobSegmentRunsForSegment,
-  importToCvat,
-  getCvatImportForRun,
-} from "../api/job_segment_run";
-import type { CvatImport, JobSegmentRun, JobSegmentRunStatus } from "../api/types";
+import { useQuery, useQueries, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { getJobSegmentRunsForSegment, importToCvat, deleteFromCvat, getCvatImportForRun } from "../api/job_segment_run";
+import { listJobDefinitions } from "../api/job_definitions";
+import type { CvatImport, JobSegmentRun } from "../api/types";
 import { CVAT_IN_PROGRESS_STATUSES } from "../api/types";
-
-// ─── Constants & helpers ──────────────────────────────────────────────────────
-
-const JOB_STATUS_COLOR: Record<JobSegmentRunStatus, string> = {
-  queued:    "var(--text-secondary)",
-  running:   "var(--accent-caution)",
-  succeeded: "var(--accent-go)",
-  failed:    "var(--accent-alert)",
-  cancelled: "var(--text-muted)",
-};
-
-const ACTIVE_JOB_STATUSES: JobSegmentRunStatus[] = ["queued", "running"];
+import { STATUS_COLOR, STATUS_LABEL, resolveAction } from "../utils/jobSegmentRunConfig";
+import type { CvatAction } from "../utils/jobSegmentRunConfig";
+import { CvatActionButton } from "./segment-viewer/CvatActionButton";
 
 type RunKeyFields = Pick<JobSegmentRun, "jobDefId" | "jobRunNum" | "segmentId" | "camera">;
-
 const runKey = (r: RunKeyFields) => `${r.jobDefId}-${r.jobRunNum}-${r.segmentId}-${r.camera}`;
-
-type CvatActionState = "unavailable" | "load" | "in_progress" | "open";
-
-interface CvatAction {
-  state: CvatActionState;
-  label: string;
-}
-
-function resolveAction(run: JobSegmentRun, imp: CvatImport | null, isPending: boolean): CvatAction {
-  if (isPending)                    return { state: "in_progress", label: "Loading…" };
-  if (run.status !== "succeeded")   return { state: "unavailable", label: "Not Available" };
-  if (!imp || imp.status === "removed" || imp.status === "failed") {
-    return { state: "load", label: "Load into CVAT" };
-  }
-  if (imp.status === "loaded")      return { state: "open", label: "Open in CVAT ↗" };
-  return { state: "in_progress", label: "In Progress" };
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-interface Props {
-  routeId: string;
-  segmentId: number;
-}
-
-export function CvatJobRunsList({ routeId, segmentId }: Props) {
+export function CvatJobRunsList({ routeId, segmentId }: { routeId: string; segmentId: number }) {
   const queryClient = useQueryClient();
 
   const { data: segmentRuns = [], isLoading: runsLoading } = useQuery({
@@ -56,8 +20,10 @@ export function CvatJobRunsList({ routeId, segmentId }: Props) {
     queryFn: () => getJobSegmentRunsForSegment(routeId, segmentId),
     enabled: !!routeId,
     refetchInterval: (q) =>
-      (q.state.data ?? []).some((r) => ACTIVE_JOB_STATUSES.includes(r.status)) ? 5000 : false,
+      (q.state.data ?? []).some((r) => r.status === "queued" || r.status === "running") ? 5000 : false,
   });
+
+  const { data: jobDefs = [] } = useQuery({ queryKey: ["job-definitions"], queryFn: listJobDefinitions });
 
   const importQueryKey = (r: RunKeyFields) =>
     ["cvat-import", routeId, r.jobDefId, r.jobRunNum, r.segmentId, r.camera] as const;
@@ -65,15 +31,9 @@ export function CvatJobRunsList({ routeId, segmentId }: Props) {
   const importQueries = useQueries({
     queries: segmentRuns.map((run) => ({
       queryKey: importQueryKey(run),
-      queryFn: () =>
-        getCvatImportForRun({
-          routeId,
-          jobDefId:  run.jobDefId,
-          jobRunNum: run.jobRunNum,
-          segmentId: run.segmentId,
-          camera:    run.camera,
-        }),
+      queryFn: () => getCvatImportForRun({ routeId, jobDefId: run.jobDefId, jobRunNum: run.jobRunNum, segmentId: run.segmentId, camera: run.camera }),
       enabled: !!routeId,
+      placeholderData: keepPreviousData,
       refetchInterval: (q: { state: { data?: CvatImport | null } }) =>
         q.state.data && CVAT_IN_PROGRESS_STATUSES.includes(q.state.data.status) ? 3000 : false,
     })),
@@ -81,13 +41,7 @@ export function CvatJobRunsList({ routeId, segmentId }: Props) {
 
   const loadMutation = useMutation({
     mutationFn: (run: JobSegmentRun) =>
-      importToCvat({
-        routeId,
-        jobDefId:  run.jobDefId,
-        jobRunNum: run.jobRunNum,
-        segmentId: run.segmentId,
-        camera:    run.camera,
-      }),
+      importToCvat({ routeId, jobDefId: run.jobDefId, jobRunNum: run.jobRunNum, segmentId: run.segmentId, camera: run.camera }),
     onSuccess: (newImport) => {
       const key = importQueryKey(newImport);
       queryClient.setQueryData<CvatImport | null>(key, newImport);
@@ -95,38 +49,47 @@ export function CvatJobRunsList({ routeId, segmentId }: Props) {
     },
   });
 
-  const pendingKey = loadMutation.isPending && loadMutation.variables
-    ? runKey(loadMutation.variables)
-    : null;
-
-  const importsByKey = new Map<string, CvatImport | null>();
-  segmentRuns.forEach((run, i) => {
-    importsByKey.set(runKey(run), importQueries[i]?.data ?? null);
+  const unloadMutation = useMutation({
+    mutationFn: (run: JobSegmentRun) =>
+      deleteFromCvat({ routeId, jobDefId: run.jobDefId, jobRunNum: run.jobRunNum, segmentId: run.segmentId, camera: run.camera }),
+    onSuccess: (_, run) => {
+      const key = importQueryKey(run);
+      queryClient.setQueryData<CvatImport | null>(key, null);
+      return queryClient.invalidateQueries({ queryKey: key });
+    },
   });
-  const importsLoading = importQueries.some((q) => q.isLoading);
-  const loading = runsLoading || importsLoading;
+
+  const pendingKey   = loadMutation.isPending   && loadMutation.variables   ? runKey(loadMutation.variables)   : null;
+  const unloadingKey = unloadMutation.isPending && unloadMutation.variables ? runKey(unloadMutation.variables) : null;
+  const loading = runsLoading || importQueries.some((q) => q.isLoading);
 
   return (
-    <div style={CONTAINER_STYLE}>
-      <div style={HEADING_STYLE}>Job Runs</div>
+    <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--space-5)]">
+      <div className="text-[10px] [font-family:var(--font-mono)] uppercase tracking-[0.09em] text-[var(--text-muted)] font-semibold mb-[var(--space-4)]">
+        Job Runs
+      </div>
 
       {loading ? (
-        <EmptyRow>Loading…</EmptyRow>
+        <div className="[font-family:var(--font-mono)] text-[11px] text-[var(--text-muted)] py-[var(--space-3)]">Loading…</div>
       ) : segmentRuns.length === 0 ? (
-        <EmptyRow>No job runs for this segment.</EmptyRow>
+        <div className="[font-family:var(--font-mono)] text-[11px] text-[var(--text-muted)] py-[var(--space-3)]">No job runs for this segment.</div>
       ) : (
-        <div style={LIST_STYLE}>
-          {segmentRuns.map((run) => {
+        <div className="flex flex-col gap-[var(--space-2)]">
+          {segmentRuns.map((run, i) => {
             const key = runKey(run);
-            const imp = importsByKey.get(key) ?? null;
-            const action = resolveAction(run, imp, key === pendingKey);
+            const imp = importQueries[i]?.data ?? null;
+            const defName = jobDefs.find((d) => d.id === run.jobDefId)?.name ?? `def ${run.jobDefId}`;
             return (
-              <JobRunRow
+              <RunRow
                 key={key}
                 run={run}
                 imp={imp}
-                action={action}
+                action={resolveAction(run, imp, false)}
+                defName={defName}
+                isLoading={key === pendingKey}
+                isUnloading={key === unloadingKey}
                 onLoad={() => loadMutation.mutate(run)}
+                onUnload={() => unloadMutation.mutate(run)}
               />
             );
           })}
@@ -138,235 +101,42 @@ export function CvatJobRunsList({ routeId, segmentId }: Props) {
 
 // ─── Row ──────────────────────────────────────────────────────────────────────
 
-interface RowProps {
-  run: JobSegmentRun;
-  imp: CvatImport | null;
-  action: CvatAction;
-  onLoad: () => void;
-}
-
-function JobRunRow({ run, imp, action, onLoad }: RowProps) {
-  const statusColor = JOB_STATUS_COLOR[run.status];
-  const isActive    = ACTIVE_JOB_STATUSES.includes(run.status);
-  const showError   = imp?.status === "failed" && imp.errorMessage;
+function RunRow({ run, imp, action, defName, isLoading, isUnloading, onLoad, onUnload }: { run: JobSegmentRun; imp: CvatImport | null; action: CvatAction; defName: string; isLoading: boolean; isUnloading: boolean; onLoad: () => void; onUnload: () => void }) {
+  const color    = STATUS_COLOR[run.status];
+  const isActive = run.status === "queued" || run.status === "running";
+  const resolvedAction: CvatAction =
+    isUnloading ? { state: "in_progress", label: "Unloading…" } :
+    isLoading   ? { state: "in_progress", label: "Loading…"   } :
+    action;
 
   return (
-    <div style={ROW_STYLE}>
-      <div style={ROW_INFO_STYLE}>
-        <div style={ROW_STATUS_LINE_STYLE}>
-          {isActive && <StatusDot color={statusColor} />}
-          <span style={{ ...MONO_LABEL, color: statusColor }}>{run.status}</span>
-        </div>
-        <div style={ROW_META_STYLE}>
-          run #{run.jobRunNum} · def {run.jobDefId}
-        </div>
-        <div style={ROW_CAMERA_STYLE}>{run.camera}</div>
-        {showError && (
-          <div title={imp.errorMessage ?? undefined} style={ROW_ERROR_STYLE}>
-            {imp.errorMessage}
-          </div>
-        )}
+    <div className="flex items-center gap-[var(--space-3)] py-[calc(var(--space-2)+1px)] px-[var(--space-3)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
+      <div className="flex items-center gap-[6px] min-w-[90px]">
+        {isActive && <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ backgroundColor: color }} />}
+        <span className="text-[10px] font-bold tracking-[0.07em] uppercase [font-family:var(--font-mono)]" style={{ color }}>
+          {STATUS_LABEL[run.status]}
+        </span>
       </div>
-
-      <CvatActionButton action={action} taskUrl={imp?.taskUrl ?? null} onLoad={onLoad} />
-    </div>
-  );
-}
-
-// ─── Action button ────────────────────────────────────────────────────────────
-
-interface ActionButtonProps {
-  action: CvatAction;
-  taskUrl: string | null;
-  onLoad: () => void;
-}
-
-function CvatActionButton({ action, taskUrl, onLoad }: ActionButtonProps) {
-  const style = { ...BUTTON_BASE, ...VARIANT_STYLE[action.state] };
-  const leading = action.state === "in_progress"
-    ? <StatusDot color="var(--accent-caution)" />
-    : <CvatIcon size={12} />;
-
-  if (action.state === "open" && taskUrl) {
-    return (
-      <a href={taskUrl} target="_blank" rel="noopener noreferrer" style={style}>
-        {leading}{action.label}
-      </a>
-    );
-  }
-
-  const canClick = action.state === "load";
-  return (
-    <button type="button" disabled={!canClick} onClick={canClick ? onLoad : undefined} style={style}>
-      {leading}{action.label}
-    </button>
-  );
-}
-
-// ─── Tiny visuals ─────────────────────────────────────────────────────────────
-
-function EmptyRow({ children }: { children: ReactNode }) {
-  return <div style={EMPTY_ROW_STYLE}>{children}</div>;
-}
-
-function StatusDot({ color }: { color: string }) {
-  return <span style={{ ...STATUS_DOT_STYLE, backgroundColor: color }} />;
-}
-
-function CvatIcon({ size }: { size: number }) {
-  return (
-    <div style={{ ...CVAT_ICON_STYLE, width: size, height: size }}>
-      <span style={{ ...CVAT_ICON_TEXT_STYLE, fontSize: `${Math.floor(size * 0.55)}px` }}>
-        CV
+      <span className="text-[10px] [font-family:var(--font-mono)] text-[var(--text-secondary)] flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+        job #{run.jobRunNum} · {defName} · {run.camera}
       </span>
+      {imp?.status === "failed" && imp.errorMessage && (
+        <span title={imp.errorMessage} className="text-[9px] [font-family:var(--font-mono)] text-[var(--accent-alert)] max-w-[140px] overflow-hidden text-ellipsis whitespace-nowrap">
+          {imp.errorMessage}
+        </span>
+      )}
+      {imp?.status === "loaded" && (
+        <button
+          type="button"
+          onClick={onUnload}
+          disabled={isUnloading}
+          className="shrink-0 flex items-center py-[var(--space-2)] px-[var(--space-3)] [font-family:var(--font-mono)] text-[9px] font-bold uppercase tracking-[0.07em] whitespace-nowrap bg-[var(--bg-elevated)] text-[var(--accent-alert)]! border border-[var(--accent-alert)] cursor-pointer transition-colors hover:bg-[var(--accent-alert)] hover:text-[var(--bg-elevated)]! disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Unload in CVAT
+        </button>
+      )}
+      <CvatActionButton action={resolvedAction} taskUrl={imp?.taskUrl ?? null} onLoad={onLoad} />
     </div>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const CONTAINER_STYLE: CSSProperties = {
-  border: "1px solid var(--border-subtle)",
-  backgroundColor: "var(--bg-surface)",
-  padding: "var(--space-5)",
-};
-
-const HEADING_STYLE: CSSProperties = {
-  fontSize: "10px",
-  fontFamily: "var(--font-mono)",
-  textTransform: "uppercase",
-  letterSpacing: "0.09em",
-  color: "var(--text-muted)",
-  fontWeight: 600,
-  marginBottom: "var(--space-4)",
-};
-
-const LIST_STYLE: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--space-2)",
-};
-
-const ROW_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--space-3)",
-  padding: "var(--space-3) var(--space-4)",
-  border: "1px solid var(--border-subtle)",
-  backgroundColor: "var(--bg-elevated)",
-};
-
-const ROW_INFO_STYLE: CSSProperties = { flex: 1, minWidth: 0 };
-
-const ROW_STATUS_LINE_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-  marginBottom: "2px",
-};
-
-const ROW_META_STYLE: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  color: "var(--text-secondary)",
-};
-
-const ROW_CAMERA_STYLE: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "9px",
-  color: "var(--text-muted)",
-  marginTop: "1px",
-};
-
-const ROW_ERROR_STYLE: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "9px",
-  color: "var(--accent-alert)",
-  marginTop: "2px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const MONO_LABEL: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "9px",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.07em",
-};
-
-const BUTTON_BASE: CSSProperties = {
-  flexShrink: 0,
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-  padding: "var(--space-2) var(--space-3)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "9px",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.07em",
-  whiteSpace: "nowrap",
-  textDecoration: "none",
-};
-
-const VARIANT_STYLE: Record<CvatActionState, CSSProperties> = {
-  unavailable: {
-    backgroundColor: "var(--bg-elevated)",
-    color: "var(--text-muted)",
-    border: "1px solid var(--border-subtle)",
-    cursor: "not-allowed",
-    opacity: 0.5,
-  },
-  load: {
-    backgroundColor: "var(--bg-inverse)",
-    color: "var(--text-on-inverse)",
-    border: "1px solid var(--border-strong)",
-    cursor: "pointer",
-  },
-  in_progress: {
-    backgroundColor: "var(--bg-elevated)",
-    color: "var(--accent-caution)",
-    border: "1px solid var(--accent-caution)",
-    cursor: "not-allowed",
-    opacity: 0.7,
-  },
-  open: {
-    backgroundColor: "var(--bg-inverse)",
-    color: "var(--accent-cvat)",
-    border: "1px solid var(--accent-cvat)",
-    cursor: "pointer",
-  },
-};
-
-const EMPTY_ROW_STYLE: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  color: "var(--text-muted)",
-  padding: "var(--space-3) 0",
-};
-
-const STATUS_DOT_STYLE: CSSProperties = {
-  width: "5px",
-  height: "5px",
-  borderRadius: "50%",
-  flexShrink: 0,
-  display: "inline-block",
-};
-
-const CVAT_ICON_STYLE: CSSProperties = {
-  backgroundColor: "var(--accent-cvat)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
-const CVAT_ICON_TEXT_STYLE: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontWeight: 700,
-  color: "var(--text-on-inverse)",
-  letterSpacing: "0.03em",
-  lineHeight: 1,
-};
