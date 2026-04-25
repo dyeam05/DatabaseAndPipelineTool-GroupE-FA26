@@ -62,6 +62,7 @@ export function CvatJobRunsList({ routeId, segmentId }: { routeId: string; segme
   const pendingKey   = loadMutation.isPending   && loadMutation.variables   ? runKey(loadMutation.variables)   : null;
   const unloadingKey = unloadMutation.isPending && unloadMutation.variables ? runKey(unloadMutation.variables) : null;
   const loading = runsLoading || importQueries.some((q) => q.isLoading);
+  const sortedRuns = [...segmentRuns].sort((a, b) => b.jobRunNum - a.jobRunNum);
 
   return (
     <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--space-5)]">
@@ -71,13 +72,14 @@ export function CvatJobRunsList({ routeId, segmentId }: { routeId: string; segme
 
       {loading ? (
         <div className="[font-family:var(--font-mono)] text-[11px] text-[var(--text-muted)] py-[var(--space-3)]">Loading…</div>
-      ) : segmentRuns.length === 0 ? (
+      ) : sortedRuns.length === 0 ? (
         <div className="[font-family:var(--font-mono)] text-[11px] text-[var(--text-muted)] py-[var(--space-3)]">No job runs for this segment.</div>
       ) : (
         <div className="flex flex-col gap-[var(--space-2)]">
-          {segmentRuns.map((run, i) => {
+          {sortedRuns.map((run) => {
             const key = runKey(run);
-            const imp = importQueries[i]?.data ?? null;
+            const originalIdx = segmentRuns.indexOf(run);
+            const imp = importQueries[originalIdx]?.data ?? null;
             const defName = jobDefs.find((d) => d.id === run.jobDefId)?.name ?? `def ${run.jobDefId}`;
             return (
               <RunRow
