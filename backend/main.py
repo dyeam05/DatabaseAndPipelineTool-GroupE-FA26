@@ -22,6 +22,7 @@ from api.routers.segments import segments_router
 from api.routers.job_runs import job_runs_router
 from api.routers.job_definitions import job_definitions_router
 from api.routers.job_segment_run import job_segment_run_router
+from api.routers.cvat import cvat_router
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 if not FRONTEND_URL:
@@ -127,3 +128,4 @@ app.include_router(router=job_runs_router)
 app.include_router(router=job_definitions_router)
 app.include_router(router=job_segment_run_router)
 app.include_router(router=dataset_exports_router)
+app.include_router(router=cvat_router)
