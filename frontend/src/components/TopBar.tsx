@@ -1,11 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { Settings, Route, BriefcaseBusiness } from "lucide-react";
+import { Route, BriefcaseBusiness } from "lucide-react";
 import RefreshCvatButton from "./RefreshCvatButton";
 
 const navItems = [
   { to: "/routes", label: "Routes", icon: Route },
   { to: "/job-definitions", label: "Jobs", icon: BriefcaseBusiness },
-  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function TopBar() {

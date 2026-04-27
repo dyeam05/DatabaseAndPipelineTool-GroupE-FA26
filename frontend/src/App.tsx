@@ -6,7 +6,6 @@ import AppLayout from "./layouts/AppLayout";
 import RouteDashboard from "./pages/RouteDashboard";
 import RouteDetail from "./pages/RouteDetail";
 import SegmentViewer from "./pages/SegmentViewer";
-import Settings from "./pages/Settings";
 import JobDefinitions from "./pages/JobDefinitions";
 
 const queryClient = new QueryClient({
@@ -31,7 +30,6 @@ export default function App() {
           <Route path="/routes" element={<RouteDashboard />} />
           <Route path="/routes/:routeId" element={<RouteDetail />} />
           <Route path="/routes/:routeId/segments/:segmentId" element={<SegmentViewer />} />
-          <Route path="/settings" element={<Settings />} />
           <Route path="/job-definitions" element={<JobDefinitions />} />
         </Route>
       </Routes>
