@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { JobRun } from "../../api/types";
-import { formatRelativeTime } from "../../utils/formatters";
+import { formatCamera, formatRelativeTime } from "../../utils/formatters";
 import { listJobDefinitions } from "../../api/job_definitions";
 import { STATUS_COLOR, STATUS_LABEL } from "../../utils/jobSegmentRunConfig";
 import { ExportJobRunButton } from "./ExportJobRunButton";
@@ -32,7 +32,7 @@ export function JobRunRow({ jobRun }: { jobRun: JobRun }) {
         </span>
       </div>
       <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--text-on-inverse-muted)" }}>
-        job #{jobRun.jobRunNum} · {defName} · {jobRun.camera}
+        job #{jobRun.jobRunNum} · {defName} · {formatCamera(jobRun.camera)}
       </span>
       <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--text-on-inverse-dim)", marginLeft: "auto" }}>
         {isActive ? `queued ${formatRelativeTime(jobRun.queuedAt)}` : formatRelativeTime(jobRun.finishedAt)}

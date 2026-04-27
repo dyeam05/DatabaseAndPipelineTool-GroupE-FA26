@@ -2,13 +2,9 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { listJobDefinitions } from "../../api/job_definitions";
 import { createJobRun } from "../../api/job_runs";
+import { CAMERAS } from "../../api/types";
 import type { JobRun } from "../../api/types";
-
-const CAMERA_OPTIONS = [
-  { value: "front_regular", label: "Front Regular" },
-  { value: "front_wide",    label: "Front Wide" },
-  { value: "driver",        label: "Driver" },
-] as const;
+import { formatCamera } from "../../utils/formatters";
 
 const selectStyle: React.CSSProperties = {
   flex: 1,
@@ -34,7 +30,7 @@ export function CreateJobRunButton({ routeId }: { routeId: string }) {
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [jobDefId, setJobDefId] = useState<number | "">("");
-  const [camera, setCamera] = useState<string>(CAMERA_OPTIONS[0].value);
+  const [camera, setCamera] = useState<string>(CAMERAS[0]);
   const [error, setError] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +76,7 @@ export function CreateJobRunButton({ routeId }: { routeId: string }) {
     setExpanded(true);
     setError(null);
     setJobDefId("");
-    setCamera(CAMERA_OPTIONS[0].value);
+    setCamera(CAMERAS[0]);
   }
 
   function close() {
@@ -208,8 +204,8 @@ export function CreateJobRunButton({ routeId }: { routeId: string }) {
             disabled={submitting}
             style={selectStyle}
           >
-            {CAMERA_OPTIONS.map((c) => (
-              <option key={c.value} value={c.value} style={optionStyle}>{c.label}</option>
+            {CAMERAS.map((c) => (
+              <option key={c} value={c} style={optionStyle}>{formatCamera(c)}</option>
             ))}
           </select>
         </div>

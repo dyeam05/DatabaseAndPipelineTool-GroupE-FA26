@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteJobRun } from "../../api/job_runs";
+import { formatCamera } from "../../utils/formatters";
 
 interface Props {
   routeId: string;
@@ -28,7 +29,7 @@ export function DeleteJobRunButton({ routeId, jobDefId, jobRunNum, camera }: Pro
   });
 
   const handleClick = () => {
-    if (!confirm(`Delete job run #${jobRunNum} (${camera})? This cannot be undone.`)) return;
+    if (!confirm(`Delete job run #${jobRunNum} (${formatCamera(camera)})? This cannot be undone.`)) return;
     mutation.mutate();
   };
 

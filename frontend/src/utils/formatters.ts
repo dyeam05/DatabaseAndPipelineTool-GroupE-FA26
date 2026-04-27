@@ -17,6 +17,13 @@ export function formatDuration(s: number): string {
   return `${m}m ${String(s % 60).padStart(2, "0")}s`;
 }
 
+export function formatCamera(value: string): string {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export function formatRelativeTime(iso: string | null): string {
   if (!iso) return "—";
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
