@@ -74,17 +74,7 @@ export interface Segment {
   durationSeconds: number;
   frameCount: number;
   status: SegmentStatus;
-  annotations: {
-    person: number;
-    bicycle: number;
-    car: number;
-    motorbike: number;
-    bus: number;
-    train: number;
-    truck: number;
-    trafficLight: number;
-    stopSign: number;
-  };
+  annotationCount: number;
 }
 
 export interface JobRun {
@@ -243,17 +233,7 @@ export function mapSegment(s: SegmentResponse): Segment {
     frameCount: s.frame_count ?? 0,
     status: s.status,
 
-    annotations: {
-      person: 0,
-      bicycle: 0,
-      car: 0,
-      motorbike: 0,
-      bus: 0,
-      train: 0,
-      truck: 0,
-      trafficLight: 0,
-      stopSign: 0,
-    },
+    annotationCount: 0,
   };
 }
 

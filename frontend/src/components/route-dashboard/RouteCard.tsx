@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Route, Segment, JobRun } from "../../api/types";
 import { formatDate } from "../../utils/formatters";
 import { RouteThumbnail } from "./RouteThumbnail";
-import { StatusBadge } from "../StatusBadge";
+import { StatusBadge } from "./StatusBadge";
 import { UploadBar } from "./UploadBar";
 import { deleteRoute } from "../../api/routes";
 

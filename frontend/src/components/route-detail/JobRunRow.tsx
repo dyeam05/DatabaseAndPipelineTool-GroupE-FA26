@@ -1,25 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import type { JobRun } from "../api/types";
-import { formatRelativeTime } from "../utils/formatters";
-import { listJobDefinitions } from "../api/job_definitions";
-import { ExportJobRunButton } from "./route-detail/ExportJobRunButton";
-
-const JOB_STATUS_COLORS: Record<string, string> = {
-  queued:    "var(--text-secondary)",
-  running:   "var(--accent-caution)",
-  succeeded: "var(--accent-go)",
-  failed:    "var(--accent-alert)",
-  cancelled: "var(--text-muted)",
-};
-
-const JOB_STATUS_LABELS: Record<string, string> = {
-  queued: "Queued", running: "Running", succeeded: "Succeeded",
-  failed: "Failed", cancelled: "Cancelled",
-};
+import type { JobRun } from "../../api/types";
+import { formatRelativeTime } from "../../utils/formatters";
+import { listJobDefinitions } from "../../api/job_definitions";
+import { STATUS_COLOR, STATUS_LABEL } from "../../utils/jobSegmentRunConfig";
+import { ExportJobRunButton } from "./ExportJobRunButton";
 
 export function JobRunRow({ jobRun }: { jobRun: JobRun }) {
-  const color = JOB_STATUS_COLORS[jobRun.status] ?? "var(--text-secondary)";
-  const label = JOB_STATUS_LABELS[jobRun.status] ?? jobRun.status;
+  const color = STATUS_COLOR[jobRun.status as keyof typeof STATUS_COLOR] ?? "var(--text-secondary)";
+  const label = STATUS_LABEL[jobRun.status as keyof typeof STATUS_LABEL] ?? jobRun.status;
   const isActive = jobRun.status === "queued" || jobRun.status === "running";
 
   const { data: jobDefs = [] } = useQuery({

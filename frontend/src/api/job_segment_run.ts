@@ -31,6 +31,24 @@ export async function getJobSegmentRunsForSegment(routeId: string, segmentId: nu
 }
 
 
+export async function deleteFromCvat(params: {
+  routeId: string;
+  jobDefId: number;
+  jobRunNum: number;
+  segmentId: number;
+  camera: string;
+}): Promise<void> {
+  const qs = new URLSearchParams({
+    route_id: params.routeId,
+    job_def_id: String(params.jobDefId),
+    job_run_num: String(params.jobRunNum),
+    segment_id: String(params.segmentId),
+    camera: params.camera,
+  });
+  await apiFetch<void>(`/job_segment_run/cvat-import?${qs}`, { method: "DELETE" });
+}
+
+
 export async function importToCvat(params: {
   routeId: string;
   jobDefId: number;

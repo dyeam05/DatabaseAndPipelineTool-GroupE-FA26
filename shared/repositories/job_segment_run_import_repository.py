@@ -68,6 +68,21 @@ class JobSegmentRunImportRepository:
         camera: CameraType,
         segment_id: int
     ) -> JobSegmentRunImport:
+        existing = await self.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            segment_id=segment_id,
+            camera=camera,
+        )
+        if existing is not None:
+            existing.status = JobSegmentRunImportStatus.QUEUED_FOR_LOADING
+            existing.task_id = None
+            existing.task_url = None
+            existing.error_message = None
+            await self._session.flush()
+            return existing
+
         job_segment_run_review = JobSegmentRunImport(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
@@ -76,7 +91,6 @@ class JobSegmentRunImportRepository:
             camera=camera,
             status=JobSegmentRunImportStatus.QUEUED_FOR_LOADING
         )
-
         self._session.add(job_segment_run_review)
         await self._session.flush()
         return job_segment_run_review

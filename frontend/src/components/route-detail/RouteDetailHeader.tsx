@@ -1,13 +1,13 @@
 import { useState } from "react";
-import type { Route, Segment, JobRun } from "../api/types";
-import { formatDate } from "../utils/formatters";
-import { isAnnotationInProgress } from "../hooks/useJobRunsForRoute";
+import type { Route, Segment, JobRun } from "../../api/types";
+import { formatDate } from "../../utils/formatters";
+import { isAnnotationInProgress } from "../../hooks/useJobRunsForRoute";
 import { DarkStatCell } from "./DarkStatCell";
 import { HeroUploadBar } from "./HeroUploadBar";
 import { JobRunRow } from "./JobRunRow";
 import { SegmentTimeline } from "./SegmentTimeline";
-import { CreateJobRunButton } from "./route-detail/CreateJobRunButton";
-import { deleteRoute } from "../api/routes";
+import { CreateJobRunButton } from "./CreateJobRunButton";
+import { deleteRoute } from "../../api/routes";
 
 const ROUTE_STATUS_COLORS: Record<string, string> = {
   "download queue": "var(--text-secondary)",

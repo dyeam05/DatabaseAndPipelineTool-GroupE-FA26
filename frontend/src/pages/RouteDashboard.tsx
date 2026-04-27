@@ -9,7 +9,7 @@ import { ROUTE_TERMINAL_STATUSES, SEGMENT_TERMINAL_STATUSES, JOB_TERMINAL_STATUS
 import { getStatusCfg } from "../utils/statusConfig";
 import { RouteCard } from "../components/route-dashboard/RouteCard";
 import { StatCard } from "../components/route-dashboard/StatCard";
-import { LiveDot } from "../components/LiveDot";
+import { LiveDot } from "../components/route-dashboard/LiveDot";
 import { ImportRouteButton } from "../components/route-dashboard/ImportRouteButton";
 import { createRoute } from "../api/routes";
 import { useQueryClient } from "@tanstack/react-query";

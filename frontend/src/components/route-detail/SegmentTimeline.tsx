@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { Segment } from "../api/types";
-import { SEG_STATUS_CONFIG, DEFAULT_SEG_CFG } from "../utils/segmentStatusConfig";
-import { formatOffset } from "../utils/formatters";
+import type { Segment } from "../../api/types";
+import { SEG_STATUS_CONFIG, DEFAULT_SEG_CFG } from "../../utils/segmentStatusConfig";
+import { formatOffset } from "../../utils/formatters";
 
 export function SegmentTimeline({ segments }: { segments: Segment[] }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);

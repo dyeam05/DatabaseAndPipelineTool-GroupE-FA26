@@ -1,4 +1,4 @@
-import type { Segment } from "../api/types";
+import type { Segment } from "../../api/types";
 
 export function HeroUploadBar({ segments }: { segments: Segment[] }) {
   const total = segments.length;
