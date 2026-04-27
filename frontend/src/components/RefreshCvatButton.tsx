@@ -5,7 +5,7 @@ import { restartCvat } from "../api/cvat";
 
 const COOLDOWN_SECONDS = 60;
 const TOOLTIP =
-  "Restart the CVAT server. Only use this if CVAT is frozen or unresponsive — it interrupts everyone's active sessions.";
+  "Restart the CVAT server. Only use this if CVAT is frozen or unresponsive";
 
 export default function RefreshCvatButton() {
   const [cooldownLeft, setCooldownLeft] = useState(0);
