@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { Settings, Route, BriefcaseBusiness } from "lucide-react";
+import RefreshCvatButton from "./RefreshCvatButton";
 
 const navItems = [
   { to: "/routes", label: "Routes", icon: Route },
@@ -44,6 +45,11 @@ export default function TopBar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Right-side actions */}
+      <div className="ml-auto flex items-center">
+        <RefreshCvatButton />
+      </div>
     </header>
   );
 }
