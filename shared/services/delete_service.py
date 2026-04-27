@@ -78,7 +78,7 @@ class DeleteService:
         job_runs = await self._job_run_service.list_job_runs_by_route(route_id=route_id)
         for job_run in job_runs:
             logger.warning(f"Trying to delete route with running job {job_run}")
-            if job_run.status == JobStatus.RUNNING:
+            if job_run.status in [JobStatus.RUNNING, JobStatus.QUEUED]:
                 logger.error(f"Can not delete route {route_id} because it has an active job happpening.")
                 raise JobRunningError(f"Can not delete route {route_id} because it has a running job.")
 
