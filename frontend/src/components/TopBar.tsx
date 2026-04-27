@@ -32,11 +32,14 @@ export default function TopBar() {
           <NavLink
             key={to}
             to={to}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors no-underline"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors border no-underline"
             style={({ isActive }) => ({
               color: isActive ? "var(--bg-inverse)" : "var(--text-on-inverse)",
               backgroundColor: isActive ? "var(--text-on-inverse)" : "transparent",
-              opacity: isActive ? 1 : 0.65,
+              borderColor: isActive ? "var(--text-on-inverse)" : "var(--border-on-inverse-faint)",
+              opacity: isActive ? 1 : 0.85,
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.05em",
             })}
           >
             <Icon size={14} />
