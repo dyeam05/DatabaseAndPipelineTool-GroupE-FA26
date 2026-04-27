@@ -6,6 +6,7 @@ from repositories.job_definition_repository import JobDefinitionRepository
 from repositories.job_run_repository import JobRunRepository
 from repositories.route_repository import RouteRepository
 from services.errors import (
+    JobRunCancelError,
     JobDefinitionNotFoundError,
     JobRunNotFoundError,
     RouteNotFoundError,
@@ -35,6 +36,11 @@ class JobRunService:
 
     async def get_next_job_run_by_status(self, status: JobStatus) -> JobRun | None:
         return await self._job_run_repository.get_next_by_status(status)
+
+    async def claim_next_queued_job(self) -> JobRun | None:
+        return await self._job_run_repository.claim_next_queued(
+            started_at=datetime.now(timezone.utc)
+        )
 
     async def get_job_run(self, job_run_num: int, job_def_id: int, route_id: str, camera: CameraType) -> JobRun | None:
         return await self._job_run_repository.get_by_id(
@@ -169,3 +175,62 @@ class JobRunService:
             )
 
         await self._job_run_repository.delete(job_run)
+
+    async def cancel_job_run(
+        self,
+        job_run_num: int,
+        job_def_id: int,
+        route_id: str,
+        camera: CameraType,
+    ) -> JobRun:
+        job_run = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            camera=camera
+        )
+        if job_run is None:
+            raise JobRunNotFoundError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id
+            )
+        if job_run.status != JobStatus.QUEUED:
+            raise JobRunCancelError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id,
+                reason=f"status is {job_run.status}",
+            )
+
+        cancelled_job_run = await self._job_run_repository.transition_status(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            camera=camera,
+            current_status=JobStatus.QUEUED,
+            new_status=JobStatus.CANCELLED,
+            finished_at=datetime.now(timezone.utc),
+        )
+        if cancelled_job_run is not None:
+            return cancelled_job_run
+
+        current_job_run = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            camera=camera
+        )
+        if current_job_run is None:
+            raise JobRunNotFoundError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id
+            )
+
+        raise JobRunCancelError(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            reason=f"status is {current_job_run.status}",
+        )

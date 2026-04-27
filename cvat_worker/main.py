@@ -224,15 +224,6 @@ async def _process_job_run(
     session: AsyncSession,
 ):
     logging.info(f"Processing job {job_run}")
-    await job_run_service.set_status(
-        job_run_num=job_run.job_run_num,
-        job_def_id=job_run.job_def_id,
-        route_id=job_run.route_id,
-        camera=job_run.camera,
-        status=JobStatus.RUNNING,
-    )
-    await session.commit()
-
     try:
         job_definition = await job_definition_service.get_job_definition(job_def_id=job_run.job_def_id)
         if job_definition is None:
@@ -327,13 +318,12 @@ async def main():
             await session.commit()
 
             while not stop_event.is_set():
-                job_run = await job_run_service.get_next_job_run_by_status(
-                    status=JobStatus.QUEUED
-                )
+                job_run = await job_run_service.claim_next_queued_job()
                 if job_run is None:
                     await session.rollback()
                     await asyncio.sleep(POLL_INTERVAL_SECONDS)
                     continue
+                await session.commit()
 
                 await _process_job_run(
                     job_run=job_run,
