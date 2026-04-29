@@ -9,7 +9,7 @@ from db.models.job_run import JobRun
 from schemas.job_run import CreateJobRunRequest, JobRunResponse
 from services.errors import JobRunNotFoundError
 from services.job_run_service import JobRunService
-from utilities.service_builder_utilities import build_job_run_service
+from utilities.service_builder_utilities import build_delete_service, build_job_run_service
 
 logging.basicConfig(
     level=logging.INFO,
@@ -88,8 +88,8 @@ async def delete_job_run(
     session: AsyncSession = Depends(get_transactional_session),
 ):
     logging.info("delete job run")
-    job_run_service = build_job_run_service(session=session)
-    await job_run_service.delete_job_run(
+    delete_service = build_delete_service(session=session)
+    await delete_service.delete_job_run(
         job_run_num=job_run_num,
         job_def_id=job_def_id,
         route_id=route_id,

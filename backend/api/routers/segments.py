@@ -1,14 +1,14 @@
 import logging
 
-from fastapi import Depends, Response, status, APIRouter
+from fastapi import Depends, APIRouter
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.dependencies import get_session, get_transactional_session
+from api.dependencies import get_session
 from db.models.segment import Segment
 from schemas.segment import SegmentResponse
 from services.errors import SegmentNotFoundError
-from utilities.service_builder_utilities import build_delete_service, build_segment_service
+from utilities.service_builder_utilities import build_segment_service
 from utilities.service_builder_utilities import build_thumbnail_service
 from repositories.segment_repository import SegmentRepository
 from services.segment_service import SegmentService
@@ -70,16 +70,3 @@ async def get_segment(
     if segment is None:
         raise SegmentNotFoundError(route_id=route_id, segment_id=segment_id)
     return segment
-
-@segments_router.delete("/{route_id}/{segment_id}")
-async def delete_segment(
-    route_id: str,
-    segment_id: int,
-    session: AsyncSession = Depends(get_transactional_session),
-):
-    logging.info("delete segment")
-    service = build_delete_service(session=session)
-
-    await service.delete_segment(route_id=route_id, segment_id=segment_id)
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

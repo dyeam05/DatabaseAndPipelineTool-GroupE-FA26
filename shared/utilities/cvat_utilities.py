@@ -52,5 +52,5 @@ def extract_ids_to_labels_for_coco_annotation_file(annotation_file: Path) -> dic
     
     return ids_to_labels
 
-def get_task_url(task_id: int) -> str:
-    return f"{CVAT_PUBLIC_URL}/tasks/{task_id}"
+def get_task_url(task_id: int, job_id: int) -> str:
+    return f"{CVAT_PUBLIC_URL}/tasks/{task_id}/jobs/{job_id}"

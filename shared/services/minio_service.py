@@ -102,7 +102,7 @@ class MinioService:
     def delete_objects(self, bucket_name: str, object_keys: list[str]) -> None:
         delete_objects = [DeleteObject(object_key) for object_key in object_keys]
         for object_key in object_keys:
-            logger.info(f"deleting artifcat {object_key}")
+            logger.debug(f"deleting artifcat {object_key}")
 
         errors = self.minio_client.remove_objects(
             bucket_name=bucket_name,

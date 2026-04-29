@@ -5,10 +5,17 @@ from itertools import chain
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.enums import CameraType, JobSegmentRunImportStatus, JobStatus
+from db.models.job_segment_run_import import JobSegmentRunImport
 from db.models.segment import Segment
 from repositories.segment_repository import SegmentRepository
+from schemas import job_definition
+from services.cvat_service import CVATService
+from services.errors import JobRunningError, JobSegmentRunImportDeleteError
+from services.job_definition_service import JobDefinitionService
+from services.job_run_service import JobRunService
+from services.job_segment_run_import_service import JobSegmentRunImportService
 from services.minio_service import MinioService
-from utilities.minio_utilities import get_segment_object_name
 from repositories.route_repository import RouteRepository
 from repositories.artifact_repository import ArtifactRepository
 from db.models import JobSegmentRun, SegmentArtifact, DatasetExport, Artifact, FrameArtifact, Frame
@@ -22,43 +29,62 @@ class DeleteService:
         minio_service: MinioService,
         route_repository: RouteRepository,
         artifact_repository: ArtifactRepository,
+        cvat_service: CVATService,
+        job_segment_run_import_service: JobSegmentRunImportService,
+        job_run_service: JobRunService,
+        job_definition_service: JobDefinitionService,
         session: AsyncSession,
     ) -> None:
         self._segment_repository = segment_repository
         self._minio_service = minio_service
         self._route_repository = route_repository
         self._artifact_repository = artifact_repository
+        self._cvat_service = cvat_service
+        self._job_segment_run_import_service = job_segment_run_import_service
+        self._job_run_service = job_run_service
+        self._job_definition_service = job_definition_service
         self._session = session
 
-
-    async def delete_segment(self, route_id: str, segment_id: int) -> None:
-        segment = await self._segment_repository.get_by_id(route_id, segment_id)
-        if segment is None:
-            return
-
-        prefix = get_segment_object_name(segment)
-
-        objects = self._minio_service.minio_client.list_objects(
-            bucket_name=self._minio_service.bucket_name,
-            prefix=prefix,
-            recursive=True,
+    async def delete_job_run(
+        self,
+        job_def_id: int,
+        job_run_num: int,
+        route_id: str,
+        camera: CameraType,
+    ):
+        logger.info(f"Deleting JobRun {(job_def_id, job_run_num, route_id, camera)=}")
+        imports_to_delete = await self._job_segment_run_import_service.get_by_job(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            camera=camera
         )
 
-        object_keys: list[str] = []
-        for obj in objects:
-            if obj.object_name is None:
-                continue
-            object_keys.append(obj.object_name)
+        logger.info(f"Deleting {len(imports_to_delete)} CVAT imports for route {route_id}")
+        for import_to_delete in imports_to_delete:
+            await self.delete_job_segment_run_import_artifacts(job_segment_run_import=import_to_delete)
 
-        if object_keys:
-            self._minio_service.delete_objects(
-                bucket_name=self._minio_service.bucket_name,
-                object_keys=object_keys,
-            )
+        await self._job_run_service.delete_job_run(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            camera=camera
+        )
+        return 
 
-        await self._segment_repository.delete(segment)
 
     async def delete_route(self, route_id: str) -> None:
+        # ensure there are no running jobs for this route
+        job_runs = await self._job_run_service.list_job_runs_by_route(route_id=route_id)
+        for job_run in job_runs:
+            logger.warning(f"Trying to delete route with running job {job_run}")
+            if job_run.status in [JobStatus.RUNNING, JobStatus.QUEUED]:
+                logger.error(f"Can not delete route {route_id} because it has an active job happpening.")
+                raise JobRunningError(f"Can not delete route {route_id} because it has a running job.")
+
+
+        # delete cvat imports
+        await self.delete_cvat_imports_for_route(route_id=route_id)
         # delete frame artifacts
         logger.info(f"Deleting route {route_id}")
         stmt =(
@@ -112,3 +138,35 @@ class DeleteService:
 
         for artifact in artifacts:
             await self._artifact_repository.delete(artifact)
+
+    async def delete_cvat_imports_for_route(self, route_id: str) -> None:
+        logger.info(f"Deleting CVAT imports for route {route_id}")
+        imports_to_delete = await self._job_segment_run_import_service.get_by_route_id(route_id=route_id)
+        logger.info(f"Deleting {len(imports_to_delete)} CVAT imports for route {route_id}")
+        for import_to_delete in imports_to_delete:
+            await self.delete_job_segment_run_import_artifacts(job_segment_run_import=import_to_delete)
+
+        return 
+
+    async def delete_job_definition(
+        self,
+        job_def_id: int
+    ) -> None:
+        logger.info(f"Deleting job definition {job_definition}")
+        imports_to_delete = await self._job_segment_run_import_service.get_by_job_def(job_def_id=job_def_id)
+        logger.info(f"Deleting {len(imports_to_delete)} CVAT imports for job definition {job_def_id}")
+        for import_to_delete in imports_to_delete:
+            await self.delete_job_segment_run_import_artifacts(job_segment_run_import=import_to_delete)
+        await self._job_definition_service.delete_job_definition(job_def_id=job_def_id)
+
+
+    async def delete_job_segment_run_import_artifacts(self, job_segment_run_import: JobSegmentRunImport):
+        if job_segment_run_import.status not in [JobSegmentRunImportStatus.LOADED, JobSegmentRunImportStatus.REMOVED, JobSegmentRunImportStatus.FAILED]:
+            logger.error(f"Can not delete job segment run import having status {job_segment_run_import.status}")
+            raise JobSegmentRunImportDeleteError(reason=f"Can not delete route with job segment run import having status {job_segment_run_import.status}")
+
+        if job_segment_run_import.status == JobSegmentRunImportStatus.LOADED and job_segment_run_import.task_id is not None:
+            self._cvat_service.delete_task(task_id=job_segment_run_import.task_id)
+
+
+

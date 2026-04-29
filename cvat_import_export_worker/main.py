@@ -104,12 +104,15 @@ async def _process_loading_job(
 
         # Create task in cvat
         task_name = f"{job_segment_run_import.route_id}-{job_segment_run_import.segment_id}-{job_segment_run_import.job_def_id}-{job_segment_run_import.job_run_num}-export"
-        task_id = cvat_service.create_new_annotated_task_for_job_segment_run_dir(
+        new_task = cvat_service.create_new_annotated_task_for_job_segment_run_dir(
             job_segment_run_dir=job_segment_run_dir,
             task_name=task_name
         )
 
-        job_segment_run_import.task_url = get_task_url(task_id=task_id)
+        task_id = new_task.id
+        job_id = new_task.get_jobs()[0].id
+
+        job_segment_run_import.task_url = get_task_url(task_id=task_id, job_id=job_id)
         job_segment_run_import.task_id = task_id
 
 
