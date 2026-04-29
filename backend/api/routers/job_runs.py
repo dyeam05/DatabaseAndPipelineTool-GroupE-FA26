@@ -79,6 +79,23 @@ async def create_job_run(
     )
 
 
+@job_runs_router.post("/cancel", response_model=JobRunResponse)
+async def cancel_job_run(
+    job_def_id: int,
+    job_run_num: int,
+    route_id: str,
+    camera: CameraType,
+    session: AsyncSession = Depends(get_transactional_session)
+) -> JobRun:
+    logging.info("Cancel job run")
+    job_run_service = build_job_run_service(session=session)
+    return await job_run_service.cancel_job_run(
+        job_run_num=job_run_num,
+        job_def_id=job_def_id,
+        route_id=route_id,
+        camera=camera
+    )
+
 @job_runs_router.delete("/")
 async def delete_job_run(
     job_def_id: int,

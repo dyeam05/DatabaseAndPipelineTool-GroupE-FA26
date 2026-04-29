@@ -82,6 +82,12 @@ class JobRunNotFoundError(ValueError):
     def __init__(self, job_run_num: int, job_def_id:int, route_id:str) -> None:
         super().__init__(f"Job run {(job_run_num, job_def_id, route_id)} not found")
 
+class JobRunCancelError(ValueError):
+    def __init__(self, job_run_num: int, job_def_id: int, route_id: str, reason: str) -> None:
+        super().__init__(
+            f"Job run {(job_run_num, job_def_id, route_id)} cannot be cancelled: {reason}"
+        )
+
 class JobFrameArtifactAlreadyExistsError(ValueError):
     def __init__(self, job_run_num: int, job_def_id:int, route_id:str, frame_pk: int, role: ArtifactRole) -> None:
         super().__init__(f"Job frame artifact with role {role} for frame {frame_pk} and job run {(job_run_num, job_def_id, route_id)} already exists")
@@ -120,4 +126,3 @@ class RouteDeleteError(ValueError):
 class JobRunningError(ValueError):
     def __init__(self, reason: str):
         super().__init__(reason)
-
