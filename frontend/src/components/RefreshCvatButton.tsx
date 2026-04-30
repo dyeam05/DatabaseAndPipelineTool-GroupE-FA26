@@ -1,14 +1,24 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
-import { restartCvat } from "../api/cvat";
+import { getCvatActiveStatus, restartCvat } from "../api/cvat";
 
 const COOLDOWN_SECONDS = 60;
+const ACTIVE_POLL_MS = 5000;
 const TOOLTIP =
   "Restart the CVAT server. Only use this if CVAT is frozen or unresponsive";
+const TOOLTIP_BUSY =
+  "A job run or CVAT import is in progress. Wait for it to finish before restarting.";
 
 export default function RefreshCvatButton() {
   const [cooldownLeft, setCooldownLeft] = useState(0);
+
+  const { data: activeStatus } = useQuery({
+    queryKey: ["cvat-active-status"],
+    queryFn: getCvatActiveStatus,
+    refetchInterval: ACTIVE_POLL_MS,
+  });
+  const isBusy = activeStatus?.active ?? false;
 
   const mutation = useMutation({
     mutationFn: restartCvat,
@@ -23,12 +33,14 @@ export default function RefreshCvatButton() {
 
   const isCoolingDown = cooldownLeft > 0;
   const isPending = mutation.isPending;
-  const disabled = isPending || isCoolingDown;
+  const disabled = isPending || isCoolingDown || isBusy;
 
   const label = isPending
     ? "Restarting…"
     : isCoolingDown
     ? `Wait ${cooldownLeft}s`
+    : isBusy
+    ? "CVAT Busy"
     : "Refresh CVAT";
 
   const handleClick = () => {
@@ -53,6 +65,8 @@ export default function RefreshCvatButton() {
       title={
         mutation.isError
           ? `Restart failed: ${(mutation.error as Error).message}`
+          : isBusy
+          ? TOOLTIP_BUSY
           : TOOLTIP
       }
       className="flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors border"
