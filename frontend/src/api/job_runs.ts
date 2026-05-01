@@ -27,3 +27,18 @@ export async function createJobRun(params: {
   });
   return mapJobRun(data);
 }
+
+export async function deleteJobRun(params: {
+  jobDefId: number;
+  jobRunNum: number;
+  routeId: string;
+  camera: string;
+}): Promise<void> {
+  const qs = new URLSearchParams({
+    job_def_id: String(params.jobDefId),
+    job_run_num: String(params.jobRunNum),
+    route_id: params.routeId,
+    camera: params.camera,
+  });
+  await apiFetch<void>(`/job-runs/?${qs}`, { method: "DELETE" });
+}

@@ -1,10 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { Settings, Route, BriefcaseBusiness } from "lucide-react";
+import { Route, BriefcaseBusiness } from "lucide-react";
+import RefreshCvatButton from "./RefreshCvatButton";
 
 const navItems = [
   { to: "/routes", label: "Routes", icon: Route },
   { to: "/job-definitions", label: "Jobs", icon: BriefcaseBusiness },
-  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function TopBar() {
@@ -32,11 +32,14 @@ export default function TopBar() {
           <NavLink
             key={to}
             to={to}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors no-underline"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors border no-underline"
             style={({ isActive }) => ({
               color: isActive ? "var(--bg-inverse)" : "var(--text-on-inverse)",
               backgroundColor: isActive ? "var(--text-on-inverse)" : "transparent",
-              opacity: isActive ? 1 : 0.65,
+              borderColor: isActive ? "var(--text-on-inverse)" : "var(--border-on-inverse-faint)",
+              opacity: isActive ? 1 : 0.85,
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.05em",
             })}
           >
             <Icon size={14} />
@@ -44,6 +47,11 @@ export default function TopBar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Right-side actions */}
+      <div className="ml-auto flex items-center">
+        <RefreshCvatButton />
+      </div>
     </header>
   );
 }

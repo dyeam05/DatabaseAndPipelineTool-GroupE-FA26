@@ -5,6 +5,7 @@ import type { CvatImport, JobSegmentRun } from "../../api/types";
 import { CVAT_IN_PROGRESS_STATUSES } from "../../api/types";
 import { STATUS_COLOR, STATUS_LABEL, resolveAction } from "../../utils/jobSegmentRunConfig";
 import type { CvatAction } from "../../utils/jobSegmentRunConfig";
+import { formatCamera } from "../../utils/formatters";
 import { CvatActionButton } from "./CvatActionButton";
 
 type RunKeyFields = Pick<JobSegmentRun, "jobDefId" | "jobRunNum" | "segmentId" | "camera">;
@@ -120,7 +121,7 @@ function RunRow({ run, imp, action, defName, isLoading, isUnloading, onLoad, onU
         </span>
       </div>
       <span className="text-[10px] [font-family:var(--font-mono)] text-[var(--text-secondary)] flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-        job #{run.jobRunNum} · {defName} · {run.camera}
+        job #{run.jobRunNum} · {defName} · {formatCamera(run.camera)}
       </span>
       {imp?.status === "failed" && imp.errorMessage && (
         <span title={imp.errorMessage} className="text-[9px] [font-family:var(--font-mono)] text-[var(--accent-alert)] max-w-[140px] overflow-hidden text-ellipsis whitespace-nowrap">
