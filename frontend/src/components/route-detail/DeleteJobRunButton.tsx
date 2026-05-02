@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteJobRun } from "../../api/job_runs";
+import { cancelJobRun, deleteJobRun } from "../../api/job_runs";
+import type { JobStatus } from "../../api/types";
 import { formatCamera } from "../../utils/formatters";
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
   jobDefId: number;
   jobRunNum: number;
   camera: string;
+  status: JobStatus;
 }
 
 const BASE_CLASSES =
@@ -18,18 +20,32 @@ const DEFAULT_CLASSES =
 const PENDING_CLASSES =
   "bg-transparent border-[var(--accent-alert)] text-[var(--accent-alert)] cursor-not-allowed opacity-80";
 
-export function DeleteJobRunButton({ routeId, jobDefId, jobRunNum, camera }: Props) {
+export function DeleteJobRunButton({ routeId, jobDefId, jobRunNum, camera, status }: Props) {
   const queryClient = useQueryClient();
+  const isQueued = status === "queued";
 
   const mutation = useMutation({
-    mutationFn: () => deleteJobRun({ routeId, jobDefId, jobRunNum, camera }),
+    mutationFn: async () => {
+      if (isQueued) {
+        await cancelJobRun({ routeId, jobDefId, jobRunNum, camera });
+      } else {
+        await deleteJobRun({ routeId, jobDefId, jobRunNum, camera });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["jobRuns", routeId] });
     },
   });
 
+  if (status === "running") return null;
+
+  const action = isQueued ? "Cancel" : "Delete";
+  const confirmMessage = isQueued
+    ? `Cancel job run #${jobRunNum} (${formatCamera(camera)})?`
+    : `Delete job run #${jobRunNum} (${formatCamera(camera)})? This cannot be undone.`;
+
   const handleClick = () => {
-    if (!confirm(`Delete job run #${jobRunNum} (${formatCamera(camera)})? This cannot be undone.`)) return;
+    if (!confirm(confirmMessage)) return;
     mutation.mutate();
   };
 
@@ -38,7 +54,7 @@ export function DeleteJobRunButton({ routeId, jobDefId, jobRunNum, camera }: Pro
       type="button"
       onClick={handleClick}
       disabled={mutation.isPending}
-      title="Delete job run"
+      title={`${action} job run`}
       className={`${BASE_CLASSES} ${mutation.isPending ? PENDING_CLASSES : DEFAULT_CLASSES}`}
     >
       {mutation.isPending ? "…" : "✕"}

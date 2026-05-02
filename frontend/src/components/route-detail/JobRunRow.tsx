@@ -24,6 +24,7 @@ export function JobRunRow({ jobRun }: { jobRun: JobRun }) {
         jobDefId={jobRun.jobDefId}
         jobRunNum={jobRun.jobRunNum}
         camera={jobRun.camera}
+        status={jobRun.status}
       />
       <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: "100px" }}>
         {isActive && <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />}
