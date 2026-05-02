@@ -10,7 +10,11 @@
 
 ## Background
 
-This repository contains code for the data pipeline for the [Comma AI](https://comma.ai/) Platform. It is organized as a containerized mono-repo.
+This repository contains code for the data pipeline for the [Comma AI](https://comma.ai/) Platform. It is organized as a containerized mono-repo.  
+
+An end-to-end platform to ingest, process, and manage driving data for compute vision workflows for Open Pilot.​
+
+A unified system with job execution, artifact storage, and Computer Vision Annotation Tool (CVAT) labeling for future machine learning and human review.
 
 ## Dependencies (Do These First)
 
@@ -37,15 +41,55 @@ This repository contains code for the data pipeline for the [Comma AI](https://c
 
 ## Running the Code
 
-1. Start the databases with ```docker compose up --build -d postgres minio```.
-1. Create a database migration with ```docker compose run --build --rm alembic_worker alembic -c /app/alembic_worker/alembic.ini revision --autogenerate -m "first migration"```
-1. Push the migration with ```docker compose up --build alembic_worker minio_initializer```
-1. Start the backend and open pilot download worker with ```docker compose up --build -d backend open_pilot_download_worker open_pilot_upload_worker```.
-1. Start the cvat workers with ```docker compose up --build cvat_worker cvat_import_export_worker```
+1. Start the databases with 
+```bash 
+docker compose up --build -d postgres minio
+```
+2. Create a database migration with 
+```bash 
+docker compose run --build --rm alembic_worker alembic -c /app/alembic_worker alembic.ini revision --autogenerate -m "first migration"
+```
+3. Push the migration with 
+```bash
+docker compose up --build alembic_worker minio_initializer
+```
+4. Start the backend and open pilot download worker with 
+```bash
+docker compose up --build -d backend open_pilot_download_worker open_pilot_upload_worker
+```
+5. Start the cvat container using
+```bash
+scripts/setup_cvat.sh
+```
+6. Start the cvat workers with 
+```bash
+docker compose up --build -d cvat_worker cvat_import_export_worker
+```
+7. Start the frontend with
+```bash
+docker compose up --build -d frontend
+# for development: use docker's watch to get live updates
+docker compose watch frontend
+```
+
+## Ports
+
+| Service       | Link                         | Port |
+| ------------- | ---------------------------- | ---- |
+| Frontend      | <http://localhost:5173>      | 5173 |
+| Backend       | <http://localhost:8000/docs> | 8000 |
+| CVAT          | <http://localhost:8080>      | 8080 |
+| Minio Console | <http://localhost:9001>      | 9001 |
+| Minio API     | <http://localhost:9000>      | 9000 |
+| Postgres      | localhost:5433               | 5433 |
 
 ## Contributing
 
 ### Code Organization
+
+#### Frontend
+
+The frontend code is stored in the `/frontend/` folder. This is a React Vite build for the pipeline's UI. Most of the code is in the `/src/` folder where everything is organized into `/pages/` or `/components/`. All of the api processes are located in the `/api/` folder, and utilities in `/utils/`.
 
 #### Backend
 
@@ -73,7 +117,7 @@ This is where the majority of code lives, in the `/shared/` directory. This code
 
 ### Data
 
-Do not put any code here. This folder `/data/` is used as a shared volume between workers.
+Do not put any code here. The folders `/data/` and `/cvat_share/` is used as a shared volume between workers.
 
 ### Ruff
 
@@ -89,13 +133,13 @@ Before commiting any code, run the `pyright` static type checker and fix any iss
 
 ## Testing
 
-Testing code is inside the `./tests/` folder. See `./tests/README.md` for more information.
+Testing code is inside the `./tests/` folder. See [Tests Readme](./tests/README.md) for more information.
 
 ## CVAT Job Extension Notes
 
 CVAT Jobs are somewhat complicated, so this section aims to explain them as simple as possible.
 
-TLDR: CVAT jobs are defined by two things: a python class and a set of arguments for that class. If you want to make a new job, you might have to create a new python class, or you might be able to use an exhisting python class, but pass id different arguments.
+TLDR: CVAT jobs are defined by two things: a python class and a set of arguments for that class. If you want to make a new job, you might have to create a new python class, or you might be able to use an exhisting python class, but pass in different arguments.
 
 ### CVAT Annotation Function
 
@@ -132,10 +176,3 @@ Check out the [course Kanban board](https://cscapstone.cs.ou.edu/pages/account/)
 - 16 Segments: db478799b6f9f210/00000098--ce43889a70
 - 4 Segments: db478799b6f9f210/0000000e--9ecd39f6bc
 - 2 Segments: db478799b6f9f210|00000081--23c1159034
-
-
-## front end
-
-run command 
-
-```docker compose up --build -d frontend```
