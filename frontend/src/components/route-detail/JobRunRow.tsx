@@ -5,6 +5,7 @@ import { listJobDefinitions } from "../../api/job_definitions";
 import { STATUS_COLOR, STATUS_LABEL } from "../../utils/jobSegmentRunConfig";
 import { ExportJobRunButton } from "./ExportJobRunButton";
 import { DeleteJobRunButton } from "./DeleteJobRunButton";
+import { RequeueJobRunButton } from "./RequeueJobRunButton";
 
 export function JobRunRow({ jobRun }: { jobRun: JobRun }) {
   const color = STATUS_COLOR[jobRun.status as keyof typeof STATUS_COLOR] ?? "var(--text-secondary)";
@@ -42,6 +43,14 @@ export function JobRunRow({ jobRun }: { jobRun: JobRun }) {
         <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--accent-alert)", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={jobRun.error}>
           {jobRun.error}
         </span>
+      )}
+      {jobRun.status === "cancelled" && (
+        <RequeueJobRunButton
+          routeId={jobRun.routeId}
+          jobDefId={jobRun.jobDefId}
+          jobRunNum={jobRun.jobRunNum}
+          camera={jobRun.camera}
+        />
       )}
       <ExportJobRunButton
         routeId={jobRun.routeId}
