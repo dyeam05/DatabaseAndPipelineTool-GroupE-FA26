@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
 from db.url import build_database_url
 from services.errors import (
+    CVATActiveError,
     DatasetExportDeletionConflictError,
     DatasetExportNotFoundError,
     DatasetExportValidationError,
@@ -161,6 +162,12 @@ async def handle_job_running_error(
 ):
     return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": str(exec)})
 
+@app.exception_handler(CVATActiveError)
+async def handle_cvat_active_error(
+        _: Request,
+        exec: CVATActiveError
+):
+    return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": str(exec)})
 
 
 app.include_router(router=routes_router)

@@ -5,3 +5,4 @@ alembic
 httpx
 pydantic
 cvat-sdk
+docker

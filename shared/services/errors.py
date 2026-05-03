@@ -126,3 +126,7 @@ class RouteDeleteError(ValueError):
 class JobRunningError(ValueError):
     def __init__(self, reason: str):
         super().__init__(reason)
+
+class CVATActiveError(ValueError):
+    def __init__(self) -> None:
+        super().__init__("Cannot restart CVAT while job runs or CVAT imports are active.")

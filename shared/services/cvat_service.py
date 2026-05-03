@@ -4,20 +4,62 @@ import time
 import logging
 import zipfile
 
+import docker
 from cvat_sdk.core.proxies.tasks import ResourceType, Task
 from cvat_sdk.models import TaskWriteRequest
 import cvat_sdk.auto_annotation as cvataa
 
 from cvat_annotation_functions.i_cvat_detection import ICVATDetection
+from db.enums import JobSegmentRunImportStatus, JobStatus
 from models.job_segment_run_dir import JobSegmentRunDir
+from services.errors import CVATActiveError
+from services.job_run_service import JobRunService
+from services.job_segment_run_import_service import JobSegmentRunImportService
 from utilities.cvat_utilities import create_cvat_client, labels_to_patched_requests, extract_ids_to_labels_for_coco_annotation_file
 from utilities.file_utilities import does_dir_exist, get_pngs_in_directory
 
 logger = logging.getLogger(__name__)
 
+CVAT_CONTAINER_NAME = "cvat_server"
+RESTART_TIMEOUT_SECONDS = 10
+ACTIVE_IMPORT_STATUSES: list[JobSegmentRunImportStatus] = [
+    JobSegmentRunImportStatus.LOADING,
+    JobSegmentRunImportStatus.REMOVING,
+]
+
+
 class CVATService:
     def __init__(self):
         self.cvat_client = create_cvat_client()
+
+    async def is_active(
+        self,
+        job_run_service: JobRunService,
+        import_service: JobSegmentRunImportService,
+    ) -> bool:
+        if await job_run_service.get_next_job_run_by_status(JobStatus.RUNNING) is not None:
+            return True
+        if await import_service.get_next_by_statuses(ACTIVE_IMPORT_STATUSES) is not None:
+            return True
+        return False
+
+    async def restart_server(
+        self,
+        job_run_service: JobRunService,
+        import_service: JobSegmentRunImportService,
+    ) -> float:
+        if await self.is_active(job_run_service, import_service):
+            raise CVATActiveError()
+
+        logger.info("Restarting %s container", CVAT_CONTAINER_NAME)
+        started = time.monotonic()
+        self._restart_container()
+        return time.monotonic() - started
+
+    def _restart_container(self) -> None:
+        client = docker.from_env()
+        container = client.containers.get(CVAT_CONTAINER_NAME)
+        container.restart(timeout=RESTART_TIMEOUT_SECONDS)
 
     def check_cvat_connection(self):
         try:
