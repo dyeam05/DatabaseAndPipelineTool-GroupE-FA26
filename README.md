@@ -53,9 +53,9 @@ docker compose run --build --rm alembic_worker alembic -c /app/alembic_worker al
 ```bash
 docker compose up --build alembic_worker minio_initializer
 ```
-4. Start the backend and open pilot download worker with 
+4. Start the backend and open pilot workers with 
 ```bash
-docker compose up --build -d backend open_pilot_download_worker open_pilot_upload_worker
+docker compose up --build -d backend open_pilot_download_worker open_pilot_upload_worker data_export_worker
 ```
 5. Start the cvat container using
 ```bash
