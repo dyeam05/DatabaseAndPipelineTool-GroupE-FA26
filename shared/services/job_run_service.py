@@ -9,6 +9,7 @@ from services.errors import (
     JobRunCancelError,
     JobDefinitionNotFoundError,
     JobRunNotFoundError,
+    JobRunRequeueError,
     RouteNotFoundError,
     RouteNotReadyForJobRunError,
 )
@@ -229,6 +230,64 @@ class JobRunService:
             )
 
         raise JobRunCancelError(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            reason=f"status is {current_job_run.status}",
+        )
+
+    async def requeue_job_run(
+        self,
+        job_run_num: int,
+        job_def_id: int,
+        route_id: str,
+        camera: CameraType,
+    ) -> JobRun:
+        job_run = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            camera=camera
+        )
+        if job_run is None:
+            raise JobRunNotFoundError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id
+            )
+        if job_run.status != JobStatus.CANCELLED:
+            raise JobRunRequeueError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id,
+                reason=f"status is {job_run.status}",
+            )
+
+        requeued_job_run = await self._job_run_repository.transition_status(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            camera=camera,
+            current_status=JobStatus.CANCELLED,
+            new_status=JobStatus.QUEUED,
+        )
+        if requeued_job_run is not None:
+            return requeued_job_run
+        
+        current_job_run = await self._job_run_repository.get_by_id(
+            job_run_num=job_run_num,
+            job_def_id=job_def_id,
+            route_id=route_id,
+            camera=camera
+        )
+        if current_job_run is None:
+            raise JobRunNotFoundError(
+                job_run_num=job_run_num,
+                job_def_id=job_def_id,
+                route_id=route_id
+            )
+
+        raise JobRunRequeueError(
             job_run_num=job_run_num,
             job_def_id=job_def_id,
             route_id=route_id,

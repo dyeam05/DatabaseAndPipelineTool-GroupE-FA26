@@ -14,6 +14,7 @@ from services.errors import (
     DatasetExportValidationError,
     JobRunCancelError,
     JobRunNotFoundError,
+    JobRunRequeueError,
     JobRunningError,
     JobSegmentRunImportDeleteError,
     RouteAlreadyExistsError,
@@ -152,6 +153,13 @@ async def handle_job_run_not_found_error(
 async def handle_job_run_cancel_error(
         _: Request,
         exec: JobRunCancelError
+):
+    return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": str(exec)})
+
+@app.exception_handler(JobRunRequeueError)
+async def handle_job_run_requeue_error(
+        _: Request,
+        exec: JobRunRequeueError
 ):
     return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": str(exec)})
 
