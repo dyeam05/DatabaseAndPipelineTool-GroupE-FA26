@@ -4,6 +4,7 @@ import time
 import logging
 import zipfile
 
+from cvat_sdk.core.client import Client
 import docker
 from cvat_sdk.core.proxies.tasks import ResourceType, Task
 from cvat_sdk.models import TaskWriteRequest
@@ -30,7 +31,13 @@ ACTIVE_IMPORT_STATUSES: list[JobSegmentRunImportStatus] = [
 
 class CVATService:
     def __init__(self):
-        self.cvat_client = create_cvat_client()
+        self._cvat_client: Client | None = None
+
+    @property
+    def cvat_client(self) -> Client:
+        if self._cvat_client is None:
+            self._cvat_client = create_cvat_client()
+        return self._cvat_client
 
     async def is_active(
         self,
