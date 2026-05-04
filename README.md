@@ -47,7 +47,7 @@ docker compose up --build -d postgres minio
 ```
 2. Create a database migration with 
 ```bash 
-docker compose run --build --rm alembic_worker alembic -c /app/alembic_worker alembic.ini revision --autogenerate -m "first migration"
+docker compose run --build --rm alembic_worker alembic -c /app/alembic_worker/alembic.ini revision --autogenerate -m "first migration"
 ```
 3. Push the migration with 
 ```bash
@@ -55,11 +55,12 @@ docker compose up --build alembic_worker minio_initializer
 ```
 4. Start the backend and open pilot workers with 
 ```bash
-docker compose up --build -d backend open_pilot_download_worker open_pilot_upload_worker data_export_worker
+docker compose up --build -d backend open_pilot_download_worker open_pilot_upload_worker dataset_export_worker
 ```
 5. Start the cvat container using
 ```bash
-scripts/setup_cvat.sh
+chmod +x ./scripts/setup_cvat.sh
+./scripts/setup_cvat.sh
 ```
 6. Start the cvat workers with 
 ```bash
