@@ -42,3 +42,35 @@ export async function deleteJobRun(params: {
   });
   await apiFetch<void>(`/job-runs/?${qs}`, { method: "DELETE" });
 }
+
+export async function cancelJobRun(params: {
+  jobDefId: number;
+  jobRunNum: number;
+  routeId: string;
+  camera: string;
+}): Promise<JobRun> {
+  const qs = new URLSearchParams({
+    job_def_id: String(params.jobDefId),
+    job_run_num: String(params.jobRunNum),
+    route_id: params.routeId,
+    camera: params.camera,
+  });
+  const data = await apiFetch<JobRunResponse>(`/job-runs/cancel?${qs}`, { method: "POST" });
+  return mapJobRun(data);
+}
+
+export async function requeueJobRun(params: {
+  jobDefId: number;
+  jobRunNum: number;
+  routeId: string;
+  camera: string;
+}): Promise<JobRun> {
+  const qs = new URLSearchParams({
+    job_def_id: String(params.jobDefId),
+    job_run_num: String(params.jobRunNum),
+    route_id: params.routeId,
+    camera: params.camera,
+  });
+  const data = await apiFetch<JobRunResponse>(`/job-runs/requeue?${qs}`, { method: "POST" });
+  return mapJobRun(data);
+}

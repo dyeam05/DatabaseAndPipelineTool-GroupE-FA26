@@ -21,7 +21,7 @@ export type SegmentStatus =
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
-export const CAMERAS = ["front_regular", "front_wide", "driver"] as const;
+export const CAMERAS = ["front_regular", "front_wide"] as const;
 
 /** Terminal states — polling stops when a resource reaches one of these */
 export const ROUTE_TERMINAL_STATUSES: RouteStatus[] = ["uploaded", "failed"];

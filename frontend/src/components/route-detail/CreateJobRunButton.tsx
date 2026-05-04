@@ -47,13 +47,38 @@ export function CreateJobRunButton({ routeId }: { routeId: string }) {
 
   const createMutation = useMutation({
     mutationFn: createJobRun,
-    onSuccess: (newRun: JobRun) => {
-      queryClient.setQueryData<JobRun[]>(["jobRuns", routeId], (old = []) => [...old, newRun]);
-      queryClient.invalidateQueries({ queryKey: ["jobRuns", routeId] });
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["jobRuns", routeId] });
+      const previous = queryClient.getQueryData<JobRun[]>(["jobRuns", routeId]) ?? [];
+      const optimisticNum = -Date.now();
+      const optimistic: JobRun = {
+        jobRunNum: optimisticNum,
+        jobDefId: vars.jobDefId,
+        routeId: vars.routeId,
+        camera: vars.camera,
+        status: "queued",
+        queuedAt: new Date().toISOString(),
+        startedAt: null,
+        finishedAt: null,
+        error: null,
+        stats: null,
+      };
+      queryClient.setQueryData<JobRun[]>(["jobRuns", routeId], (old = []) => [...old, optimistic]);
+      return { previous, optimisticNum };
+    },
+    onSuccess: (newRun: JobRun, _vars, ctx) => {
+      queryClient.setQueryData<JobRun[]>(["jobRuns", routeId], (old = []) => {
+        const filtered = (old ?? []).filter((r) => r.jobRunNum !== ctx?.optimisticNum);
+        return [...filtered, newRun];
+      });
       close();
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, _vars, ctx) => {
+      if (ctx) queryClient.setQueryData(["jobRuns", routeId], ctx.previous);
       setError(err instanceof Error ? err.message : "Failed to create job run");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobRuns", routeId] });
     },
   });
 
