@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Route, BriefcaseBusiness } from "lucide-react";
 import RefreshCvatButton from "./RefreshCvatButton";
+import milaLogo from "../assets/mila_logo.png";
 
 const navItems = [
   { to: "/routes", label: "Routes", icon: Route },
@@ -18,14 +19,14 @@ export default function TopBar() {
         borderBottom: "1px solid var(--border-black)",
       }}
     >
-      {/* App name */}
-      <span
-        className="text-sm font-bold tracking-widest uppercase select-none"
-        style={{ fontFamily: "var(--font-mono)", color: "var(--text-on-inverse)" }}
-      >
-        OpenPilot
-      </span>
-
+      {/* MiLa logo */}
+      <img
+        src={milaLogo}
+        alt="Mobility Intelligence Lab"
+        className="select-none"
+        style={{ height: "var(--topbar-height)", width: "auto", display: "block" }}
+      />
+      
       {/* Nav links */}
       <nav className="flex items-center gap-1">
         {navItems.map(({ to, label, icon: Icon }) => (
