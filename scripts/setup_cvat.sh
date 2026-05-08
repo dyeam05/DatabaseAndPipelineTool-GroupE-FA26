@@ -23,6 +23,12 @@ fi
 
 CVAT_USERNAME="${CVAT_EMAIL%%@*}"
 
+# Ensure cvat_share/ exists for the shared volume
+if [ ! -d "cvat_share" ]; then
+    echo "Creating cvat_share/ directory..."
+    mkdir -p cvat_share
+fi
+
 # Clone CVAT once
 if [ ! -d "cvat" ]; then
     echo "Cloning CVAT..."
