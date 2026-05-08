@@ -16,6 +16,13 @@ An end-to-end platform to ingest, process, and manage driving data for compute v
 
 A unified system with job execution, artifact storage, and Computer Vision Annotation Tool (CVAT) labeling for future machine learning and human review.
 
+## Videos
+
+[Demo](https://www.youtube.com/watch?v=M1dots9e0jE)  
+[Repo Setup/Installation](https://www.youtube.com/watch?v=LfWelxg0oPc)  
+[Code Walkthrough + Explanations](https://www.youtube.com/watch?v=pgbatZj3tOk)  
+[Creating New CVAT Job Definitions](https://youtu.be/M9UgbizjnKg)     
+
 ## Dependencies (Do These First)
 
 ### Docker
