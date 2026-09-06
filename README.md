@@ -1,12 +1,11 @@
 # Openpilot Data Pipeline
 
-## Authors
-
-- Noah Pursell
-- Trevor Bean
-- Vinh Khang Huynh
-- Thomas Petersen
-- Roman Beames
+## Authors for Capstone 2026
+- Kalyani Valath
+- Chi Nguyen
+- Daniel Yeaman
+- Michael Cote
+- Farzana Tasnim
 
 ## Background
 
@@ -15,6 +14,99 @@ This repository contains code for the data pipeline for the [Comma AI](https://c
 An end-to-end platform to ingest, process, and manage driving data for compute vision workflows for Open Pilot.​
 
 A unified system with job execution, artifact storage, and Computer Vision Annotation Tool (CVAT) labeling for future machine learning and human review.
+
+## Background
+
+This repository contains code for the data pipeline for the
+[Comma AI](https://comma.ai/) Platform. It is organized as a
+containerized mono-repo.
+
+An end-to-end platform to ingest, process, and manage driving data
+for computer vision workflows for OpenPilot.
+
+A unified system with job execution, artifact storage, and Computer
+Vision Annotation Tool (CVAT) labeling for future machine learning
+and human review.
+
+## Fall 2026 Capstone Continuation
+
+This project is a continuation of a previous University of Oklahoma
+Computer Science capstone project for the MiLa autonomous vehicle
+research platform.
+
+The previous capstone team developed the core infrastructure for
+ingesting, processing, annotating, and storing autonomous-driving data.
+
+Our team is continuing development of the existing platform with the
+goal of reducing the amount of manual work required to prepare
+autonomous-driving data for machine learning training and research.
+
+The overall data preparation pipeline includes:
+
+- Multimodal driving-data collection
+- Camera and video processing
+- GPS and IMU data handling
+- LiDAR data integration
+- Data annotation
+- Data and artifact storage
+- Preparation of datasets for machine-learning experiments
+
+## Project Objectives
+
+The primary goal of the project is to automate more of the AI training
+data preparation pipeline used for the MiLa autonomous research vehicle.
+
+Our team will focus on understanding and extending the existing system,
+identifying manual or inefficient steps, and improving the reliability
+and automation of the data pipeline.
+
+## Technologies and Tools
+
+| Technology | Purpose |
+| --- | --- |
+| Python | Data processing, backend services, workers, and CVAT integration |
+| Docker | Containerization of the services in the data pipeline |
+| CVAT | Computer vision data annotation |
+| FastAPI | Backend API and pipeline orchestration |
+| React + Vite | Frontend interface |
+| PostgreSQL | Structured data and job metadata storage |
+| MinIO | Storage for large driving-data artifacts |
+| OpenPilot / Comma AI | Driving-data source and autonomous-driving platform |
+
+## Ticket 2 Key Feature
+
+One key feature of the current platform is the automated retrieval and
+processing of driving data.
+
+The OpenPilot Download Worker monitors the Routes table for routes that
+are ready to be downloaded. When an eligible route is detected, the
+worker retrieves the corresponding driving data and stores it for later
+processing and annotation.
+
+For Ticket 2, our group will document and test a specific behavior
+associated with this feature.
+
+## Fall 2026 Goals and Progress Plan
+
+Our current goals are to:
+
+1. Understand the architecture and functionality implemented by the
+   previous capstone team.
+2. Identify manual or inefficient steps in the existing data preparation
+   workflow.
+3. Improve automation of the collection, processing, annotation, or
+   storage pipeline.
+4. Improve reliability through testing and validation.
+5. Extend the platform to better support data collected from the MiLa
+   autonomous research vehicle.
+
+## Authors
+
+- Noah Pursell
+- Trevor Bean
+- Vinh Khang Huynh
+- Thomas Petersen
+- Roman Beames
 
 ## Videos
 
