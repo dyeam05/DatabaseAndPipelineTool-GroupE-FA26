@@ -27,6 +27,10 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy application code
 COPY shared /app/shared
+
+# Copy OpenPilot download worker so its functions can be unit tested
+COPY open_pilot_download_worker/src /app/open_pilot_download_worker
+
 COPY tests /app
 
 WORKDIR /app
