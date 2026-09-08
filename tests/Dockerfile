@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-ENV PYTHONPATH=/app/shared
+ENV PYTHONPATH=/app/shared:/app
 
 WORKDIR /app
 
