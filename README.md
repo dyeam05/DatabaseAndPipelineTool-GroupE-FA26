@@ -9,14 +9,6 @@
 
 ## Background
 
-This repository contains code for the data pipeline for the [Comma AI](https://comma.ai/) Platform. It is organized as a containerized mono-repo.  
-
-An end-to-end platform to ingest, process, and manage driving data for compute vision workflows for Open Pilot.​
-
-A unified system with job execution, artifact storage, and Computer Vision Annotation Tool (CVAT) labeling for future machine learning and human review.
-
-## Background
-
 This repository contains code for the data pipeline for the
 [Comma AI](https://comma.ai/) Platform. It is organized as a
 containerized mono-repo.
