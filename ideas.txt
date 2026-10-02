@@ -1,0 +1,6 @@
+This file is for creating a list of ideas that we could improve the project with.
+
+1. An install launcher that installs all requirements and gets the project running without having to run through a readme or youtube video. (Michael)
+2. Removing the refresh button and instead making the code automatically detect when a refresh is needed. (Michael)
+3. Enabling the use of a gpu with Pytorch to make some aspects of the code faster. (Michael)
+4. Use threading to send multiple images for processing instead of one at a time. (Michael)
